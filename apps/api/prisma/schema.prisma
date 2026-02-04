@@ -1,0 +1,271 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// --- CORE ---
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  projects  Project[]
+  auditLogs AuditLog[]
+  materials Material[]
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      String   @default("USER") // ADMIN, PM, USER
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  auditLogs AuditLog[]
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  entity    String
+  entityId  String
+  metadata  String   @default("{}") // JSON string
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// --- PROJECT MANAGEMENT ---
+
+model Project {
+  id        String   @id @default(uuid())
+  name      String
+  code      String?
+  status    String   @default("ACTIVE")
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  currency  String   @default("USD")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  budgets          Budget[]
+  purchaseOrders   PurchaseOrder[]
+  materialRequests MaterialRequest[]
+  invoices         Invoice[]
+  rfis             RFI[]
+  inspections      Inspection[]
+  changeOrders     ChangeOrder[]
+  rfqs             RFQ[]
+  subcontracts     Subcontract[]
+}
+
+// --- BUDGET ---
+
+model Budget {
+  id          String       @id @default(uuid())
+  projectId   String
+  project     Project      @relation(fields: [projectId], references: [id])
+  name        String       @default("General Budget")
+  budgetLines BudgetLine[]
+}
+
+model BudgetLine {
+  id             String  @id @default(uuid())
+  budgetId       String
+  budget         Budget  @relation(fields: [budgetId], references: [id])
+  code           String
+  name           String
+  amountParam    Float   @default(0) // Estimated
+  amountCommitted Float  @default(0) // POs
+  amountExecuted Float   @default(0) // Invoices
+
+  purchaseOrderItems PurchaseOrderItem[]
+  invoiceAllocations InvoiceAllocation[]
+}
+
+// --- PROCUREMENT ---
+
+model MaterialRequest {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  title     String
+  status    String   @default("DRAFT") // DRAFT, SUBMITTED, APPROVED, CLOSED
+  items     String   // JSON string of requested items
+  createdAt DateTime @default(now())
+}
+
+model PurchaseOrder {
+  id        String              @id @default(uuid())
+  projectId String
+  project   Project             @relation(fields: [projectId], references: [id])
+  vendor    String
+  total     Float               @default(0)
+  status    String              @default("DRAFT") // DRAFT, ISSUED, PARTIAL, CLOSED
+  items     PurchaseOrderItem[]
+  invoices  Invoice[]
+  createdAt DateTime            @default(now())
+}
+
+model PurchaseOrderItem {
+  id           String      @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  description  String
+  quantity     Float
+  unitPrice    Float
+  total        Float
+  budgetLineId String?
+  budgetLine   BudgetLine? @relation(fields: [budgetLineId], references: [id])
+}
+
+// --- FINANCIALS ---
+
+model Invoice {
+  id            String              @id @default(uuid())
+  projectId     String
+  project       Project             @relation(fields: [projectId], references: [id])
+  purchaseOrderId String?
+  purchaseOrder PurchaseOrder?      @relation(fields: [purchaseOrderId], references: [id])
+  vendor        String
+  invoiceNumber String
+  total         Float
+  currency      String              @default("USD")
+  exchangeRate  Float               @default(1.0)
+  fileUrl       String?
+  ocrData       String?             // JSON string of mock OCR results
+  status        String              @default("PENDING") // PENDING, APPROVED, PAID
+  date          DateTime
+  allocations   InvoiceAllocation[]
+  createdAt     DateTime            @default(now())
+}
+
+model InvoiceAllocation {
+  id           String     @id @default(uuid())
+  invoiceId    String
+  invoice      Invoice    @relation(fields: [invoiceId], references: [id])
+  budgetLineId String
+  budgetLine   BudgetLine @relation(fields: [budgetLineId], references: [id])
+  amount       Float
+}
+
+// --- FIELD ---
+
+model RFI {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  code        String   @default("RFI-000") // e.g. RFI-001
+  subject     String   @default("General")
+  question    String
+  answer      String?
+  status      String   @default("OPEN") // OPEN, CLOSED, ANSWERED
+  assignedTo  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Inspection {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  date        DateTime
+  type        String   @default("QUALITY") // QUALITY, SAFETY, PROGRESS
+  status      String   @default("PENDING") // PASSED, FAILED, PENDING
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// --- CHANGE MANAGEMENT ---
+
+model ChangeOrder {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  title       String
+  description String?
+  amount      Float
+  status      String   @default("DRAFT") // DRAFT, APPROVED, REJECTED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// --- PROCUREMENT CATALOG ---
+
+model Material {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  name        String
+  description String?
+  unit        String   @default("UN") // UN, KG, M3, ETC
+  costParam   Float    @default(0)    // Reference cost
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// --- SUBCONTRACTS & RFQ ---
+
+model RFQ {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  title       String
+  description String?
+  status      String   @default("OPEN") // OPEN, CLOSED, AWARDED
+  bids        Bid[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Bid {
+  id          String   @id @default(uuid())
+  rfqId       String
+  rfq         RFQ      @relation(fields: [rfqId], references: [id])
+  vendor      String
+  amount      Float
+  status      String   @default("PENDING") // PENDING, REJECTED, ACCEPTED
+  submittedAt DateTime @default(now())
+}
+
+model Subcontract {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  vendor      String
+  title       String
+  totalAmount Float
+  startDate   DateTime?
+  endDate     DateTime?
+  status      String   @default("DRAFT") // DRAFT, ACTIVE, COMPLETED
+  estimates   ProgressEstimate[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ProgressEstimate {
+  id            String      @id @default(uuid())
+  subcontractId String
+  subcontract   Subcontract @relation(fields: [subcontractId], references: [id])
+  periodStart   DateTime
+  periodEnd     DateTime
+  amount        Float
+  status        String      @default("SUBMITTED") // SUBMITTED, APPROVED, PAID
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
