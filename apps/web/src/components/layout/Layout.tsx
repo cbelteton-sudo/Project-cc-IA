@@ -1,5 +1,8 @@
 import { Outlet, Link } from 'react-router-dom';
 import { Home, FolderKanban, Banknote, ShoppingCart, FileText, Settings, Hammer, ClipboardList, MessageSquare } from 'lucide-react';
+import { Toaster } from 'sonner';
+import { useTranslation } from 'react-i18next';
+import { useRegion } from '../../context/RegionContext';
 
 const SidebarItem = ({ to, icon: Icon, label }: any) => (
     <Link to={to} className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-colors">
@@ -9,29 +12,36 @@ const SidebarItem = ({ to, icon: Icon, label }: any) => (
 );
 
 export const Layout = () => {
+    const { t, i18n } = useTranslation();
+    const { country, setCountry } = useRegion();
+
+    const changeLanguage = (lng: string) => {
+        i18n.changeLanguage(lng);
+    };
+
     return (
         <div className="flex h-screen w-full bg-gray-50">
             {/* Sidebar */}
             <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
                 <div className="h-16 flex items-center px-6 border-b border-gray-200"></div>
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-                    <SidebarItem to="/" icon={Home} label="Dashboard" />
-                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Project Mgmt</div>
-                    <SidebarItem to="/projects" icon={FolderKanban} label="Projects" />
-                    <SidebarItem to="/budgets" icon={Banknote} label="Budgets" />
-                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Procurement</div>
-                    <SidebarItem to="/procurement/requests" icon={ShoppingCart} label="Material Requests" />
-                    <SidebarItem to="/procurement/orders" icon={FileText} label="Purchase Orders" />
+                    <SidebarItem to="/" icon={Home} label={t('sidebar.dashboard')} />
+                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('sidebar.projectMgmt')}</div>
+                    <SidebarItem to="/projects" icon={FolderKanban} label={t('sidebar.projects')} />
+                    <SidebarItem to="/budgets" icon={Banknote} label={t('sidebar.budgets')} />
+                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('sidebar.procurement')}</div>
+                    <SidebarItem to="/procurement/requests" icon={ShoppingCart} label={t('sidebar.materialRequests')} />
+                    <SidebarItem to="/procurement/orders" icon={FileText} label={t('sidebar.purchaseOrders')} />
 
-                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Financials</div>
-                    <SidebarItem to="/invoices" icon={Banknote} label="Invoices" />
+                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('sidebar.financials')}</div>
+                    <SidebarItem to="/invoices" icon={Banknote} label={t('sidebar.invoices')} />
 
-                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Field</div>
-                    <SidebarItem to="/field" icon={ClipboardList} label="Field Mgmt" />
-                    <SidebarItem to="/whatsapp" icon={MessageSquare} label="WhatsApp Sim" />
+                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('sidebar.field')}</div>
+                    <SidebarItem to="/field" icon={ClipboardList} label={t('sidebar.fieldMgmt')} />
+                    <SidebarItem to="/whatsapp" icon={MessageSquare} label={t('sidebar.whatsappSim')} />
 
-                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Admin</div>
-                    <SidebarItem to="/settings" icon={Settings} label="Settings" />
+                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('sidebar.admin')}</div>
+                    <SidebarItem to="/settings" icon={Settings} label={t('sidebar.settings')} />
                 </nav>
 
                 <div className="p-4 border-t border-gray-200">
@@ -46,7 +56,7 @@ export const Layout = () => {
                         onClick={() => { localStorage.removeItem('token'); window.location.href = '/'; }}
                         className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs py-2 rounded font-medium"
                     >
-                        Log Out
+                        {t('common.logout')}
                     </button>
                 </div>
             </aside>
@@ -54,15 +64,37 @@ export const Layout = () => {
             {/* Main Content */}
             <main className="flex-1 flex flex-col overflow-hidden">
                 <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8">
-                    <h1 className="text-xl font-semibold text-gray-800">Overview</h1>
+                    <h1 className="text-xl font-semibold text-gray-800">{t('dashboard.title')}</h1>
                     <div className="flex items-center gap-4">
-                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Tenant: Constructora Demo</span>
+                        <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                            {/* Country Switcher */}
+                            <button
+                                onClick={() => setCountry('GT')}
+                                className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition ${country === 'GT' ? 'bg-white shadow-sm text-blue-800' : 'text-gray-500 hover:text-gray-700'}`}
+                                title="Guatemala (Quetzales)"
+                            >
+                                🇬🇹 GTQ
+                            </button>
+                            <button
+                                onClick={() => setCountry('SV')}
+                                className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition ${country === 'SV' ? 'bg-white shadow-sm text-blue-800' : 'text-gray-500 hover:text-gray-700'}`}
+                                title="El Salvador (USD)"
+                            >
+                                🇸🇻 USD
+                            </button>
+                            <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                            {/* Language Switcher */}
+                            <button onClick={() => changeLanguage('es')} className={`text-xs px-2 py-1 rounded font-semibold transition ${i18n.language === 'es' ? 'bg-white shadow-sm text-blue-800' : 'text-gray-500'}`}>ES</button>
+                            <button onClick={() => changeLanguage('en')} className={`text-xs px-2 py-1 rounded font-semibold transition ${i18n.language === 'en' ? 'bg-white shadow-sm text-blue-800' : 'text-gray-500'}`}>EN</button>
+                        </div>
+                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">{t('common.tenant')}: Constructora Demo</span>
                     </div>
                 </header>
                 <div className="flex-1 overflow-auto p-8">
                     <Outlet />
                 </div>
             </main>
+            <Toaster position="top-right" richColors />
         </div>
     );
 };

@@ -34,3 +34,6 @@ Thumbs.db
 *.db
 *.sqlite
 *.sqlite-journal
+
+# Infrastructure
+infra/

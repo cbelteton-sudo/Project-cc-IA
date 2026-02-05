@@ -18,9 +18,11 @@ import { InvoicesModule } from './modules/invoices/invoices.module';
 import { RfisModule } from './modules/rfis/rfis.module';
 import { InspectionsModule } from './modules/inspections/inspections.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { ContractorsModule } from './modules/contractors/contractors.module';
+import { ActivitiesModule } from './modules/activities/activities.module';
 
 @Module({
-  imports: [TenantsModule, UsersModule, AuthModule, ProjectsModule, BudgetsModule, ChangeOrdersModule, MaterialsModule, MaterialRequestsModule, PurchaseOrdersModule, RfqsModule, ProgressEstimatesModule, SubcontractsModule, InvoicesModule, RfisModule, InspectionsModule, ReportsModule],
+  imports: [TenantsModule, UsersModule, AuthModule, ProjectsModule, BudgetsModule, ChangeOrdersModule, MaterialsModule, MaterialRequestsModule, PurchaseOrdersModule, RfqsModule, ProgressEstimatesModule, SubcontractsModule, InvoicesModule, RfisModule, InspectionsModule, ReportsModule, ContractorsModule, ActivitiesModule],
   controllers: [AppController],
   providers: [AppService],
 })

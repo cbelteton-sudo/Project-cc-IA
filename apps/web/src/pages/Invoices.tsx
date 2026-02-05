@@ -3,18 +3,49 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { FileText, Upload, Loader, CheckCircle } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
+
+// Zod Schema
+const createInvoiceSchema = z.object({
+    projectId: z.string().min(1, 'Project is required'),
+    vendor: z.string().min(1, 'Vendor is required'),
+    total: z.string().min(1, 'Total is required').refine(val => !isNaN(parseFloat(val)) && parseFloat(val) > 0, 'Must be a valid positive amount'),
+    currency: z.string().default('USD'),
+    simulatedFile: z.string().min(1, 'File is required (simulate upload)'),
+});
+
+type CreateInvoiceForm = z.infer<typeof createInvoiceSchema>;
 
 export const Invoices = () => {
     const { token } = useAuth();
     const queryClient = useQueryClient();
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const { t } = useTranslation();
 
-    // Form state
-    const [projectId, setProjectId] = useState('');
-    const [vendor, setVendor] = useState('');
-    const [total, setTotal] = useState('');
-    const [currency, setCurrency] = useState('USD');
-    const [simulatedFile, setSimulatedFile] = useState<string | null>(null);
+    // Form Hooks
+    const {
+        register,
+        handleSubmit,
+        setValue,
+        watch,
+        reset,
+        formState: { errors, isSubmitting }
+    } = useForm<CreateInvoiceForm>({
+        resolver: zodResolver(createInvoiceSchema) as any, // Temporary cast to fix strictly typed resolver mismatch
+        defaultValues: {
+            projectId: '',
+            vendor: '',
+            total: '',
+            currency: 'USD',
+            simulatedFile: ''
+        }
+    });
+
+    const simulatedFile = watch('simulatedFile');
 
     // Fetch Projects for dropdown
     const { data: projects } = useQuery({
@@ -39,59 +70,54 @@ export const Invoices = () => {
     });
 
     const createInvoiceMutation = useMutation({
-        mutationFn: async (data: any) => {
-            return axios.post('http://localhost:4180/invoices', data, {
+        mutationFn: async (data: CreateInvoiceForm) => {
+            return axios.post('http://localhost:4180/invoices', {
+                ...data,
+                invoiceNumber: `INV-${Math.floor(Math.random() * 10000)}`,
+                total: parseFloat(data.total),
+                date: new Date().toISOString(),
+                fileUrl: data.simulatedFile
+            }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['invoices'] });
             setIsUploadModalOpen(false);
-            resetForm();
+            reset();
+            toast.success('Invoice uploaded and processed successfully');
+        },
+        onError: (err: any) => {
+            toast.error(err.response?.data?.message || 'Failed to process invoice');
         }
     });
 
-    const resetForm = () => {
-        setProjectId('');
-        setVendor('');
-        setTotal('');
-        setSimulatedFile(null);
-    };
-
     const handleSimulatedUpload = () => {
         // Simulate picking a file that triggers OCR
-        setSimulatedFile("https://example.com/invoice_scan_001.pdf");
-        // Auto-fill some data to simulate OCR extraction
-        setVendor("Materiales Express SA");
-        setTotal("15400.50");
+        setValue("simulatedFile", "https://example.com/invoice_scan_001.pdf");
+        // Auto-fill some data to simulate OCR extraction (Mock)
+        setValue("vendor", "Materiales Express SA");
+        setValue("total", "15400.50");
+        toast.info(t('invoices.mockTriggered'));
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        createInvoiceMutation.mutate({
-            projectId,
-            vendor,
-            invoiceNumber: `INV-${Math.floor(Math.random() * 10000)}`,
-            total: parseFloat(total),
-            currency,
-            date: new Date().toISOString(),
-            fileUrl: simulatedFile
-        });
+    const onSubmit = (data: CreateInvoiceForm) => {
+        createInvoiceMutation.mutate(data);
     };
 
     return (
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-800">Invoices & Financials</h1>
-                    <p className="text-gray-500">Manage vendor invoices and OCR processing</p>
+                    <h1 className="text-3xl font-bold text-gray-800">{t('invoices.title')}</h1>
+                    <p className="text-gray-500">{t('invoices.subtitle')}</p>
                 </div>
                 <button
-                    onClick={() => setIsUploadModalOpen(true)}
+                    onClick={() => { reset(); setIsUploadModalOpen(true); }}
                     className="bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-purple-700 transition shadow-lg"
                 >
                     <Upload size={20} />
-                    Upload Invoice
+                    {t('invoices.upload')}
                 </button>
             </div>
 
@@ -126,21 +152,21 @@ export const Invoices = () => {
 
                                 <div className="space-y-2 mb-4">
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-gray-500">Project</span>
+                                        <span className="text-gray-500">{t('orders.table.project')}</span>
                                         <span className="font-medium text-gray-700 truncate max-w-[150px]">
                                             {inv.project?.name || 'Unknown Project'}
                                         </span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-gray-500">Date</span>
+                                        <span className="text-gray-500">{t('common.date')}</span>
                                         <span className="text-gray-700">
                                             {inv.date ? new Date(inv.date).toLocaleDateString() : 'N/A'}
                                         </span>
                                     </div>
                                     <div className="flex justify-between text-sm items-center">
-                                        <span className="text-gray-500">Amount</span>
+                                        <span className="text-gray-500">{t('orders.table.total')}</span>
                                         <span className="font-bold text-lg text-gray-900">
-                                            {inv.currency} {Number(inv.total).toLocaleString()}
+                                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: inv.currency }).format(inv.total)}
                                         </span>
                                     </div>
                                 </div>
@@ -150,7 +176,7 @@ export const Invoices = () => {
                                     <div className="bg-gray-50 p-3 rounded text-xs border border-gray-200 mt-2">
                                         <div className="flex items-center gap-1 mb-1 text-green-600 font-semibold">
                                             <CheckCircle size={12} />
-                                            <span>OCR Extracted</span>
+                                            <span>{t('invoices.ocrExtracted')}</span>
                                         </div>
                                         <p className="text-gray-500 truncate">{inv.ocrData}</p>
                                     </div>
@@ -159,11 +185,11 @@ export const Invoices = () => {
                                 {/* Actions (Mock) */}
                                 <div className="mt-4 pt-3 border-t border-gray-100 flex gap-2">
                                     <button className="flex-1 text-sm bg-gray-100 text-gray-700 py-2 rounded hover:bg-gray-200">
-                                        View PDF
+                                        {t('invoices.viewPDF')}
                                     </button>
                                     {inv.status === 'PENDING' && (
                                         <button className="flex-1 text-sm bg-green-600 text-white py-2 rounded hover:bg-green-700">
-                                            Approve
+                                            {t('invoices.approve')}
                                         </button>
                                     )}
                                 </div>
@@ -176,8 +202,7 @@ export const Invoices = () => {
                             <div className="inline-block p-4 bg-white rounded-full shadow-sm mb-3">
                                 <Upload className="text-gray-400" size={32} />
                             </div>
-                            <h3 className="text-lg font-medium text-gray-900">No invoices yet</h3>
-                            <p className="text-gray-500">Upload an invoice to test the OCR simulation</p>
+                            <h3 className="text-lg font-medium text-gray-900">{t('invoices.noInvoices')}</h3>
                         </div>
                     )}
                 </div>
@@ -189,23 +214,22 @@ export const Invoices = () => {
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
                         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                             <Upload className="text-purple-600" />
-                            Upload Invoice (Simulated)
+                            {t('invoices.upload')} (Simulated)
                         </h2>
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('orders.table.project')}</label>
                                 <select
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                                    value={projectId}
-                                    onChange={e => setProjectId(e.target.value)}
-                                    required
+                                    {...register('projectId')}
+                                    className={`w-full border border-gray-300 rounded-lg px-3 py-2 ${errors.projectId ? 'border-red-500' : ''}`}
                                 >
                                     <option value="">Select Project...</option>
                                     {projects?.map((p: any) => (
                                         <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
                                     ))}
                                 </select>
+                                {errors.projectId && <p className="text-xs text-red-500 mt-1">{errors.projectId.message}</p>}
                             </div>
 
                             {/* Dropzone Simulation */}
@@ -217,48 +241,49 @@ export const Invoices = () => {
                                 {simulatedFile ? (
                                     <div>
                                         <CheckCircle className="mx-auto text-green-600 mb-2" size={32} />
-                                        <p className="text-green-700 font-medium">File Selected: invoice_scan.pdf</p>
-                                        <p className="text-xs text-green-600 mt-1">Mock OCR Triggered!</p>
+                                        <p className="text-green-700 font-medium">{t('invoices.fileSelected')}: invoice_scan.pdf</p>
+                                        <p className="text-xs text-green-600 mt-1">{t('invoices.mockTriggered')}</p>
                                     </div>
                                 ) : (
                                     <div>
                                         <Upload className="mx-auto text-gray-400 mb-2" size={32} />
-                                        <p className="text-gray-600 font-medium">Click to Simulate Upload</p>
+                                        <p className="text-gray-600 font-medium">{t('invoices.dragDrop')}</p>
                                         <p className="text-xs text-gray-400 mt-1">Accepts PDF, JPG, PNG</p>
                                     </div>
                                 )}
+                                {errors.simulatedFile && <p className="text-xs text-red-500 mt-2 font-semibold">File upload is required</p>}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Vendor (OCR)</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('orders.table.vendor')} (OCR)</label>
                                     <input
                                         type="text"
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50"
-                                        value={vendor}
-                                        onChange={e => setVendor(e.target.value)}
+                                        {...register('vendor')}
+                                        className={`w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 ${errors.vendor ? 'border-red-500' : ''}`}
                                         placeholder="Auto-detected..."
                                     />
+                                    {errors.vendor && <p className="text-xs text-red-500 mt-1">{errors.vendor.message}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Total (OCR)</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('orders.table.total')} (OCR)</label>
                                     <div className="flex gap-2">
                                         <select
-                                            value={currency}
-                                            onChange={e => setCurrency(e.target.value)}
+                                            {...register('currency')}
                                             className="border border-gray-300 rounded-lg px-2 bg-gray-50"
                                         >
                                             <option value="USD">USD</option>
+                                            <option value="GTQ">GTQ</option>
                                             <option value="MXN">MXN</option>
                                         </select>
                                         <input
                                             type="number"
-                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50"
-                                            value={total}
-                                            onChange={e => setTotal(e.target.value)}
+                                            {...register('total')}
+                                            className={`w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 ${errors.total ? 'border-red-500' : ''}`}
                                             placeholder="0.00"
                                         />
                                     </div>
+                                    {errors.total && <p className="text-xs text-red-500 mt-1">{errors.total.message}</p>}
                                 </div>
                             </div>
 
@@ -268,14 +293,14 @@ export const Invoices = () => {
                                     onClick={() => setIsUploadModalOpen(false)}
                                     className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
                                 >
-                                    Cancel
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={createInvoiceMutation.isPending || !projectId || !simulatedFile}
+                                    disabled={isSubmitting}
                                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
                                 >
-                                    {createInvoiceMutation.isPending ? 'Processing...' : 'Upload & Process'}
+                                    {isSubmitting ? t('invoices.processing') : t('invoices.uploadAndProcess')}
                                 </button>
                             </div>
                         </form>

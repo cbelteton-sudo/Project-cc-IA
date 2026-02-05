@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards, Query } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../../modules/auth/jwt-auth.guard';
 import { ActiveUser } from '../../common/decorators/active-user.decorator';
@@ -9,8 +9,8 @@ export class ReportsController {
   constructor(private readonly reportsService: ReportsService) { }
 
   @Get('dashboard')
-  getDashboard(@ActiveUser() user: any) {
-    return this.reportsService.getDashboardStats(user.tenantId);
+  getDashboard(@ActiveUser() user: any, @Query('period') period?: string) {
+    return this.reportsService.getDashboardStats(user.tenantId, period);
   }
 
   @Get('project/:id')

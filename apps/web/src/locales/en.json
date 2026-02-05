@@ -1,0 +1,138 @@
+{
+    "common": {
+        "loading": "Loading...",
+        "error": "Error",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "actions": "Actions",
+        "search": "Search...",
+        "logout": "Log Out",
+        "tenant": "Tenant",
+        "user": "User",
+        "status": "Status",
+        "date": "Date",
+        "approved": "Approved",
+        "pending": "Pending",
+        "paid": "Paid"
+    },
+    "sidebar": {
+        "dashboard": "Dashboard",
+        "projectMgmt": "Project Mgmt",
+        "projects": "Projects",
+        "budgets": "Budgets",
+        "procurement": "Procurement",
+        "materialRequests": "Material Requests",
+        "purchaseOrders": "Purchase Orders",
+        "financials": "Financials",
+        "invoices": "Invoices",
+        "field": "Field",
+        "fieldMgmt": "Field Mgmt",
+        "whatsappSim": "WhatsApp Sim",
+        "admin": "Admin",
+        "settings": "Settings"
+    },
+    "dashboard": {
+        "title": "Overview",
+        "welcome": "Welcome back!",
+        "subtitle": "Here's what's happening across your projects today.",
+        "kpi": {
+            "activeProjects": "Active Projects",
+            "monthlySpend": "Monthly Spend",
+            "budgetVsExecuted": "Budget vs Executed",
+            "pendingApprovals": "Pending Approvals",
+            "openIssues": "Open Field Issues",
+            "total": "Total",
+            "budget": "Budget"
+        },
+        "charts": {
+            "financialPerformance": "Financial Performance",
+            "last6Months": "Last 6 Months"
+        },
+        "actions": {
+            "title": "Pending Actions",
+            "reviewInvoices": "Review Invoices",
+            "waitingApproval": "invoices waiting for approval",
+            "budgetHealth": "Budget Health",
+            "underBudget": "Projects are 5% under budget",
+            "view": "View"
+        }
+    },
+    "projects": {
+        "title": "Projects",
+        "newProject": "New Project",
+        "code": "Code",
+        "budgets": "Budgets",
+        "open": "Open",
+        "active": "ACTIVE"
+    },
+    "requests": {
+        "title": "Material Requests",
+        "newRequest": "New Request",
+        "table": {
+            "title": "TITLE",
+            "project": "PROJECT",
+            "status": "STATUS",
+            "date": "DATE"
+        },
+        "noRequests": "No requests found"
+    },
+    "orders": {
+        "title": "Purchase Orders",
+        "createPO": "Create PO",
+        "table": {
+            "vendor": "VENDOR",
+            "project": "PROJECT",
+            "total": "TOTAL",
+            "status": "STATUS"
+        },
+        "noOrders": "No orders found"
+    },
+    "invoices": {
+        "title": "Invoices & Financials",
+        "subtitle": "Manage vendor invoices and OCR processing",
+        "upload": "Upload Invoice",
+        "ocrExtracted": "OCR Extracted",
+        "viewPDF": "View PDF",
+        "approve": "Approve",
+        "processing": "Processing...",
+        "uploadAndProcess": "Upload & Process",
+        "noInvoices": "No invoices yet",
+        "dragDrop": "Click to Simulate Upload",
+        "fileSelected": "File Selected",
+        "mockTriggered": "Mock OCR Triggered!"
+    },
+    "activities": {
+        "progress": "Progress",
+        "completed": "Completed",
+        "target": "Target",
+        "update_percent": "Progress this Period (%)",
+        "notes": "Notes",
+        "notes_placeholder": "Details about this week's progress...",
+        "history": "History",
+        "schedule": "Schedule",
+        "start_date": "Start Date",
+        "end_date": "End Date",
+        "execution": "Execution",
+        "contractor": "Contractor",
+        "unassigned": "Unassigned",
+        "dependencies": "Dependencies",
+        "depends_on": "Depends on",
+        "key_milestones": "Key Milestones",
+        "validate_close": "Validate & Close",
+        "delete_activity": "Delete Activity",
+        "sub_activity": "Sub-activity",
+        "invalid_percentage": "Invalid percentage",
+        "error_lower_progress": "Error: New progress can't be lower than {{current}}%",
+        "notes_required": "Notes are required",
+        "not_found": "Activity not found",
+        "table": {
+            "name": "Activity Name",
+            "start": "Start",
+            "end": "End",
+            "weight": "Weight",
+            "progress": "Progress",
+            "status": "Status"
+        }
+    }
+}

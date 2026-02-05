@@ -19,7 +19,12 @@ model Tenant {
   users     User[]
   projects  Project[]
   auditLogs AuditLog[]
-  materials Material[]
+  materials   Material[]
+  
+  // Phase 9
+  contractors      Contractor[]
+  projectActivities ProjectActivity[]
+  projectMilestones ProjectMilestone[]
 }
 
 model User {
@@ -71,6 +76,14 @@ model Project {
   changeOrders     ChangeOrder[]
   rfqs             RFQ[]
   subcontracts     Subcontract[]
+
+  // Phase 9 Extensions
+  startDate        DateTime?
+  endDate          DateTime?
+  globalBudget     Float?
+  
+  activities       ProjectActivity[]
+  milestones       ProjectMilestone[]
 }
 
 // --- BUDGET ---
@@ -268,4 +281,137 @@ model ProgressEstimate {
   status        String      @default("SUBMITTED") // SUBMITTED, APPROVED, PAID
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+}
+
+// --- PHASE 9: PROJECT EXPANSION ---
+
+// 1. PROJECT EXTENSIONS (Fields added to Project model above via separate patch or verify compatibility)
+// Note: We need to modify the existing Project model definition. See the separate replacement call for that.
+
+model Contractor {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  name      String
+  type      String   @default("CONTRACTOR") // CONTRACTOR, SUPPLIER
+  email     String?
+  phone     String?
+  taxId     String?
+  address   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activities ProjectActivity[]
+}
+
+model ProjectActivity {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  projectId       String
+  project         Project  @relation(fields: [projectId], references: [id])
+  
+  parentId        String?
+  parent          ProjectActivity? @relation("ActivityHierarchy", fields: [parentId], references: [id])
+  children        ProjectActivity[] @relation("ActivityHierarchy")
+
+  name            String
+  code            String?  // Unique within project/tenant
+  
+  startDate       DateTime
+  endDate         DateTime
+  
+  status          String   @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, BLOCKED, DONE, CLOSED
+  percent         Int      @default(0) // 0-100 (Cumulative)
+  plannedWeight   Float    @default(1.0)
+  
+  contractorId    String?
+  contractor      Contractor? @relation(fields: [contractorId], references: [id])
+
+  // Relations
+  dependencies    ActivityDependency[] @relation("ActivityDependsOn")
+  predecessors    ActivityDependency[] @relation("ActivityPredecessor")
+  
+  progressRecords ActivityWeeklyProgress[]
+  closureRecord   ActivityClosureRecord?
+  
+  milestones      ProjectMilestone[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ActivityDependency {
+  id                String          @id @default(uuid())
+  tenantId          String
+  projectId         String
+  
+  activityId        String
+  activity          ProjectActivity @relation("ActivityDependsOn", fields: [activityId], references: [id])
+  
+  dependsOnId       String
+  dependsOn         ProjectActivity @relation("ActivityPredecessor", fields: [dependsOnId], references: [id])
+  
+  createdAt         DateTime @default(now())
+}
+
+model ActivityWeeklyProgress {
+  id            String          @id @default(uuid())
+  tenantId      String
+  projectId     String
+  activityId    String
+  activity      ProjectActivity @relation(fields: [activityId], references: [id])
+  
+  weekStartDate DateTime
+  percent       Int             @default(0) // 0-100
+  notes         String?
+  
+  createdAt     DateTime @default(now())
+
+  @@unique([activityId, weekStartDate])
+}
+
+model ProjectMilestone {
+  id            String   @id @default(uuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id])
+  
+  name          String
+  date          DateTime
+  description   String?
+  status        String   @default("PLANNED") // PLANNED, ACHIEVED, MISSED
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  activityId    String?
+  activity      ProjectActivity? @relation(fields: [activityId], references: [id])
+}
+
+model ActivityClosureRecord {
+  id            String          @id @default(uuid())
+  tenantId      String
+  projectId     String
+  activityId    String
+  activity      ProjectActivity @relation(fields: [activityId], references: [id])
+  
+  closureCode          String?
+  closedAt             DateTime
+  
+  pmName               String
+  directorName         String
+  contractorName       String
+  
+  pmSignature          String? // Base64 or URL
+  directorSignature    String?
+  contractorSignature  String?
+  
+  pdfDocumentId        String? // Link to Document system if exists
+  
+  createdAt            DateTime @default(now())
+  
+  @@unique([activityId])
 }

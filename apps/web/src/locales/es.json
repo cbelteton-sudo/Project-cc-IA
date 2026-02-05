@@ -1,0 +1,138 @@
+{
+    "common": {
+        "loading": "Cargando...",
+        "error": "Error",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "delete": "Eliminar",
+        "actions": "Acciones",
+        "search": "Buscar...",
+        "logout": "Cerrar Sesión",
+        "tenant": "Organización",
+        "user": "Usuario",
+        "status": "Estado",
+        "date": "Fecha",
+        "approved": "Aprobado",
+        "pending": "Pendiente",
+        "paid": "Pagado"
+    },
+    "sidebar": {
+        "dashboard": "Tablero",
+        "projectMgmt": "Gestión de Proyectos",
+        "projects": "Proyectos",
+        "budgets": "Presupuestos",
+        "procurement": "Adquisiciones y Compras",
+        "materialRequests": "Solicitudes Material",
+        "purchaseOrders": "Órdenes de Compra",
+        "financials": "Finanzas",
+        "invoices": "Facturas",
+        "field": "Campo",
+        "fieldMgmt": "Gestión de Campo",
+        "whatsappSim": "Simulador WhatsApp",
+        "admin": "Administración",
+        "settings": "Configuración"
+    },
+    "dashboard": {
+        "title": "Resumen General",
+        "welcome": "¡Bienvenido de nuevo!",
+        "subtitle": "Esto es lo que está pasando en tus proyectos hoy.",
+        "kpi": {
+            "activeProjects": "Proyectos Activos",
+            "monthlySpend": "Gasto Mensual",
+            "budgetVsExecuted": "Presupuesto vs Ejecutado",
+            "pendingApprovals": "Aprobaciones Pendientes",
+            "openIssues": "Incidencias de Campo",
+            "total": "Total",
+            "budget": "Presupuesto"
+        },
+        "charts": {
+            "financialPerformance": "Rendimiento Financiero",
+            "last6Months": "Últimos 6 Meses"
+        },
+        "actions": {
+            "title": "Acciones Pendientes",
+            "reviewInvoices": "Revisar Facturas",
+            "waitingApproval": "facturas esperando aprobación",
+            "budgetHealth": "Salud del Presupuesto",
+            "underBudget": "Proyectos están 5% bajo presupuesto",
+            "view": "Ver"
+        }
+    },
+    "projects": {
+        "title": "Proyectos",
+        "newProject": "Nuevo Proyecto",
+        "code": "Código",
+        "budgets": "Presupuestos",
+        "open": "Abrir",
+        "active": "ACTIVO"
+    },
+    "requests": {
+        "title": "Solicitudes de Material",
+        "newRequest": "Nueva Solicitud",
+        "table": {
+            "title": "TÍTULO",
+            "project": "PROYECTO",
+            "status": "ESTADO",
+            "date": "FECHA"
+        },
+        "noRequests": "No se encontraron solicitudes"
+    },
+    "orders": {
+        "title": "Órdenes de Compra",
+        "createPO": "Crear OC",
+        "table": {
+            "vendor": "PROVEEDOR",
+            "project": "PROYECTO",
+            "total": "TOTAL",
+            "status": "ESTADO"
+        },
+        "noOrders": "No se encontraron órdenes"
+    },
+    "invoices": {
+        "title": "Facturas y Finanzas",
+        "subtitle": "Gestionar facturas de proveedores y procesamiento OCR",
+        "upload": "Subir Factura",
+        "ocrExtracted": "OCR Extraído",
+        "viewPDF": "Ver PDF",
+        "approve": "Aprobar",
+        "processing": "Procesando...",
+        "uploadAndProcess": "Subir y Procesar",
+        "noInvoices": "No hay facturas aún",
+        "dragDrop": "Clic para Simular Subida",
+        "fileSelected": "Archivo Seleccionado",
+        "mockTriggered": "¡OCR Simulado Activado!"
+    },
+    "activities": {
+        "progress": "Progreso",
+        "completed": "Completado",
+        "target": "Objetivo",
+        "update_percent": "Avance este Periodo (%)",
+        "notes": "Notas",
+        "notes_placeholder": "Detalles sobre el progreso de esta semana...",
+        "history": "Historial",
+        "schedule": "Cronograma",
+        "start_date": "Inicio",
+        "end_date": "Fin",
+        "execution": "Ejecución",
+        "contractor": "Contratista",
+        "unassigned": "Sin Asignar",
+        "dependencies": "Dependencias",
+        "depends_on": "Depende de",
+        "key_milestones": "Hitos Clave",
+        "validate_close": "Validar y Cerrar",
+        "delete_activity": "Eliminar Actividad",
+        "sub_activity": "Sub-actividad",
+        "invalid_percentage": "Porcentaje inválido",
+        "error_lower_progress": "Error: El nuevo avance no puede ser menor a {{current}}%",
+        "notes_required": "Las notas son obligatorias",
+        "not_found": "Actividad no encontrada",
+        "table": {
+            "name": "Actividad",
+            "start": "Inicio",
+            "end": "Fin",
+            "weight": "Peso",
+            "progress": "Progreso",
+            "status": "Estado"
+        }
+    }
+}
