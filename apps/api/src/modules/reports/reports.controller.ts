@@ -17,4 +17,14 @@ export class ReportsController {
   getProjectReport(@Param('id') id: string, @ActiveUser() user: any) {
     return this.reportsService.getProjectReport(id, user.tenantId);
   }
+
+  @Get('project/:id/s-curve')
+  getSCurve(@Param('id') id: string, @ActiveUser() user: any) {
+    return this.reportsService.getSCurve(id, user.tenantId);
+  }
+
+  @Get('project/:id/histogram')
+  getHistogram(@Param('id') id: string, @ActiveUser() user: any) {
+    return this.reportsService.getResourceHistogram(id, user.tenantId);
+  }
 }

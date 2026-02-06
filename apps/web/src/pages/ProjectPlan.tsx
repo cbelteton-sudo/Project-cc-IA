@@ -3,22 +3,46 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { Plus, ArrowLeft } from 'lucide-react';
+import { Plus, ArrowLeft, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Components
 import { ActivitiesTree } from '../components/project-plan/ActivitiesTree';
 import type { Activity } from '../components/project-plan/ActivitiesTree';
 import { ActivityDetails } from '../components/project-plan/ActivityDetails';
+import { ProjectSettingsModal } from '../components/project-plan/ProjectSettingsModal';
+import { GanttChart } from '../components/project-plan/GanttChart';
+import { ProjectAnalytics } from '../components/project-plan/ProjectAnalytics';
 
 export const ProjectPlan = () => {
     const { id: projectId } = useParams();
     const { token } = useAuth();
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState<'schedule' | 'milestones'>('schedule');
+    const [activeTab, setActiveTab] = useState<'schedule' | 'gantt' | 'analytics' | 'milestones'>('schedule'); // Added analytics tab
     const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [defaultParentId, setDefaultParentId] = useState<string | undefined>(undefined);
     const [isCreateMilestoneModalOpen, setIsCreateMilestoneModalOpen] = useState(false);
+    const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
+    // Assignment State
+    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+    const [activityToAssign, setActivityToAssign] = useState<string | null>(null);
+
+    // Create Activity Mutation
+    const createActivityMutation = useMutation({
+        mutationFn: async (data: any) => {
+            return axios.post('http://localhost:4180/activities', { ...data, tenantId: 'demo' }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['activities', projectId] });
+            setIsCreateModalOpen(false);
+            toast.success('Actividad creada');
+        },
+        onError: () => toast.error('Error al crear actividad')
+    });
 
     // Milestones Query
     const { data: milestones, refetch: refetchMilestones } = useQuery({
@@ -45,6 +69,33 @@ export const ProjectPlan = () => {
             toast.success('Hito creado');
         },
         onError: () => toast.error('Error al crear hito')
+    });
+
+    // Fetch Contractors
+    const { data: contractors } = useQuery({
+        queryKey: ['contractors'],
+        queryFn: async () => {
+            const res = await axios.get('http://localhost:4180/contractors', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return res.data;
+        }
+    });
+
+    // Assign Contractor Mutation
+    const assignContractorMutation = useMutation({
+        mutationFn: async ({ activityId, contractorId }: { activityId: string, contractorId: string }) => {
+            return axios.patch(`http://localhost:4180/activities/${activityId}`, { contractorId }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['activities', projectId] });
+            setIsAssignModalOpen(false);
+            setActivityToAssign(null);
+            toast.success('Contratista asignado');
+        },
+        onError: () => toast.error('Error al asignar contratista')
     });
 
     // ...
@@ -108,19 +159,51 @@ export const ProjectPlan = () => {
             {/* Toolbar */}
             <div className="px-6 py-4 bg-white border-b border-gray-200 flex justify-between items-center shadow-sm z-10">
                 <div className="flex items-center gap-4">
-                    <Link to={`/projects/${projectId}`} className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition-colors">
+                    <Link to="/projects" className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition-colors">
                         <ArrowLeft size={20} />
                     </Link>
                     <div>
                         <h1 className="text-xl font-bold text-gray-900 tracking-tight">
                             {project?.name || 'Project Plan'}
                         </h1>
-                        <div className="flex gap-4 mt-1">
+                        <div className="flex items-center gap-4 text-xs text-gray-500 mt-1 mb-2">
+                            <div className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded">
+                                <span className="font-semibold">Presupuesto:</span>
+                                <span className="text-gray-900 font-mono">
+                                    {project?.globalBudget
+                                        ? new Intl.NumberFormat('es-GT', { style: 'currency', currency: project.currency || 'USD' }).format(project.globalBudget)
+                                        : 'N/A'}
+                                </span>
+                            </div>
+                            {(project?.startDate || project?.endDate) && (
+                                <div className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded">
+                                    <span className="font-semibold">Fechas:</span>
+                                    <span>
+                                        {project.startDate ? new Date(project.startDate).toLocaleDateString() : '?'}
+                                        {' - '}
+                                        {project.endDate ? new Date(project.endDate).toLocaleDateString() : '?'}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex gap-4">
                             <button
                                 onClick={() => setActiveTab('schedule')}
                                 className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${activeTab === 'schedule' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100'}`}
                             >
                                 Cronograma
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('gantt')}
+                                className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${activeTab === 'gantt' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                            >
+                                Gantt
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('analytics')}
+                                className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${activeTab === 'analytics' ? 'bg-orange-100 text-orange-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                            >
+                                Análisis EVM
                             </button>
                             <button
                                 onClick={() => setActiveTab('milestones')}
@@ -132,14 +215,26 @@ export const ProjectPlan = () => {
                     </div>
                 </div>
                 {activeTab === 'schedule' ? (
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-all text-sm font-medium"
-                    >
-                        <Plus size={18} />
-                        Nueva Actividad
-                    </button>
-                ) : (
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setIsSettingsModalOpen(true)}
+                            className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="Configuración"
+                        >
+                            <Settings size={20} />
+                        </button>
+                        <button
+                            onClick={() => {
+                                setDefaultParentId(undefined);
+                                setIsCreateModalOpen(true);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-all text-sm font-medium"
+                        >
+                            <Plus size={18} />
+                            Nueva Actividad
+                        </button>
+                    </div>
+                ) : activeTab === 'milestones' ? (
                     <button
                         onClick={() => setIsCreateMilestoneModalOpen(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-sm transition-all text-sm font-medium"
@@ -147,7 +242,7 @@ export const ProjectPlan = () => {
                         <Plus size={18} />
                         Nuevo Hito
                     </button>
-                )}
+                ) : null}
             </div>
 
             {/* Main Content Split */}
@@ -160,6 +255,10 @@ export const ProjectPlan = () => {
                                 activities={activities || []}
                                 selectedId={selectedActivityId}
                                 onSelect={setSelectedActivityId}
+                                onAssignContractor={(id) => {
+                                    setActivityToAssign(id);
+                                    setIsAssignModalOpen(true);
+                                }}
                             />
                         </div>
 
@@ -173,10 +272,25 @@ export const ProjectPlan = () => {
                                         queryClient.invalidateQueries({ queryKey: ['activities'] });
                                         queryClient.invalidateQueries({ queryKey: ['activity', selectedActivityId] });
                                     }}
+                                    onCreateSubActivity={(parentId) => {
+                                        setDefaultParentId(parentId);
+                                        setIsCreateModalOpen(true);
+                                    }}
+                                    onClose={() => setSelectedActivityId(null)}
                                 />
                             </div>
                         )}
                     </>
+                ) : activeTab === 'gantt' ? (
+                    // Gantt View
+                    <div className="w-full h-full overflow-hidden animate-fade-in">
+                        <GanttChart activities={activities || []} />
+                    </div>
+                ) : activeTab === 'analytics' ? (
+                    // Analytics View
+                    <div className="w-full h-full overflow-hidden animate-fade-in">
+                        <ProjectAnalytics projectId={projectId || ''} token={token} />
+                    </div>
                 ) : (
                     // Milestones View
                     <div className="w-full bg-white rounded-xl shadow-sm border border-gray-200 p-6 overflow-auto">
@@ -241,9 +355,28 @@ export const ProjectPlan = () => {
                             <div className="grid grid-cols-1 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Actividad Padre (Agrupadora)</label>
-                                    <select name="parentId" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                                    <select
+                                        name="parentId"
+                                        defaultValue={defaultParentId || ""}
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                    >
                                         <option value="">-- Ninguna (Nivel Raíz) --</option>
-                                        <option disabled>Selección simplificada (usar árbol luego)</option>
+                                        {/* Flatten tree for select */}
+                                        {(() => {
+                                            const flatten = (nodes: any[], depth = 0): any[] => {
+                                                return nodes.reduce((acc, node) => {
+                                                    acc.push({ ...node, depth });
+                                                    if (node.children) acc.push(...flatten(node.children, depth + 1));
+                                                    return acc;
+                                                }, []);
+                                            };
+                                            const flatActivities = flatten(activities || []);
+                                            return flatActivities.map((act: any) => (
+                                                <option key={act.id} value={act.id}>
+                                                    {'-'.repeat(act.depth * 2)} {act.name}
+                                                </option>
+                                            ));
+                                        })()}
                                     </select>
                                     <p className="text-xs text-gray-400 mt-1">Las actividades raíz suelen ser fases grandes (Ej. Estructura, Acabados).</p>
                                 </div>
@@ -319,6 +452,46 @@ export const ProjectPlan = () => {
                     </div>
                 </div>
             )}
+
+            {/* Assignment Modal */}
+            {isAssignModalOpen && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white p-6 rounded-xl w-full max-w-sm shadow-2xl animate-fade-in">
+                        <h3 className="text-lg font-bold mb-4 text-gray-800">Asignar Contratista</h3>
+                        <div className="space-y-4">
+                            <p className="text-sm text-gray-600">Selecciona el contratista responsable de esta actividad.</p>
+                            <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+                                {contractors?.map((c: any) => (
+                                    <button
+                                        key={c.id}
+                                        onClick={() => assignContractorMutation.mutate({ activityId: activityToAssign!, contractorId: c.id })}
+                                        className="w-full text-left px-4 py-3 hover:bg-blue-50 hover:text-blue-700 transition flex items-center justify-between group"
+                                    >
+                                        <span className="font-medium">{c.name}</span>
+                                        <span className="text-xs text-gray-400 group-hover:text-blue-400">{c.type}</span>
+                                    </button>
+                                ))}
+                                {contractors?.length === 0 && (
+                                    <p className="p-4 text-center text-sm text-gray-500">No hay contratistas registrados.</p>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => setIsAssignModalOpen(false)}
+                                className="w-full py-2 text-gray-500 hover:bg-gray-100 rounded-lg transition"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <ProjectSettingsModal
+                isOpen={isSettingsModalOpen}
+                onClose={() => setIsSettingsModalOpen(false)}
+                project={project}
+                token={token!}
+            />
         </div>
     );
 };

@@ -115,7 +115,7 @@ export const Dashboard = () => {
                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
                                 <CartesianGrid vertical={false} stroke="#E5E7EB" strokeDasharray="5 5" />
-                                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                                <Tooltip formatter={(value: any) => formatCurrency(Number(value))} />
                                 <Area type="monotone" dataKey="Actual" stroke="#8884d8" fillOpacity={1} fill="url(#colorActual)" name={t('dashboard.kpi.actual') || "Executed"} />
                                 <Area type="monotone" dataKey="Budget" stroke="#82ca9d" fillOpacity={0} strokeDasharray="5 5" name={t('dashboard.kpi.budget') || "Planned"} />
                             </AreaChart>

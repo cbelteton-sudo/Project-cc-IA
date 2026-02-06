@@ -76,6 +76,12 @@ export const ProjectBudget = () => {
                     <div className="flex items-center gap-2 text-gray-500 mt-1">
                         <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-mono">{projectData?.code}</span>
                         <span>•</span>
+                        {projectData.globalBudget && (
+                            <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-mono font-bold">
+                                Global Budget: {currency(projectData.globalBudget)}
+                            </span>
+                        )}
+                        <span>•</span>
                         <Link to={`/reports/project/${id}`} className="text-blue-600 hover:underline flex items-center gap-1 text-sm">
                             <FileText size={14} /> View Financial Report
                         </Link>
@@ -84,8 +90,21 @@ export const ProjectBudget = () => {
             </div>
 
             {!budgetId ? (
-                <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg text-yellow-800">
-                    This project does not have a budget yet.
+                <div className="space-y-6">
+                    {projectData.globalBudget && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <KPICard
+                                title="Global Budget Cap"
+                                value={currency(projectData.globalBudget)}
+                                icon={Wallet}
+                                color="bg-blue-100 text-blue-600"
+                            />
+                        </div>
+                    )}
+                    <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg text-yellow-800 flex flex-col gap-2">
+                        <p className="font-bold">No detailed budget lines yet.</p>
+                        <p className="text-sm">You have defined a Global Budget, but haven't broken it down into specific lines (Materials, Labor, etc.).</p>
+                    </div>
                 </div>
             ) : isBudgetLoading ? (
                 <div className="p-8">Loading budget details...</div>

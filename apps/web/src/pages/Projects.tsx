@@ -16,6 +16,10 @@ interface Project {
     name: string;
     code: string;
     status: string;
+    globalBudget?: number;
+    currency?: string;
+    startDate?: string;
+    endDate?: string;
     _count?: {
         budgets: number;
     };
@@ -87,63 +91,134 @@ export const Projects = () => {
         createMutation.mutate(data);
     };
 
-    if (isLoading) return <div className="p-8">{t('common.loading')}</div>;
+    const getProjectStatus = (project: Project) => {
+        // "En tiempo, En Riesgo, Atrasado, Terminado"
+        if (project.status === 'DONE' || project.status === 'CLOSED') {
+            return { label: 'Terminado', color: 'bg-green-100 text-green-700 border-green-200' };
+        }
+
+        if (!project.endDate) {
+            return { label: 'En Tiempo', color: 'bg-blue-100 text-blue-700 border-blue-200' };
+        }
+
+        const now = new Date();
+        const end = new Date(project.endDate);
+        const diffDays = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) {
+            return { label: 'Atrasado', color: 'bg-red-100 text-red-700 border-red-200' };
+        } else if (diffDays < 14) { // Less than 2 weeks warning
+            return { label: 'En Riesgo', color: 'bg-orange-100 text-orange-700 border-orange-200' };
+        } else {
+            return { label: 'En Tiempo', color: 'bg-blue-100 text-blue-700 border-blue-200' };
+        }
+    };
+
+    if (isLoading) return <div className="p-8"><div className="animate-pulse h-10 bg-gray-200 w-1/4 rounded mb-8"></div><div className="space-y-4">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-gray-100 rounded w-full"></div>)}</div></div>;
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">{t('projects.title')}</h2>
+        <div className="container mx-auto max-w-7xl">
+            <div className="flex justify-between items-center mb-8">
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-800 tracking-tight">{t('projects.title')}</h2>
+                    <p className="text-gray-500 text-sm mt-1">Gestiona y monitorea tus proyectos activos</p>
+                </div>
                 <button
                     onClick={() => { reset(); setIsModalOpen(true); }}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition"
+                    className="bg-blue-600 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition shadow-sm font-medium"
                 >
-                    <Plus size={20} />
+                    <Plus size={18} />
                     {t('projects.newProject')}
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {projects?.map((project: Project) => (
-                    <div key={project.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition">
-                        <div className="flex items-start justify-between mb-4">
-                            <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
-                                <Folder size={24} />
-                            </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${project.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-                                }`}>
-                                {project.status === 'ACTIVE' ? t('projects.active') : project.status}
-                            </span>
-                        </div>
-
-                        <h3 className="text-lg font-bold text-gray-900 mb-1">{project.name}</h3>
-                        <p className="text-sm text-gray-500 mb-4">{t('projects.code')}: {project.code || 'N/A'}</p>
-
-                        <div className="flex items-center justify-between text-sm text-gray-500 pt-4 border-t border-gray-100">
-                            <span>{project._count?.budgets || 0} {t('projects.budgets')}</span>
-                            <div className="flex gap-3">
-                                <Link to={`/projects/${project.id}/plan`} className="flex items-center text-gray-600 hover:text-gray-900 font-medium bg-gray-100 px-3 py-1 rounded hover:bg-gray-200 transition">
-                                    Plan de Proyecto
-                                </Link>
-                                <Link to={`/projects/${project.id}`} className="flex items-center text-blue-600 hover:underline font-medium">
-                                    {t('projects.open')} <ArrowRight size={16} className="ml-1" />
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-
-                {projects?.length === 0 && (
-                    <div className="col-span-full text-center py-12 text-gray-500 bg-white rounded-xl border border-dashed border-gray-300">
-                        {t('common.noData')}
-                    </div>
-                )}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-gray-50/50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold tracking-wider">
+                            <th className="px-6 py-4 w-32">{t('projects.code')}</th>
+                            <th className="px-6 py-4">Nombre del Proyecto</th>
+                            <th className="px-6 py-4 w-48 text-right">Presupuesto</th>
+                            <th className="px-6 py-4 w-40 text-center">Estado</th>
+                            <th className="px-6 py-4 w-64 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        {projects?.length === 0 ? (
+                            <tr>
+                                <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
+                                    <Folder size={48} className="mx-auto mb-3 text-gray-300" />
+                                    <p>{t('common.noData')}</p>
+                                </td>
+                            </tr>
+                        ) : (
+                            projects?.map((project: Project) => {
+                                const status = getProjectStatus(project);
+                                return (
+                                    <tr key={project.id} className="hover:bg-gray-50/80 transition-colors group">
+                                        <td className="px-6 py-4">
+                                            <span className="font-mono text-sm text-gray-600 font-medium bg-gray-100 px-2 py-1 rounded">
+                                                {project.code || 'N/A'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-100 transition-colors">
+                                                    <Folder size={18} />
+                                                </div>
+                                                <div>
+                                                    <div className="font-semibold text-gray-900">{project.name}</div>
+                                                    <div className="text-xs text-gray-500 mt-0.5">{project._count?.budgets || 0} {t('projects.budgets')}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            {project.globalBudget ? (
+                                                <span className="font-mono font-medium text-gray-900">
+                                                    {new Intl.NumberFormat('es-GT', { style: 'currency', currency: project.currency || 'USD' }).format(project.globalBudget)}
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-400 text-sm italic">Sin presupuesto</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${status.color}`}>
+                                                {status.label}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Link
+                                                    to={`/projects/${project.id}/plan`}
+                                                    className="text-xs font-medium text-gray-700 hover:text-blue-600 bg-white border border-gray-200 hover:border-blue-300 px-3 py-1.5 rounded-md transition-all shadow-sm hover:shadow active:scale-95"
+                                                >
+                                                    Plan de Proyecto
+                                                </Link>
+                                                <Link
+                                                    to={`/projects/${project.id}`}
+                                                    className="text-xs font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md transition-all flex items-center gap-1 active:scale-95"
+                                                >
+                                                    Detalles Generales
+                                                    <ArrowRight size={14} />
+                                                </Link>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })
+                        )}
+                    </tbody>
+                </table>
             </div>
 
             {/* Zod Validated Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-lg w-full max-w-md">
-                        <h3 className="text-xl font-bold mb-4">{t('projects.newProject')}</h3>
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl transform transition-all scale-100">
+                        <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+                            <h3 className="text-xl font-bold text-gray-800">{t('projects.newProject')}</h3>
+                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600"><Plus size={24} className="rotate-45" /></button>
+                        </div>
 
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                             <div>
@@ -151,7 +226,7 @@ export const Projects = () => {
                                 <input
                                     type="text"
                                     {...register('name')}
-                                    className={`w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
+                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow ${errors.name ? 'border-red-500 focus:ring-red-200' : 'border-gray-300'}`}
                                     placeholder="e.g. Torre Reforma"
                                 />
                                 {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
@@ -161,25 +236,26 @@ export const Projects = () => {
                                 <input
                                     type="text"
                                     {...register('code')}
-                                    className={`w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none ${errors.code ? 'border-red-500' : 'border-gray-300'}`}
+                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow ${errors.code ? 'border-red-500 focus:ring-red-200' : 'border-gray-300'}`}
                                     placeholder="e.g. TR-001"
                                 />
+                                <p className="text-xs text-gray-500 mt-1">Debe ser alfanumérico y único.</p>
                                 {errors.code && <p className="text-xs text-red-500 mt-1">{errors.code.message}</p>}
                             </div>
-                            <div className="flex justify-end gap-3 mt-6">
+                            <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-50">
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
                                 >
                                     {t('common.cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-bold shadow-md shadow-blue-200 transition-all hover:shadow-lg transform active:scale-95"
                                 >
-                                    {isSubmitting ? t('common.loading') : t('common.save')}
+                                    {isSubmitting ? t('common.loading') : 'Crear Proyecto'}
                                 </button>
                             </div>
                         </form>

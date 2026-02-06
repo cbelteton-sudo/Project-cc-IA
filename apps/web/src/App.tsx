@@ -14,6 +14,11 @@ import { Field } from './pages/Field';
 import { ProjectReport } from './pages/ProjectReport';
 import { WhatsappSimulator } from './pages/WhatsappSimulator';
 import { Dashboard } from './pages/Dashboard';
+import { AdminUsers } from './pages/admin/Users';
+import { Contractors } from './pages/admin/Contractors';
+import { PortalLayout } from './components/layout/PortalLayout';
+import { PortalDashboard } from './pages/portal/PortalDashboard';
+import { PortalProjects, PortalTasks, PortalOrders } from './pages/portal/PortalLists';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const ProtectedRoute = () => {
@@ -44,8 +49,25 @@ function App() {
           <Route path="/whatsapp" element={<WhatsappSimulator />} />
           <Route path="/reports/project/:id" element={<ProjectReport />} />
 
+          {/* Admin Routes */}
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/contractors" element={<Contractors />} />
+
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/contractors" element={<Contractors />} />
+
           <Route path="*" element={<div className="p-10"><h1>404 - Page Coming Soon</h1><p>This module is currently being integrated.</p></div>} />
         </Route>
+
+        {/* Portal Routes (Scoped Layout) */}
+        <Route path="/portal" element={<PortalLayout />}>
+          <Route path="dashboard" element={<PortalDashboard />} />
+          <Route path="projects" element={<PortalProjects />} />
+          <Route path="tasks" element={<PortalTasks />} />
+          <Route path="orders" element={<PortalOrders />} />
+          <Route path="profile" element={<div className="p-10"><h1>Perfil de Proveedor</h1><p>Gestión de ficha técnica aquí.</p></div>} />
+        </Route>
+
       </Routes>
       <Toaster richColors position="top-right" />
     </ErrorBoundary>

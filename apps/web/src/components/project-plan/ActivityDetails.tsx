@@ -1,18 +1,24 @@
 
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { CheckCircle, Calendar, User, TrendingUp, Clock, AlertTriangle, Flag } from 'lucide-react';
+import { CheckCircle, Calendar, User, TrendingUp, Clock, AlertTriangle, Flag, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { CloseActivityModal } from './CloseActivityModal';
 
 interface ActivityDetailsProps {
     activityId: string;
     token: string;
     onUpdate: () => void;
+    onCreateSubActivity: (parentId: string) => void;
+    onClose?: () => void;
 }
 
-export const ActivityDetails = ({ activityId, token, onUpdate }: ActivityDetailsProps) => {
+export const ActivityDetails = ({ activityId, token, onUpdate, onCreateSubActivity, onClose }: ActivityDetailsProps) => {
     const queryClient = useQueryClient();
+    const { t } = useTranslation();
+    const [showCloseModal, setShowCloseModal] = useState(false);
 
     // Fetch full details
     const { data: activity, isLoading } = useQuery({
@@ -39,7 +45,36 @@ export const ActivityDetails = ({ activityId, token, onUpdate }: ActivityDetails
         onError: () => toast.error('Failed to update')
     });
 
-    const { t } = useTranslation();
+    // Fetch Budget Lines (Project Level)
+    const { data: budgetLines } = useQuery({
+        queryKey: ['budget-lines', (activity as any)?.projectId],
+        queryFn: async () => {
+            const pid = (activity as any)?.projectId;
+            if (!pid) return [];
+            // Assuming we can search budgets by project
+            // Or simpler: fetching all budgets for project then flat mapping lines.
+            // Let's assume we have a way or just fetch all budgets for the tenant -> filter by project -> get lines
+            // Actually, we need an endpoint. For now, let's try searching budgets for the project.
+            // If the backend doesn't support it directly, we might need a custom endpoint.
+            // Let's assume GET /budgets?projectId={pid} works or similar.
+            // Actually, `BudgetsService.findAll` takes tenantId.
+            // Let's iterate all budgets and find the one for this project.
+            const res = await axios.get('http://localhost:4180/budgets', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const projectBudget = res.data.find((b: any) => b.projectId === pid);
+            if (!projectBudget) return [];
+
+            // Now fetch details (lines) for this budget
+            const resDetails = await axios.get(`http://localhost:4180/budgets/${projectBudget.id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return resDetails.data.budgetLines || [];
+        },
+        enabled: !!activity
+    });
+
+
 
     const handleProgressUpdate = (e: any) => {
         e.preventDefault();
@@ -70,6 +105,23 @@ export const ActivityDetails = ({ activityId, token, onUpdate }: ActivityDetails
                     <div>
                         <span className="text-xs font-mono text-gray-400 bg-gray-50 px-2 py-1 rounded">{activity.code}</span>
                         <h2 className="text-xl font-bold text-gray-800 mt-2 leading-tight">{activity.name}</h2>
+                    </div>
+                    <div className="flex items-start gap-2">
+                        <button
+                            onClick={() => onCreateSubActivity(activity.id)}
+                            className="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1"
+                        >
+                            <TrendingUp size={14} className="rotate-90" />
+                            Sub-actividad
+                        </button>
+                        {onClose && (
+                            <button
+                                onClick={onClose}
+                                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1 rounded-full transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        )}
                     </div>
                 </div>
                 <div className="flex gap-2 mt-2">
@@ -182,6 +234,30 @@ export const ActivityDetails = ({ activityId, token, onUpdate }: ActivityDetails
                     </div>
                 </div>
 
+                {/* Budget Link */}
+                <div>
+                    <h4 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
+                        <TrendingUp size={16} /> Presupuesto
+                    </h4>
+                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                        <label className="text-[10px] uppercase text-gray-500 font-bold block mb-1">Renglón Presupuestario</label>
+                        <select
+                            className="w-full text-sm bg-white border border-gray-200 rounded px-2 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none"
+                            value={(activity as any).budgetLineId || ""}
+                            onChange={(e) => {
+                                updateMutation.mutate({ budgetLineId: e.target.value || null });
+                            }}
+                        >
+                            <option value="">-- Sin Asignar --</option>
+                            {budgetLines?.map((line: any) => (
+                                <option key={line.id} value={line.id}>
+                                    {line.code} - {line.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
                 {/* Dependencies (Read Only for now) */}
                 {activity.dependencies && activity.dependencies.length > 0 && (
                     <div>
@@ -229,9 +305,19 @@ export const ActivityDetails = ({ activityId, token, onUpdate }: ActivityDetails
 
             {/* Footer Actions */}
             <div className="mt-auto pt-4 border-t border-gray-100 flex justify-end">
-                {currentPercent === 100 ? (
-                    <button className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 shadow-sm w-full justify-center">
+                {currentPercent === 100 && activity.status !== 'CLOSED' ? (
+                    <button
+                        onClick={() => setShowCloseModal(true)}
+                        className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 shadow-sm w-full justify-center"
+                    >
                         <CheckCircle size={18} /> {t('activities.validate_close')}
+                    </button>
+                ) : activity.status === 'CLOSED' ? (
+                    <button
+                        onClick={() => setShowCloseModal(true)}
+                        className="flex items-center gap-2 bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2 rounded-lg w-full justify-center hover:bg-blue-100 transition-colors"
+                    >
+                        <User size={18} /> Descargar Acta de Cierre
                     </button>
                 ) : (
                     <button className="text-red-500 text-sm hover:bg-red-50 px-4 py-2 rounded w-full">
@@ -239,6 +325,14 @@ export const ActivityDetails = ({ activityId, token, onUpdate }: ActivityDetails
                     </button>
                 )}
             </div>
+
+            <CloseActivityModal
+                isOpen={showCloseModal}
+                onClose={() => setShowCloseModal(false)}
+                activity={activity}
+                token={token}
+                existingRecord={activity.closureRecord}
+            />
         </div>
     );
 };
@@ -250,7 +344,8 @@ const Badge = ({ status }: { status: string }) => {
         'NOT_STARTED': 'bg-gray-100 text-gray-600',
         'IN_PROGRESS': 'bg-blue-100 text-blue-800',
         'DONE': 'bg-green-100 text-green-800',
-        'BLOCKED': 'bg-red-100 text-red-800'
+        'BLOCKED': 'bg-red-100 text-red-800',
+        'CLOSED': 'bg-gray-800 text-white'
     };
     return (
         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${colors[status] || colors['NOT_STARTED']}`}>

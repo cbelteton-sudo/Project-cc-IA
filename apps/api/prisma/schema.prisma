@@ -23,6 +23,7 @@ model Tenant {
   
   // Phase 9
   contractors      Contractor[]
+  contractorAssignments ContractorProjectAssignment[]
   projectActivities ProjectActivity[]
   projectMilestones ProjectMilestone[]
 }
@@ -37,8 +38,12 @@ model User {
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  contractorId String?
+  contractor   Contractor? @relation(fields: [contractorId], references: [id])
 
   auditLogs AuditLog[]
+  assignedActivities ProjectActivity[]
 }
 
 model AuditLog {
@@ -84,6 +89,7 @@ model Project {
   
   activities       ProjectActivity[]
   milestones       ProjectMilestone[]
+  contractorAssignments ContractorProjectAssignment[]
 }
 
 // --- BUDGET ---
@@ -108,6 +114,7 @@ model BudgetLine {
 
   purchaseOrderItems PurchaseOrderItem[]
   invoiceAllocations InvoiceAllocation[]
+  activities         ProjectActivity[]
 }
 
 // --- PROCUREMENT ---
@@ -131,6 +138,10 @@ model PurchaseOrder {
   status    String              @default("DRAFT") // DRAFT, ISSUED, PARTIAL, CLOSED
   items     PurchaseOrderItem[]
   invoices  Invoice[]
+  
+  vendorId  String?
+  vendorRel Contractor?         @relation(fields: [vendorId], references: [id])
+
   createdAt DateTime            @default(now())
 }
 
@@ -298,11 +309,27 @@ model Contractor {
   phone     String?
   taxId     String?
   address   String?
+  
+  // Phase 10 Extended Profile
+  legalName       String?
+  website         String?
+  specialties     String? // JSON
+  certifications  String? // JSON
+  insurancePolicy String?
+  bankName        String?
+  bankAccount     String?
+  contactPersonName String?
+  contactPersonPhone String?
+  notes           String?
+
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   activities ProjectActivity[]
+  users      User[]
+  assignments ContractorProjectAssignment[]
+  purchaseOrders PurchaseOrder[]
 }
 
 model ProjectActivity {
@@ -328,6 +355,12 @@ model ProjectActivity {
   
   contractorId    String?
   contractor      Contractor? @relation(fields: [contractorId], references: [id])
+  
+  assignedUserId  String?
+  assignedUser    User?       @relation(fields: [assignedUserId], references: [id])
+
+  budgetLineId    String?
+  budgetLine      BudgetLine? @relation(fields: [budgetLineId], references: [id])
 
   // Relations
   dependencies    ActivityDependency[] @relation("ActivityDependsOn")
@@ -414,4 +447,25 @@ model ActivityClosureRecord {
   createdAt            DateTime @default(now())
   
   @@unique([activityId])
+}
+
+model ContractorProjectAssignment {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id])
+  
+  projectId    String
+  project      Project    @relation(fields: [projectId], references: [id])
+  
+  assignedAt   DateTime @default(now())
+  roleInProject String?
+  status       String   @default("ACTIVE")
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([tenantId, contractorId, projectId])
 }

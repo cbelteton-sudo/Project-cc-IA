@@ -1,11 +1,12 @@
 import { Outlet, Link } from 'react-router-dom';
-import { Home, FolderKanban, Banknote, ShoppingCart, FileText, Settings, Hammer, ClipboardList, MessageSquare } from 'lucide-react';
+import { Home, FolderKanban, Banknote, ShoppingCart, FileText, Settings, Hammer, ClipboardList, MessageSquare, Users, Briefcase } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useRegion } from '../../context/RegionContext';
+import { useAuth } from '../../context/AuthContext';
 
 const SidebarItem = ({ to, icon: Icon, label }: any) => (
-    <Link to={to} className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-colors">
+    <Link to={to} className="flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-slate-800 hover:text-white rounded-md transition-colors">
         <Icon size={20} />
         <span className="font-medium text-sm">{label}</span>
     </Link>
@@ -14,6 +15,7 @@ const SidebarItem = ({ to, icon: Icon, label }: any) => (
 export const Layout = () => {
     const { t, i18n } = useTranslation();
     const { country, setCountry } = useRegion();
+    const { user, logout } = useAuth();
 
     const changeLanguage = (lng: string) => {
         i18n.changeLanguage(lng);
@@ -22,39 +24,45 @@ export const Layout = () => {
     return (
         <div className="flex h-screen w-full bg-gray-50">
             {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
-                <div className="h-16 flex items-center px-6 border-b border-gray-200"></div>
+            <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
+                <div className="h-16 flex items-center px-6 border-b border-slate-800">
+                     <span className="font-bold text-white text-lg tracking-tight">Admin<span className="text-blue-500">Panel</span></span>
+                </div>
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                     <SidebarItem to="/" icon={Home} label={t('sidebar.dashboard')} />
-                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('sidebar.projectMgmt')}</div>
+                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('sidebar.projectMgmt')}</div>
                     <SidebarItem to="/projects" icon={FolderKanban} label={t('sidebar.projects')} />
                     <SidebarItem to="/budgets" icon={Banknote} label={t('sidebar.budgets')} />
-                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('sidebar.procurement')}</div>
+                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('sidebar.procurement')}</div>
                     <SidebarItem to="/procurement/requests" icon={ShoppingCart} label={t('sidebar.materialRequests')} />
                     <SidebarItem to="/procurement/orders" icon={FileText} label={t('sidebar.purchaseOrders')} />
 
-                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('sidebar.financials')}</div>
+                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('sidebar.financials')}</div>
                     <SidebarItem to="/invoices" icon={Banknote} label={t('sidebar.invoices')} />
 
-                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('sidebar.field')}</div>
+                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('sidebar.field')}</div>
                     <SidebarItem to="/field" icon={ClipboardList} label={t('sidebar.fieldMgmt')} />
                     <SidebarItem to="/whatsapp" icon={MessageSquare} label={t('sidebar.whatsappSim')} />
 
-                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('sidebar.admin')}</div>
+                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('sidebar.admin')}</div>
+                    <SidebarItem to="/admin/users" icon={Users} label="Usuarios" />
+                    <SidebarItem to="/admin/contractors" icon={Briefcase} label="Contratistas" />
                     <SidebarItem to="/settings" icon={Settings} label={t('sidebar.settings')} />
                 </nav>
 
-                <div className="p-4 border-t border-gray-200">
+                <div className="p-4 border-t border-slate-800">
                     <div className="flex items-center gap-3 mb-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">AD</div>
+                        <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs">
+                            {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                        </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">Admin User</p>
-                            <p className="text-xs text-gray-500 truncate">admin@demo.com</p>
+                            <p className="text-sm font-medium text-white truncate">{user?.name || 'Usuario'}</p>
+                            <p className="text-xs text-slate-400 truncate">{user?.email}</p>
                         </div>
                     </div>
                     <button
-                        onClick={() => { localStorage.removeItem('token'); window.location.href = '/'; }}
-                        className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs py-2 rounded font-medium"
+                        onClick={() => { logout(); window.location.href = '/login'; }}
+                        className="w-full bg-slate-800 hover:bg-slate-700 text-gray-300 text-xs py-2 rounded font-medium"
                     >
                         {t('common.logout')}
                     </button>

@@ -154,8 +154,162 @@ async function main() {
             percent: 100
         }
     });
-    await prisma.projectActivity.update({ where: { id: actA2.id }, data: { status: 'DONE' } });
+    await prisma.projectActivity.update({ where: { id: actA2.id }, data: { status: 'DONE', percent: 100 } });
 
+    // 9. Activity Closure Test Data
+    const actE = await createActivity('Validación de Fase', null, 120, 10, 3);
+
+    // E1: Ready to Close (100% Done)
+    const actE1 = await createActivity('Inspección de Seguridad', actE.id, 120, 2);
+    await prisma.activityWeeklyProgress.create({
+        data: {
+            tenantId: tenant.id,
+            projectId: project.id,
+            activityId: actE1.id,
+            weekStartDate: new Date(startDate),
+            percent: 100,
+            notes: 'Ready for closure'
+        }
+    });
+    await prisma.projectActivity.update({ where: { id: actE1.id }, data: { status: 'DONE', percent: 100 } });
+
+    // E2: Pending Dependency (Depends on E1 - which is Done, so actually this is ready too if we want. Let's make it 50% so it CANNOT be closed yet)
+    const actE2 = await createActivity('Revisión de Calidad', actE.id, 122, 5);
+    await prisma.activityDependency.create({
+        data: { tenantId: tenant.id, projectId: project.id, activityId: actE2.id, dependsOnId: actE1.id }
+    });
+    // Set 50%
+    await prisma.activityWeeklyProgress.create({
+        data: {
+            tenantId: tenant.id,
+            projectId: project.id,
+            activityId: actE2.id,
+            weekStartDate: new Date(startDate),
+            percent: 50
+        }
+    });
+    await prisma.projectActivity.update({ where: { id: actE2.id }, data: { status: 'IN_PROGRESS', percent: 50 } });
+
+    // ... Phase 9 logic above ...
+    // Note: I will append Phase 10 logic at the end or interleave. 
+    // Since I am replacing the whole block or finding a good insertion point.
+    // The previous view of seed.ts ended at line 204.
+    // I will replace from "console.log('✅ Seed complete!');" to insert before it.
+
+    // --- Phase 10: Users & Contractors ---
+    console.log('👷 Seeding Phase 10: Contractors & Users...');
+
+    // 10. Update Contractors with Profile Data
+    // ALFA (Contractor 1)
+    await prisma.contractor.update({
+        where: { id: contractors[0].id },
+        data: {
+            legalName: 'Constructora Alfa S.A.',
+            taxId: 'NIT-99887766',
+            address: 'Km 14.5 Carr. a El Salvador',
+            specialties: JSON.stringify(['Obra Gris', 'Estructuras']),
+            contactPersonName: 'Ing. Carlos Alfa',
+            email: 'contacto@alfa.com'
+        }
+    });
+
+    // GAMMA (Contractor 2 - Acabados)
+    await prisma.contractor.update({
+        where: { id: contractors[2].id },
+        data: {
+            legalName: 'Acabados Gamma Ltda.',
+            specialties: JSON.stringify(['Tabla Yeso', 'Pintura', 'Piso']),
+            contactPersonName: 'Arq. Gabriela Gamma'
+        }
+    });
+
+    // 11. Create Assignment (ALFA -> MAWI Project)
+    // Avoid dupes using upsert logic or deleteMany first? 
+    // Schema has unique constraint [tenantId, contractorId, projectId].
+    // Upsert is safer.
+    await prisma.contractorProjectAssignment.upsert({
+        where: {
+            tenantId_contractorId_projectId: {
+                tenantId: tenant.id,
+                contractorId: contractors[0].id,
+                projectId: project.id
+            }
+        },
+        update: {},
+        create: {
+            tenantId: tenant.id,
+            contractorId: contractors[0].id,
+            projectId: project.id,
+            roleInProject: 'Contratista General'
+        }
+    });
+
+    // 12. Create Users
+    const roles = ['DIRECTOR', 'SUPERVISOR', 'OPERADOR'];
+    for (const role of roles) {
+        const email = `${role.toLowerCase()}@demo.com`;
+        await prisma.user.upsert({
+            where: { email },
+            update: { role },
+            create: {
+                email,
+                name: `${role} User`,
+                password, // same 'password123' hash from above
+                role,
+                tenantId: tenant.id
+            }
+        });
+    }
+
+    // Contractor User (ALFA)
+    const contractorEmail = 'contratista1@demo.com';
+    await prisma.user.upsert({
+        where: { email: contractorEmail },
+        update: { contractorId: contractors[0].id },
+        create: {
+            email: contractorEmail,
+            name: 'Juan Perez (Alfa)',
+            password,
+            role: 'CONTRATISTA',
+            tenantId: tenant.id,
+            contractorId: contractors[0].id
+        }
+    });
+
+    console.log('✅ Phase 10 Seed Complete');
+
+    // 13. Seed Materials
+    console.log('📦 Seeding Materials...');
+    const commonMaterials = [
+        { name: 'Cemento Gris Portland', unit: 'Bto 50kg', cost: 180, category: 'Obra Gris' },
+        { name: 'Arena de Río', unit: 'm3', cost: 450, category: 'Obra Gris' },
+        { name: 'Grava Triturada 3/4"', unit: 'm3', cost: 550, category: 'Obra Gris' },
+        { name: 'Varilla Corrugada 3/8"', unit: 'Pza', cost: 150, category: 'Acero' },
+        { name: 'Varilla Corrugada 1/2"', unit: 'Pza', cost: 260, category: 'Acero' },
+        { name: 'Block de Concreto 15x20x40', unit: 'Pza', cost: 12, category: 'Muros' },
+        { name: 'Tubo PVC Sanitario 4"', unit: 'Tramo 6m', cost: 350, category: 'Hidrosanitaria' },
+        { name: 'Cable THW Calibre 12', unit: 'Caja 100m', cost: 1200, category: 'Eléctrica' },
+        { name: 'Pintura Vinílica Blanca', unit: 'Cubeta 19L', cost: 1800, category: 'Acabados' }
+    ];
+
+    for (const mat of commonMaterials) {
+        const exists = await prisma.material.findFirst({
+            where: { tenantId: tenant.id, name: mat.name }
+        });
+
+        if (!exists) {
+            await prisma.material.create({
+                data: {
+                    tenantId: tenant.id,
+                    name: mat.name,
+                    unit: mat.unit,
+                    costParam: mat.cost,
+                    description: `Material categoria ${mat.category}`
+                }
+            });
+        }
+    }
+    console.log('✅ Materials Seeded');
     console.log('✅ Seed complete!');
 }
 

@@ -195,6 +195,183 @@ export class ReportsService {
     };
   }
 
+  async getSCurve(projectId: string, tenantId: string) {
+    const prisma = this.prisma as any;
+
+    // 1. Fetch Project with Activities & Budget
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: {
+        activities: {
+          include: { budgetLine: true, progressRecords: true }
+        },
+        budgets: { include: { budgetLines: true } }
+      }
+    });
+
+    if (!project || project.tenantId !== tenantId) throw new NotFoundException('Project not found');
+
+    // 2. Determine Timeline
+    // Use Project Dates or Activity Dates
+    let start = project.startDate ? new Date(project.startDate) : new Date();
+    let end = project.endDate ? new Date(project.endDate) : new Date();
+
+    if (!project.startDate && project.activities.length > 0) {
+      // Auto-detect from activities
+      const starts = project.activities.map((a: any) => new Date(a.startDate).getTime());
+      start = new Date(Math.min(...starts));
+      const ends = project.activities.map((a: any) => new Date(a.endDate).getTime());
+      end = new Date(Math.max(...ends));
+    }
+
+    // Align to weeks
+    start = this.getStartOfWeek(start);
+    end.setDate(end.getDate() + 7); // Pad end
+
+    const timeline: { date: string; pv: number; ev: number; ac: number }[] = [];
+    let current = new Date(start);
+
+    // 3. Calculate Cumulative Data Points
+    let cumPV = 0;
+    let cumEV = 0;
+
+    // Optimized: Pre-calculate daily burn rates for all activities
+    const activityBurns = project.activities.map((act: any) => {
+      const s = new Date(act.startDate).getTime();
+      const e = new Date(act.endDate).getTime();
+      const duration = Math.max(1, (e - s) / (1000 * 60 * 60 * 24));
+      const budget = act.budgetLine?.amountParam || (act.plannedWeight * 1000); // Fallback to weight * 1000 if no budget
+
+      return {
+        ...act,
+        startMs: s,
+        endMs: e,
+        dailyPV: budget / duration,
+        totalBudget: budget
+      };
+    });
+
+    // Note: Actual Cost should effectively come from Invoices. 
+    // For this MVP, we will simulate AC tracking close to EV or use InvoiceAllocations if available.
+    // Let's check Invoice Allocations.
+    const allocations = await prisma.invoiceAllocation.findMany({
+      where: { invoice: { projectId } },
+      include: { invoice: true }
+    });
+
+
+    while (current <= end) {
+      const currentMs = current.getTime();
+      const dateKey = current.toISOString().split('T')[0];
+
+      // PV: Sum of value for all days up to 'current' logic? 
+      // Simpler: Just recalculate total PV up to this date.
+      // Iterate all activities, check how much overlap with [Start -> Current]
+
+      let pv = 0;
+      let ev = 0;
+
+      activityBurns.forEach((act: any) => {
+        // PV Calculation
+        if (currentMs >= act.startMs) {
+          if (currentMs >= act.endMs) {
+            pv += act.totalBudget;
+          } else {
+            const daysPassed = (currentMs - act.startMs) / (1000 * 60 * 60 * 24);
+            pv += daysPassed * act.dailyPV;
+          }
+        }
+
+        // EV Calculation
+        // Precise: Look for progress record at this week.
+        // Heuristic: Use current percent if date is past today? No, that flattens history.
+        // We need historical EV.
+        // Find closest progress record <= current date
+        const record = act.progressRecords
+          .filter((r: any) => new Date(r.weekStartDate) <= current)
+          .sort((a: any, b: any) => new Date(b.weekStartDate).getTime() - new Date(a.weekStartDate).getTime())[0];
+
+        const percent = record ? record.percent : (currentMs > new Date().getTime() ? 0 : 0);
+        // Logic gap: if no record but activity started? Assume 0. 
+        // Logic gap: if current > today, we shouldn't predict EV. EV stops at Today.
+
+        if (currentMs <= new Date().getTime()) {
+          ev += (percent / 100) * act.totalBudget;
+        }
+      });
+
+      // AC Calculation
+      // Sum allocations with invoice date <= current
+      const ac = allocations
+        .filter((a: any) => new Date(a.invoice.date) <= current)
+        .reduce((sum: number, a: any) => sum + a.amount, 0);
+
+      timeline.push({
+        date: dateKey,
+        pv,
+        ev: currentMs > new Date().getTime() ? null as any : ev, // Null for future
+        ac: currentMs > new Date().getTime() ? null as any : ac
+      });
+
+      current.setDate(current.getDate() + 7);
+    }
+
+    return timeline;
+  }
+
+  async getResourceHistogram(projectId: string, tenantId: string) {
+    const prisma = this.prisma as any;
+    // Fetch activities with contractors
+    const activities = await prisma.projectActivity.findMany({
+      where: { projectId, tenantId, contractorId: { not: null } },
+      include: { contractor: true }
+    });
+
+    // Find range
+    if (activities.length === 0) return [];
+    const starts = activities.map((a: any) => new Date(a.startDate).getTime());
+    const ends = activities.map((a: any) => new Date(a.endDate).getTime());
+    let current = this.getStartOfWeek(new Date(Math.min(...starts)));
+    const end = new Date(Math.max(...ends));
+    end.setDate(end.getDate() + 7);
+
+    const histogram: any[] = [];
+
+    const contractors = Array.from(new Set(activities.map((a: any) => a.contractor.name)));
+
+    while (current <= end) {
+      const weekLabel = current.toISOString().split('T')[0];
+      const weekEnd = new Date(current);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+
+      const entry: any = { date: weekLabel };
+
+      contractors.forEach((cName: any) => {
+        // Count active tasks for this contractor in this week
+        // Overlap logic: Start <= WeekEnd AND End >= WeekStart
+        const count = activities.filter((a: any) =>
+          a.contractor.name === cName &&
+          new Date(a.startDate) <= weekEnd &&
+          new Date(a.endDate) >= current
+        ).length;
+
+        entry[cName as string] = count;
+      });
+
+      histogram.push(entry);
+      current.setDate(current.getDate() + 7);
+    }
+
+    return histogram;
+  }
+
+  private getStartOfWeek(d: Date) {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+    return new Date(date.setDate(diff));
+  }
+
   // Placeholder CRUD methods 
   create(createReportDto: any) { return 'This action adds a new report'; }
   findAll() { return 'This action returns all reports'; }

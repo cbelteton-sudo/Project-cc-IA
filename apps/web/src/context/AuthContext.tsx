@@ -6,6 +6,8 @@ interface User {
     email: string;
     role: string;
     tenantId: string;
+    contractorId?: string;
+    name?: string;
 }
 
 interface AuthContextType {
@@ -30,7 +32,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // For MVP, we decode simple payload or persist user in LS
             const savedUser = localStorage.getItem('user');
             if (savedUser) {
-                setUser(JSON.parse(savedUser));
+                try {
+                    setUser(JSON.parse(savedUser));
+                } catch (e) {
+                    console.error('Failed to parse user from LS', e);
+                    localStorage.removeItem('user');
+                }
             }
         } else {
             delete axios.defaults.headers.common['Authorization'];

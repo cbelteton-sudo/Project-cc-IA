@@ -9,8 +9,7 @@ import * as z from 'zod';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useRegion } from '../context/RegionContext';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import { PurchaseOrderPDF } from '../components/pdf/PurchaseOrderPDF';
+import { generatePurchaseOrderPDF } from '../utils/pdf/generatePurchaseOrder';
 
 // Validation Schema
 const createPOSchema = z.object({
@@ -139,42 +138,21 @@ export const PurchaseOrders = () => {
                                     </span>
                                 </td>
                                 <td className="px-6 py-3 text-right">
-                                    <PDFDownloadLink
-                                        document={
-                                            <PurchaseOrderPDF
-                                                data={{
-                                                    ...po,
-                                                    project: po.project?.name || 'Project',
-                                                    date: new Date(po.createdAt).toLocaleDateString(),
-                                                    items: po.items || [], // Ensure items exist
-                                                    currency: currency, // Pass current currency context
-                                                }}
-                                                labels={{
-                                                    title: t('orders.title'),
-                                                    project: t('orders.table.project'),
-                                                    vendor: t('orders.table.vendor'),
-                                                    date: t('common.date'),
-                                                    desc: "Description",
-                                                    qty: "Qty",
-                                                    price: "Unit Price",
-                                                    total: "Total",
-                                                    status: t('orders.table.status'),
-                                                    approved: "APPROVED",
-                                                    pending: "PENDING",
-                                                    footer: "Thank you for your business"
-                                                }}
-                                            />
-                                        }
-                                        fileName={`PO-${po.id.substring(0, 8)}.pdf`}
+                                    <button
+                                        onClick={() => {
+                                            generatePurchaseOrderPDF({
+                                                ...po,
+                                                project: po.project?.name || 'Project',
+                                                date: new Date(po.createdAt).toLocaleDateString(),
+                                                items: po.items || [],
+                                                currency: currency,
+                                            });
+                                        }}
                                         className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 transition"
                                     >
-                                        {({ loading }) => (
-                                            <>
-                                                <FileDown size={14} />
-                                                {loading ? '...' : 'PDF'}
-                                            </>
-                                        )}
-                                    </PDFDownloadLink>
+                                        <FileDown size={14} />
+                                        PDF
+                                    </button>
                                 </td>
                             </tr>
                         ))}

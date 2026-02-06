@@ -2,25 +2,24 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { Plus } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { Plus, Trash2, Package } from 'lucide-react';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { MaterialSelector } from '../components/materials/MaterialSelector';
 
-// Validaton Schema
+// Validation Schema
 const createRequestSchema = z.object({
     projectId: z.string().min(1, 'Project is required'),
     title: z.string().min(3, 'Title must be at least 3 characters'),
-    itemsText: z.string().refine((val) => {
-        try {
-            const parsed = JSON.parse(val);
-            return Array.isArray(parsed) && parsed.length > 0;
-        } catch {
-            return false;
-        }
-    }, 'Must be a valid JSON array with at least one item'),
+    items: z.array(z.object({
+        materialId: z.string(),
+        name: z.string(), // Added for display, not sent to backend if not needed, but useful for UI state
+        unit: z.string(),
+        quantity: z.number().min(0.01, 'Quantity must be greater than 0'),
+    })).min(1, 'Must have at least one item'),
 });
 
 type CreateRequestForm = z.infer<typeof createRequestSchema>;
@@ -34,6 +33,7 @@ export const MaterialRequests = () => {
     // Form Hooks
     const {
         register,
+        control,
         handleSubmit,
         reset,
         formState: { errors, isSubmitting }
@@ -42,8 +42,13 @@ export const MaterialRequests = () => {
         defaultValues: {
             projectId: '',
             title: '',
-            itemsText: '[{"materialId": "desc", "quantity": 1}]'
+            items: []
         }
+    });
+
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: 'items'
     });
 
     // Fetch Requests
@@ -72,11 +77,16 @@ export const MaterialRequests = () => {
 
     const createMutation = useMutation({
         mutationFn: async (data: CreateRequestForm) => {
-            const items = JSON.parse(data.itemsText);
+            // Clean payload to match backend expectation
+            const itemsPayload = data.items.map(i => ({
+                materialId: i.materialId,
+                quantity: i.quantity
+            }));
+            
             return axios.post('http://localhost:4180/material-requests', {
                 projectId: data.projectId,
                 title: data.title,
-                items
+                items: itemsPayload 
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -145,45 +155,105 @@ export const MaterialRequests = () => {
                 </table>
             </div>
 
-            {/* Zod Validated Modal */}
+            {/* Improved User-Friendly Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-lg w-full max-w-md">
-                        <h3 className="text-xl font-bold mb-4">{t('requests.newRequest')}</h3>
-                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white p-6 rounded-xl w-full max-w-2xl shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
+                        <h3 className="text-xl font-bold mb-6 text-gray-800 border-b pb-2">{t('requests.newRequest')}</h3>
+                        
+                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('requests.table.project')}</label>
+                                    <select
+                                        {...register('projectId')}
+                                        className={`w-full border rounded-lg px-3 py-2 bg-gray-50 focus:bg-white transition-colors outline-none focus:ring-2 focus:ring-blue-500 ${errors.projectId ? 'border-red-500' : 'border-gray-200'}`}
+                                    >
+                                        <option value="">Select Project</option>
+                                        {projects?.map((p: any) => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                    {errors.projectId && <p className="text-xs text-red-500 mt-1">{errors.projectId.message}</p>}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('requests.table.title')}</label>
+                                    <input
+                                        {...register('title')}
+                                        placeholder="e.g. Material para Cimentación"
+                                        className={`w-full border rounded-lg px-3 py-2 bg-gray-50 focus:bg-white transition-colors outline-none focus:ring-2 focus:ring-blue-500 ${errors.title ? 'border-red-500' : 'border-gray-200'}`}
+                                    />
+                                    {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title.message}</p>}
+                                </div>
+                            </div>
+
+                            {/* Dynamic Items Section */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('requests.table.project')}</label>
-                                <select
-                                    {...register('projectId')}
-                                    className={`w-full border rounded px-3 py-2 ${errors.projectId ? 'border-red-500' : 'border-gray-300'}`}
-                                >
-                                    <option value="">Select Project</option>
-                                    {projects?.map((p: any) => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Materiales Requeridos</label>
+                                
+                                <div className="space-y-3 mb-4">
+                                    {fields.map((field, index) => (
+                                        <div key={field.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100 group animate-slide-in-right">
+                                            <div className="p-2 bg-blue-100 text-blue-600 rounded-md">
+                                                <Package size={18} />
+                                            </div>
+                                            
+                                            <div className="flex-1">
+                                                <div className="font-medium text-sm text-gray-900">{field.name}</div>
+                                                <div className="text-xs text-gray-500">{field.unit}</div>
+                                            </div>
+
+                                            <div className="w-24">
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    {...register(`items.${index}.quantity`, { valueAsNumber: true })}
+                                                    className="w-full border border-gray-200 rounded px-2 py-1 text-sm text-center focus:ring-2 focus:ring-blue-500 outline-none"
+                                                    placeholder="Qty"
+                                                />
+                                            </div>
+                                            
+                                            <button
+                                                type="button"
+                                                onClick={() => remove(index)}
+                                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     ))}
-                                </select>
-                                {errors.projectId && <p className="text-xs text-red-500 mt-1">{errors.projectId.message}</p>}
+                                    
+                                    {fields.length === 0 && (
+                                        <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50/50">
+                                            <p className="text-sm text-gray-500">No hay materiales agregados.</p>
+                                            <p className="text-xs text-gray-400">Usa el buscador abajo para agregar ítems.</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Agregar Material</label>
+                                    <MaterialSelector onSelect={(material) => {
+                                        // Check if already exists
+                                        const exists = fields.some(f => f.materialId === material.id);
+                                        if(exists) {
+                                            toast.error('Este material ya está en la lista');
+                                            return;
+                                        }
+                                        append({
+                                            materialId: material.id,
+                                            name: material.name,
+                                            unit: material.unit,
+                                            quantity: 1
+                                        });
+                                    }} />
+                                    {errors.items && <p className="text-xs text-red-500 mt-1">{errors.items.message}</p>}
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('requests.table.title')}</label>
-                                <input
-                                    {...register('title')}
-                                    className={`w-full border rounded px-3 py-2 ${errors.title ? 'border-red-500' : 'border-gray-300'}`}
-                                />
-                                {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title.message}</p>}
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Items (JSON Array)</label>
-                                <textarea
-                                    {...register('itemsText')}
-                                    className={`w-full border rounded px-3 py-2 text-sm font-mono h-24 ${errors.itemsText ? 'border-red-500' : 'border-gray-300'}`}
-                                />
-                                {errors.itemsText && <p className="text-xs text-red-500 mt-1">{errors.itemsText.message}</p>}
-                                <p className="text-xs text-gray-500 mt-1">Format: {`[{"materialId": "string", "quantity": 10}]`}</p>
-                            </div>
-                            <div className="flex justify-end gap-3 mt-6">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">{t('common.cancel')}</button>
-                                <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+                            
+                            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors">{t('common.cancel')}</button>
+                                <button type="submit" disabled={isSubmitting} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm font-medium transition-colors disabled:opacity-50">
                                     {isSubmitting ? t('common.loading') : t('common.save')}
                                 </button>
                             </div>

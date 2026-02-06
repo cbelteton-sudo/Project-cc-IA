@@ -46,9 +46,14 @@ export class ProjectsService {
     // Ensure ownership
     await this.findOne(id, tenantId);
 
+    const data: any = { ...updateProjectDto };
+    if (data.startDate) data.startDate = new Date(data.startDate);
+    if (data.endDate) data.endDate = new Date(data.endDate);
+    if (data.globalBudget) data.globalBudget = Number(data.globalBudget);
+
     return this.prisma.project.update({
       where: { id },
-      data: updateProjectDto,
+      data,
     });
   }
 

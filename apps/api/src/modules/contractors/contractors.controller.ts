@@ -33,4 +33,24 @@ export class ContractorsController {
     remove(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string) {
         return this.contractorsService.remove(tenantId, id);
     }
+
+    // Assignments
+    @Get(':id/projects')
+    getAssignments(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string) {
+        return this.contractorsService.getAssignments(tenantId, id);
+    }
+
+    @Post(':id/projects')
+    assignProject(
+        @ActiveUser('tenantId') tenantId: string,
+        @Param('id') id: string,
+        @Body() body: { projectId: string; role?: string }
+    ) {
+        return this.contractorsService.assignProject(tenantId, id, body.projectId, body.role);
+    }
+
+    @Delete(':id/projects/:assignmentId')
+    removeAssignment(@ActiveUser('tenantId') tenantId: string, @Param('assignmentId') assignmentId: string) {
+        return this.contractorsService.removeAssignment(tenantId, assignmentId);
+    }
 }

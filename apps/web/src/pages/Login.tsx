@@ -22,13 +22,21 @@ export const Login = () => {
             // In production, use jwt-decode library
             const payload = JSON.parse(atob(access_token.split('.')[1]));
 
-            login(access_token, {
+            const userData = {
                 userId: payload.sub,
                 email: payload.email,
                 role: payload.role,
-                tenantId: payload.tenantId
-            });
-            navigate('/');
+                tenantId: payload.tenantId,
+                name: payload.name // Assuming token has name, otherwise it will come from profile endpoint later
+            };
+
+            login(access_token, userData);
+
+            if (payload.role === 'CONTRATISTA') {
+                navigate('/portal/dashboard');
+            } else {
+                navigate('/');
+            }
         } catch (err: any) {
             console.error('Login Error:', err);
             if (err.response) {

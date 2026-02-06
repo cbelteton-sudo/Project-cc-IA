@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, type ReactNode, useEffect } from 'react';
 
 type Country = 'GT' | 'SV';
 type Currency = 'GTQ' | 'USD';

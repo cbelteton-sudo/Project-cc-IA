@@ -1,7 +1,8 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, ChevronDown, Flag } from 'lucide-react';
+import { ChevronRight, ChevronDown, Flag, UserPlus, User } from 'lucide-react';
+
 
 export interface Activity {
     id: string;
@@ -22,9 +23,10 @@ interface ActivitiesTreeProps {
     activities: Activity[];
     selectedId: string | null;
     onSelect: (id: string) => void;
+    onAssignContractor: (activityId: string) => void;
 }
 
-export const ActivitiesTree = ({ activities, selectedId, onSelect }: ActivitiesTreeProps) => {
+export const ActivitiesTree = ({ activities, selectedId, onSelect, onAssignContractor }: ActivitiesTreeProps) => {
     // Header
     // Header
     const { t } = useTranslation();
@@ -33,6 +35,7 @@ export const ActivitiesTree = ({ activities, selectedId, onSelect }: ActivitiesT
             {/* Table Header */}
             <div className="flex items-center bg-gray-50 border-b border-gray-200 px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 <div className="flex-1">{t('activities.table.name')}</div>
+                <div className="w-32 text-center">Contratista</div>
                 <div className="w-24 text-center">{t('activities.table.start')}</div>
                 <div className="w-24 text-center">{t('activities.table.end')}</div>
                 <div className="w-16 text-center">{t('activities.table.weight')}</div>
@@ -53,6 +56,7 @@ export const ActivitiesTree = ({ activities, selectedId, onSelect }: ActivitiesT
                             node={root}
                             selectedId={selectedId}
                             onSelect={onSelect}
+                            onAssignContractor={onAssignContractor}
                         />
                     ))
                 )}
@@ -61,7 +65,7 @@ export const ActivitiesTree = ({ activities, selectedId, onSelect }: ActivitiesT
     );
 };
 
-const ActivityRow = ({ node, level = 0, selectedId, onSelect }: { node: Activity, level?: number, selectedId: string | null, onSelect: (id: string) => void }) => {
+const ActivityRow = ({ node, level = 0, selectedId, onSelect, onAssignContractor }: { node: Activity, level?: number, selectedId: string | null, onSelect: (id: string) => void, onAssignContractor: (id: string) => void }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const hasChildren = node.children && node.children.length > 0;
     const isSelected = selectedId === node.id;
@@ -101,6 +105,28 @@ const ActivityRow = ({ node, level = 0, selectedId, onSelect }: { node: Activity
                         <span className="font-medium text-gray-800 truncate" title={node.name}>{node.name}</span>
                         <span className="text-[10px] text-gray-400 font-mono">{node.code}</span>
                     </div>
+                </div>
+
+                {/* Contractor Col */}
+                <div className="w-32 flex justify-center">
+                    {node.contractor ? (
+                        <div
+                            className="flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs hover:bg-gray-200"
+                            onClick={(e) => { e.stopPropagation(); onAssignContractor(node.id); }}
+                            title="Click to reassign"
+                        >
+                            <User size={12} />
+                            <span className="truncate max-w-[80px]">{node.contractor.name}</span>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onAssignContractor(node.id); }}
+                            className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 p-1 rounded transition-colors"
+                            title="Asignar Contratista"
+                        >
+                            <UserPlus size={14} />
+                        </button>
+                    )}
                 </div>
 
                 {/* Date Cols */}
@@ -150,6 +176,7 @@ const ActivityRow = ({ node, level = 0, selectedId, onSelect }: { node: Activity
                                 <div className="w-24 text-center text-purple-600 text-xs font-medium">
                                     {new Date(milestone.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                 </div>
+                                <div className="w-32 text-center text-gray-400 text-xs">-</div>
                                 <div className="w-24 text-center text-gray-400 text-xs">-</div>
                                 <div className="w-16 text-center text-gray-400 text-xs">-</div>
                                 <div className="w-16 text-center text-gray-400 text-xs">-</div>
@@ -170,6 +197,7 @@ const ActivityRow = ({ node, level = 0, selectedId, onSelect }: { node: Activity
                             level={level + 1}
                             selectedId={selectedId}
                             onSelect={onSelect}
+                            onAssignContractor={onAssignContractor}
                         />
                     ))}
                 </div>

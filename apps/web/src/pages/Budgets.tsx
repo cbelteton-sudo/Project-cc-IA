@@ -11,6 +11,8 @@ interface Project {
     name: string;
     code: string;
     status: string;
+    globalBudget?: number;
+    currency?: string;
     _count?: {
         budgets: number;
     };
@@ -57,7 +59,14 @@ export const Budgets = () => {
                         </div>
 
                         <h3 className="text-lg font-bold text-gray-900 mb-1">{project.name}</h3>
-                        <p className="text-sm text-gray-500 mb-4">{t('projects.code')}: {project.code || 'N/A'}</p>
+                        <div className="flex justify-between items-center mb-4">
+                            <p className="text-sm text-gray-500">{t('projects.code')}: {project.code || 'N/A'}</p>
+                            {project.globalBudget && (
+                                <p className="text-sm font-mono font-bold text-gray-800">
+                                    {new Intl.NumberFormat('es-GT', { style: 'currency', currency: project.currency || 'USD' }).format(project.globalBudget)}
+                                </p>
+                            )}
+                        </div>
 
                         <div className="flex items-center justify-between text-sm text-gray-500 pt-4 border-t border-gray-100">
                             <div className="flex items-center gap-1">

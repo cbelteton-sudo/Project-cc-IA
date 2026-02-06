@@ -17,8 +17,17 @@ export class UpdateActivityDto {
     percent?: number | string;
     notes?: string;
     contractorId?: string;
+    budgetLineId?: string;
 }
 
 export class AddDependencyDto {
     dependsOnActivityId: string;
+}
+
+export class CloseActivityDto {
+    pmName: string;
+    directorName: string;
+    contractorName: string;
+    notes?: string;
+    // Signatures could be strings (base64) or URLs if uploaded separately
 }
