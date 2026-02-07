@@ -1,0 +1,16 @@
+╭───────────────── Setup Starting ──────────────────╮
+│ 🚀 Initializing NotebookLM MCP Server             │
+│ Notebook ID: 9a38cc6d-a1ce-4fdf-83b2-2b7fc4c43672 │
+│ Config File: notebooklm-config.json               │
+╰───────────────────────────────────────────────────╯
+✅ Created config file: notebooklm-config.json
+✅ Created profile directory: chrome_profile_notebooklm
+
+🔧 Setting up browser profile...
+🔧 Setting up browser and profile...
+Starting browser...
+2026-02-05 20:53:35.612 | INFO     | notebooklm_mcp.client:_start_browser:45 - Using undetected-chromedriver for better compatibility
+Setup error: [Errno 86] Bad CPU type in executable: '/Users/carlosbelteton/Library/Application 
+Support/undetected_chromedriver/undetected_chromedriver'
+Setup failed: [Errno 86] Bad CPU type in executable: '/Users/carlosbelteton/Library/Application 
+Support/undetected_chromedriver/undetected_chromedriver'

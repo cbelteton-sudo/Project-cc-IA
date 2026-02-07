@@ -21,10 +21,11 @@ export const ActivityDetails = ({ activityId, token, onUpdate, onCreateSubActivi
     const [showCloseModal, setShowCloseModal] = useState(false);
 
     // Fetch full details
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: activity, isLoading } = useQuery({
         queryKey: ['activity', activityId],
         queryFn: async () => {
-            const res = await axios.get(`http://localhost:4180/activities/${activityId}`, {
+            const res = await axios.get(`${API_URL}/activities/${activityId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
@@ -33,7 +34,7 @@ export const ActivityDetails = ({ activityId, token, onUpdate, onCreateSubActivi
 
     const updateMutation = useMutation({
         mutationFn: async (data: any) => {
-            return axios.patch(`http://localhost:4180/activities/${activityId}`, data, {
+            return axios.patch(`${API_URL}/activities/${activityId}`, data, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         },
@@ -59,14 +60,14 @@ export const ActivityDetails = ({ activityId, token, onUpdate, onCreateSubActivi
             // Let's assume GET /budgets?projectId={pid} works or similar.
             // Actually, `BudgetsService.findAll` takes tenantId.
             // Let's iterate all budgets and find the one for this project.
-            const res = await axios.get('http://localhost:4180/budgets', {
+            const res = await axios.get(`${API_URL}/budgets`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const projectBudget = res.data.find((b: any) => b.projectId === pid);
             if (!projectBudget) return [];
 
             // Now fetch details (lines) for this budget
-            const resDetails = await axios.get(`http://localhost:4180/budgets/${projectBudget.id}`, {
+            const resDetails = await axios.get(`${API_URL}/budgets/${projectBudget.id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return resDetails.data.budgetLines || [];

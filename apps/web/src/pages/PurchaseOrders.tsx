@@ -50,10 +50,11 @@ export const PurchaseOrders = () => {
     });
 
     // Fetch POs
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: pos, isLoading } = useQuery({
         queryKey: ['purchase-orders'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/purchase-orders', {
+            const res = await axios.get(`${API_URL}/purchase-orders`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
@@ -64,7 +65,7 @@ export const PurchaseOrders = () => {
     const { data: projects } = useQuery({
         queryKey: ['projects'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/projects', {
+            const res = await axios.get(`${API_URL}/projects`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
@@ -75,7 +76,7 @@ export const PurchaseOrders = () => {
     const createMutation = useMutation({
         mutationFn: async (data: CreatePOForm) => {
             const items = JSON.parse(data.itemsText);
-            return axios.post('http://localhost:4180/purchase-orders', {
+            return axios.post(`${API_URL}/purchase-orders`, {
                 projectId: data.projectId,
                 vendor: data.vendor,
                 items

@@ -17,10 +17,12 @@ export const Dashboard = () => {
 
     const [period, setPeriod] = useState('6m');
 
+    // Define API_URL locally for now
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: stats, isLoading } = useQuery({
         queryKey: ['dashboard', period],
         queryFn: async () => {
-            const res = await axios.get(`http://localhost:4180/reports/dashboard?period=${period}`, {
+            const res = await axios.get(`${API_URL}/reports/dashboard?period=${period}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;

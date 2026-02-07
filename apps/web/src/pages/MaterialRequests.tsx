@@ -52,10 +52,11 @@ export const MaterialRequests = () => {
     });
 
     // Fetch Requests
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: requests, isLoading } = useQuery({
         queryKey: ['material-requests'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/material-requests', {
+            const res = await axios.get(`${API_URL}/material-requests`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
@@ -67,7 +68,7 @@ export const MaterialRequests = () => {
     const { data: projects } = useQuery({
         queryKey: ['projects'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/projects', {
+            const res = await axios.get(`${API_URL}/projects`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
@@ -82,11 +83,12 @@ export const MaterialRequests = () => {
                 materialId: i.materialId,
                 quantity: i.quantity
             }));
-            
-            return axios.post('http://localhost:4180/material-requests', {
+
+
+            return axios.post(`${API_URL}/material-requests`, {
                 projectId: data.projectId,
                 title: data.title,
-                items: itemsPayload 
+                items: itemsPayload
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -160,7 +162,7 @@ export const MaterialRequests = () => {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white p-6 rounded-xl w-full max-w-2xl shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
                         <h3 className="text-xl font-bold mb-6 text-gray-800 border-b pb-2">{t('requests.newRequest')}</h3>
-                        
+
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -190,14 +192,14 @@ export const MaterialRequests = () => {
                             {/* Dynamic Items Section */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">Materiales Requeridos</label>
-                                
+
                                 <div className="space-y-3 mb-4">
                                     {fields.map((field, index) => (
                                         <div key={field.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100 group animate-slide-in-right">
                                             <div className="p-2 bg-blue-100 text-blue-600 rounded-md">
                                                 <Package size={18} />
                                             </div>
-                                            
+
                                             <div className="flex-1">
                                                 <div className="font-medium text-sm text-gray-900">{field.name}</div>
                                                 <div className="text-xs text-gray-500">{field.unit}</div>
@@ -212,7 +214,7 @@ export const MaterialRequests = () => {
                                                     placeholder="Qty"
                                                 />
                                             </div>
-                                            
+
                                             <button
                                                 type="button"
                                                 onClick={() => remove(index)}
@@ -222,7 +224,7 @@ export const MaterialRequests = () => {
                                             </button>
                                         </div>
                                     ))}
-                                    
+
                                     {fields.length === 0 && (
                                         <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50/50">
                                             <p className="text-sm text-gray-500">No hay materiales agregados.</p>
@@ -236,7 +238,7 @@ export const MaterialRequests = () => {
                                     <MaterialSelector onSelect={(material) => {
                                         // Check if already exists
                                         const exists = fields.some(f => f.materialId === material.id);
-                                        if(exists) {
+                                        if (exists) {
                                             toast.error('Este material ya está en la lista');
                                             return;
                                         }
@@ -250,7 +252,7 @@ export const MaterialRequests = () => {
                                     {errors.items && <p className="text-xs text-red-500 mt-1">{errors.items.message}</p>}
                                 </div>
                             </div>
-                            
+
                             <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors">{t('common.cancel')}</button>
                                 <button type="submit" disabled={isSubmitting} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm font-medium transition-colors disabled:opacity-50">

@@ -4,7 +4,6 @@ import { AppService } from './app.service';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { PrismaModule } from './prisma/prisma.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { BudgetsModule } from './modules/budgets/budgets.module';
 import { ChangeOrdersModule } from './modules/change-orders/change-orders.module';
@@ -16,13 +15,36 @@ import { ProgressEstimatesModule } from './modules/progress-estimates/progress-e
 import { SubcontractsModule } from './modules/subcontracts/subcontracts.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { RfisModule } from './modules/rfis/rfis.module';
-import { InspectionsModule } from './modules/inspections/inspections.module';
-import { ReportsModule } from './modules/reports/reports.module';
-import { ContractorsModule } from './modules/contractors/contractors.module';
 import { ActivitiesModule } from './modules/activities/activities.module';
+import { FieldUpdatesModule } from './modules/field-updates/field-updates.module';
+import { PhotosModule } from './modules/photos/photos.module';
+import { IssuesModule } from './modules/issues/issues.module';
+import { DailyLogModule } from './modules/daily-log/daily-log.module';
+import { FieldReportsModule } from './modules/field-reports/field-reports.module';
 
 @Module({
-  imports: [TenantsModule, UsersModule, AuthModule, ProjectsModule, BudgetsModule, ChangeOrdersModule, MaterialsModule, MaterialRequestsModule, PurchaseOrdersModule, RfqsModule, ProgressEstimatesModule, SubcontractsModule, InvoicesModule, RfisModule, InspectionsModule, ReportsModule, ContractorsModule, ActivitiesModule],
+  imports: [
+    TenantsModule,
+    UsersModule,
+    AuthModule,
+    ProjectsModule,
+    BudgetsModule,
+    ChangeOrdersModule,
+    MaterialsModule,
+    MaterialRequestsModule,
+    PurchaseOrdersModule,
+    RfqsModule,
+    ProgressEstimatesModule,
+    SubcontractsModule,
+    InvoicesModule,
+    RfisModule,
+    ActivitiesModule,
+    FieldUpdatesModule,
+    PhotosModule,
+    IssuesModule,
+    DailyLogModule,
+    FieldReportsModule
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

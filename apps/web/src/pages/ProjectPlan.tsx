@@ -30,9 +30,11 @@ export const ProjectPlan = () => {
     const [activityToAssign, setActivityToAssign] = useState<string | null>(null);
 
     // Create Activity Mutation
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const createActivityMutation = useMutation({
         mutationFn: async (data: any) => {
-            return axios.post('http://localhost:4180/activities', { ...data, tenantId: 'demo' }, {
+            // Remove hardcoded tenantId to rely on token
+            return axios.post(`${API_URL}/activities`, data, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         },
@@ -41,14 +43,18 @@ export const ProjectPlan = () => {
             setIsCreateModalOpen(false);
             toast.success('Actividad creada');
         },
-        onError: () => toast.error('Error al crear actividad')
+        onError: (err: any) => {
+            console.error(err);
+            const msg = err.response?.data?.message || 'Error al crear actividad';
+            toast.error(Array.isArray(msg) ? msg[0] : msg);
+        }
     });
 
     // Milestones Query
     const { data: milestones, refetch: refetchMilestones } = useQuery({
         queryKey: ['milestones', projectId],
         queryFn: async () => {
-            const res = await axios.get(`http://localhost:4180/projects/${projectId}/milestones`, {
+            const res = await axios.get(`${API_URL}/projects/${projectId}/milestones`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
@@ -59,7 +65,7 @@ export const ProjectPlan = () => {
     // Create Milestone Mutation
     const createMilestoneMutation = useMutation({
         mutationFn: async (data: any) => {
-            return axios.post(`http://localhost:4180/projects/${projectId}/milestones`, data, {
+            return axios.post(`${API_URL}/projects/${projectId}/milestones`, data, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         },
@@ -75,7 +81,7 @@ export const ProjectPlan = () => {
     const { data: contractors } = useQuery({
         queryKey: ['contractors'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/contractors', {
+            const res = await axios.get(`${API_URL}/contractors`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
@@ -85,7 +91,7 @@ export const ProjectPlan = () => {
     // Assign Contractor Mutation
     const assignContractorMutation = useMutation({
         mutationFn: async ({ activityId, contractorId }: { activityId: string, contractorId: string }) => {
-            return axios.patch(`http://localhost:4180/activities/${activityId}`, { contractorId }, {
+            return axios.patch(`${API_URL}/activities/${activityId}`, { contractorId }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         },
@@ -116,7 +122,7 @@ export const ProjectPlan = () => {
     const { data: project } = useQuery({
         queryKey: ['project', projectId],
         queryFn: async () => {
-            const res = await axios.get(`http://localhost:4180/projects/${projectId}`, {
+            const res = await axios.get(`${API_URL}/projects/${projectId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
@@ -127,7 +133,7 @@ export const ProjectPlan = () => {
     const { data: activities, isLoading } = useQuery({
         queryKey: ['activities', projectId],
         queryFn: async () => {
-            const res = await axios.get(`http://localhost:4180/activities/project/${projectId}`, {
+            const res = await axios.get(`${API_URL}/activities/project/${projectId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return buildTree(res.data);

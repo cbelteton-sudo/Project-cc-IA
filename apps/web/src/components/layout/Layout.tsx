@@ -26,28 +26,41 @@ export const Layout = () => {
             {/* Sidebar */}
             <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
                 <div className="h-16 flex items-center px-6 border-b border-slate-800">
-                     <span className="font-bold text-white text-lg tracking-tight">Admin<span className="text-blue-500">Panel</span></span>
+                    <span className="font-bold text-white text-lg tracking-tight">Admin<span className="text-blue-500">Panel</span></span>
                 </div>
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                     <SidebarItem to="/" icon={Home} label={t('sidebar.dashboard')} />
-                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('sidebar.projectMgmt')}</div>
-                    <SidebarItem to="/projects" icon={FolderKanban} label={t('sidebar.projects')} />
-                    <SidebarItem to="/budgets" icon={Banknote} label={t('sidebar.budgets')} />
-                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('sidebar.procurement')}</div>
-                    <SidebarItem to="/procurement/requests" icon={ShoppingCart} label={t('sidebar.materialRequests')} />
-                    <SidebarItem to="/procurement/orders" icon={FileText} label={t('sidebar.purchaseOrders')} />
 
-                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('sidebar.financials')}</div>
-                    <SidebarItem to="/invoices" icon={Banknote} label={t('sidebar.invoices')} />
+                    {['ADMIN', 'ADMINISTRADOR', 'DIRECTOR', 'PM'].includes(user?.role || '') && (
+                        <>
+                            <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('sidebar.projectMgmt')}</div>
+                            <SidebarItem to="/projects" icon={FolderKanban} label={t('sidebar.projects')} />
+                            <SidebarItem to="/budgets" icon={Banknote} label={t('sidebar.budgets')} />
+                            <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('sidebar.procurement')}</div>
+                            <SidebarItem to="/procurement/requests" icon={ShoppingCart} label={t('sidebar.materialRequests')} />
+                            <SidebarItem to="/procurement/orders" icon={FileText} label={t('sidebar.purchaseOrders')} />
 
-                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('sidebar.field')}</div>
-                    <SidebarItem to="/field" icon={ClipboardList} label={t('sidebar.fieldMgmt')} />
-                    <SidebarItem to="/whatsapp" icon={MessageSquare} label={t('sidebar.whatsappSim')} />
+                            <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('sidebar.financials')}</div>
+                            <SidebarItem to="/invoices" icon={Banknote} label={t('sidebar.invoices')} />
+                        </>
+                    )}
 
-                    <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('sidebar.admin')}</div>
-                    <SidebarItem to="/admin/users" icon={Users} label="Usuarios" />
-                    <SidebarItem to="/admin/contractors" icon={Briefcase} label="Contratistas" />
-                    <SidebarItem to="/settings" icon={Settings} label={t('sidebar.settings')} />
+                    {['ADMIN', 'ADMINISTRADOR', 'SUPERVISOR', 'RESIDENTE', 'USER'].includes(user?.role || '') && (
+                        <>
+                            <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('sidebar.field')}</div>
+                            <SidebarItem to="/field" icon={ClipboardList} label={t('sidebar.fieldMgmt')} />
+                            <SidebarItem to="/whatsapp" icon={MessageSquare} label={t('sidebar.whatsappSim')} />
+                        </>
+                    )}
+
+                    {['ADMIN', 'ADMINISTRADOR'].includes(user?.role || '') && (
+                        <>
+                            <div className="pt-4 pb-1 pl-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('sidebar.admin')}</div>
+                            <SidebarItem to="/admin/users" icon={Users} label="Usuarios" />
+                            <SidebarItem to="/admin/contractors" icon={Briefcase} label="Contratistas" />
+                            <SidebarItem to="/settings" icon={Settings} label={t('sidebar.settings')} />
+                        </>
+                    )}
                 </nav>
 
                 <div className="p-4 border-t border-slate-800">

@@ -54,10 +54,11 @@ export const Projects = () => {
     });
 
     // Fetch Projects
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: projects, isLoading } = useQuery({
         queryKey: ['projects'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/projects', {
+            const res = await axios.get(`${API_URL}/projects`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
@@ -68,7 +69,7 @@ export const Projects = () => {
     // Create Project Mutation
     const createMutation = useMutation({
         mutationFn: async (data: CreateProjectForm) => {
-            return axios.post('http://localhost:4180/projects', {
+            return axios.post(`${API_URL}/projects`, {
                 ...data,
                 currency: 'USD'
             }, {

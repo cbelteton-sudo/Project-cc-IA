@@ -19,7 +19,7 @@ const userSchema = z.object({
 
 type UserForm = z.infer<typeof userSchema>;
 
-const ROLES = ['ADMINISTRADOR', 'DIRECTOR', 'SUPERVISOR', 'OPERADOR', 'CONTRATISTA'];
+const ROLES = ['ADMINISTRADOR', 'DIRECTOR', 'SUPERVISOR', 'RESIDENTE', 'OPERADOR', 'CONTRATISTA'];
 
 export const AdminUsers = () => {
     const { token } = useAuth();
@@ -45,10 +45,11 @@ export const AdminUsers = () => {
     const selectedRole = watch('role');
 
     // Fetch Users
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: users, isLoading } = useQuery({
         queryKey: ['admin-users'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/admin/users', {
+            const res = await axios.get(`${API_URL}/admin/users`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
@@ -60,7 +61,7 @@ export const AdminUsers = () => {
     const { data: contractors } = useQuery({
         queryKey: ['contractors-list'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/contractors', {
+            const res = await axios.get(`${API_URL}/contractors`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
@@ -72,11 +73,11 @@ export const AdminUsers = () => {
     const mutation = useMutation({
         mutationFn: async (data: UserForm) => {
             if (editingUser) {
-                return axios.patch(`http://localhost:4180/admin/users/${editingUser.id}`, data, {
+                return axios.patch(`${API_URL}/admin/users/${editingUser.id}`, data, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
             }
-            return axios.post('http://localhost:4180/admin/users', data, {
+            return axios.post(`${API_URL}/admin/users`, data, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         },
@@ -154,8 +155,8 @@ export const AdminUsers = () => {
                                 </td>
                                 <td className="px-6 py-3">
                                     <span className={`px-2 py-1 rounded-full text-xs font-medium border ${user.role === 'ADMINISTRADOR' ? 'bg-purple-50 text-purple-700 border-purple-100' :
-                                            user.role === 'CONTRATISTA' ? 'bg-orange-50 text-orange-700 border-orange-100' :
-                                                'bg-gray-100 text-gray-700 border-gray-200'
+                                        user.role === 'CONTRATISTA' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                            'bg-gray-100 text-gray-700 border-gray-200'
                                         }`}>
                                         {user.role}
                                     </span>

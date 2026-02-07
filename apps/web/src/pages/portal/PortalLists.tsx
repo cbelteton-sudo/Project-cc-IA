@@ -7,10 +7,11 @@ import { FileDown, CheckCircle, AlertCircle } from 'lucide-react';
 
 export const PortalProjects = () => {
     const { token } = useAuth();
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: assignments } = useQuery({
         queryKey: ['portal-projects'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/portal/contractor/projects', { headers: { Authorization: `Bearer ${token}` } });
+            const res = await axios.get(`${API_URL}/portal/contractor/projects`, { headers: { Authorization: `Bearer ${token}` } });
             return res.data;
         }, enabled: !!token
     });
@@ -36,10 +37,11 @@ export const PortalProjects = () => {
 
 export const PortalTasks = () => {
     const { token } = useAuth();
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: tasks } = useQuery({
         queryKey: ['portal-tasks'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/portal/contractor/tasks', { headers: { Authorization: `Bearer ${token}` } });
+            const res = await axios.get(`${API_URL}/portal/contractor/tasks`, { headers: { Authorization: `Bearer ${token}` } });
             return res.data;
         }, enabled: !!token
     });
@@ -71,7 +73,7 @@ export const PortalTasks = () => {
                                 </td>
                                 <td className="px-6 py-3">
                                     <span className={`px-2 py-1 rounded text-xs font-bold ${t.status === 'DONE' ? 'bg-green-100 text-green-700' :
-                                            t.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                                        t.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
                                         }`}>{t.status}</span>
                                 </td>
                                 <td className="px-6 py-3 text-sm font-medium">{t.percent}%</td>
@@ -87,10 +89,11 @@ export const PortalTasks = () => {
 export const PortalOrders = () => {
     const { token } = useAuth();
     const { formatCurrency, currency } = useRegion();
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: orders } = useQuery({
         queryKey: ['portal-orders'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/portal/contractor/orders', { headers: { Authorization: `Bearer ${token}` } });
+            const res = await axios.get(`${API_URL}/portal/contractor/orders`, { headers: { Authorization: `Bearer ${token}` } });
             return res.data;
         }, enabled: !!token
     });

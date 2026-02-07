@@ -11,9 +11,10 @@ export const WhatsappSimulator = () => {
         { text: "Hello! I am the Construction Bot. Send me a message to create a request.", isBot: true }
     ]);
 
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const mutation = useMutation({
         mutationFn: async (text: string) => {
-            return axios.post('http://localhost:4180/whatsapp/webhook', {
+            return axios.post(`${API_URL}/whatsapp/webhook`, {
                 text,
                 sender: '+15550123456',
                 // Optional: projectId can be omitted to test auto-detection
@@ -58,8 +59,8 @@ export const WhatsappSimulator = () => {
                     <div
                         key={i}
                         className={`max-w-[80%] p-3 rounded-lg text-sm shadow-sm ${msg.isBot
-                                ? 'bg-white self-start rounded-tl-none'
-                                : 'bg-[#DCF8C6] self-end rounded-tr-none'
+                            ? 'bg-white self-start rounded-tl-none'
+                            : 'bg-[#DCF8C6] self-end rounded-tr-none'
                             }`}
                     >
                         {msg.text}

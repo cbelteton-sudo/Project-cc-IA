@@ -8,6 +8,10 @@ import App from './App';
 import './i18n';
 import './index.css';
 
+
+
+import { NetworkProvider } from './context/NetworkContext';
+
 const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -16,7 +20,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <AuthProvider>
           <RegionProvider>
-            <App />
+            <NetworkProvider>
+              <App />
+            </NetworkProvider>
           </RegionProvider>
         </AuthProvider>
       </BrowserRouter>

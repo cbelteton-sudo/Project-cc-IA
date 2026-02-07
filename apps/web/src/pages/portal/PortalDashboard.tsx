@@ -21,10 +21,11 @@ export const PortalDashboard = () => {
     const { token } = useAuth();
     const { formatCurrency } = useRegion();
 
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: dashboard, isLoading } = useQuery({
         queryKey: ['portal-dashboard'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/portal/contractor/dashboard', {
+            const res = await axios.get(`${API_URL}/portal/contractor/dashboard`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;

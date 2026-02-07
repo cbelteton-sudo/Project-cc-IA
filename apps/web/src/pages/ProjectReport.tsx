@@ -12,10 +12,11 @@ export const ProjectReport = () => {
     const { id } = useParams();
     const { token } = useAuth();
 
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: report, isLoading } = useQuery({
         queryKey: ['project-report', id],
         queryFn: async () => {
-            const res = await axios.get(`http://localhost:4180/reports/project/${id}`, {
+            const res = await axios.get(`${API_URL}/reports/project/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;

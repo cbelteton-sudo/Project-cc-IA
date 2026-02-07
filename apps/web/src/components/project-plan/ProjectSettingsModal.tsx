@@ -38,7 +38,8 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project, token }: Projec
 
     const mutation = useMutation({
         mutationFn: async (data: SettingsForm) => {
-            return axios.patch(`http://localhost:4180/projects/${project.id}`, data, {
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
+            return axios.patch(`${API_URL}/projects/${project.id}`, data, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         },

@@ -23,10 +23,11 @@ export const Budgets = () => {
     const { t } = useTranslation();
 
     // Fetch Projects to list them
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: projects, isLoading } = useQuery({
         queryKey: ['projects'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/projects', {
+            const res = await axios.get(`${API_URL}/projects`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;

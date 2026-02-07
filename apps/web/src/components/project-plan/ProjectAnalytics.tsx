@@ -9,31 +9,34 @@ import { Loader2 } from 'lucide-react';
 
 interface ProjectAnalyticsProps {
     projectId: string;
-    token: string;
+    token: string | null;
 }
 
 export const ProjectAnalytics = ({ projectId, token }: ProjectAnalyticsProps) => {
 
     // Fetch S-Curve Data
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: sCurveData, isLoading: isLoadingSCurve } = useQuery({
         queryKey: ['s-curve', projectId],
         queryFn: async () => {
-            const { data } = await axios.get(`http://localhost:4180/reports/project/${projectId}/s-curve`, {
+            const { data } = await axios.get(`${API_URL}/reports/project/${projectId}/s-curve`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return data;
-        }
+        },
+        enabled: !!token
     });
 
     // Fetch Histogram Data
     const { data: histogramData, isLoading: isLoadingHistogram } = useQuery({
         queryKey: ['histogram', projectId],
         queryFn: async () => {
-            const { data } = await axios.get(`http://localhost:4180/reports/project/${projectId}/histogram`, {
+            const { data } = await axios.get(`${API_URL}/reports/project/${projectId}/histogram`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return data;
-        }
+        },
+        enabled: !!token
     });
 
     if (isLoadingSCurve || isLoadingHistogram) {

@@ -19,10 +19,11 @@ const KPICard = ({ title, value, icon: Icon, color }: any) => (
 export const ProjectBudget = () => {
     const { id } = useParams();
 
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: project, isLoading, error } = useQuery({
         queryKey: ['project-budget', id],
         queryFn: async () => {
-            const res = await axios.get(`http://localhost:4180/budgets/${id}/summary`);
+            const res = await axios.get(`${API_URL}/budgets/${id}/summary`);
             return res.data;
         },
         // We currently query by budget ID directly for simplicity in this MVP view, 
@@ -41,7 +42,7 @@ export const ProjectBudget = () => {
     const { data: projectData, isLoading: isProjectLoading } = useQuery({
         queryKey: ['project', id],
         queryFn: async () => {
-            const res = await axios.get(`http://localhost:4180/projects/${id}`);
+            const res = await axios.get(`${API_URL}/projects/${id}`);
             return res.data;
         }
     });
@@ -51,7 +52,7 @@ export const ProjectBudget = () => {
     const { data: budgetData, isLoading: isBudgetLoading } = useQuery({
         queryKey: ['budget-summary', budgetId],
         queryFn: async () => {
-            const res = await axios.get(`http://localhost:4180/budgets/${budgetId}/summary`);
+            const res = await axios.get(`${API_URL}/budgets/${budgetId}/summary`);
             return res.data;
         },
         enabled: !!budgetId

@@ -41,10 +41,11 @@ export const Contractors = () => {
     });
 
     // Fetch
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: contractors, isLoading } = useQuery({
         queryKey: ['contractors-full'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/contractors', {
+            const res = await axios.get(`${API_URL}/contractors`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             // Should fetch extended profile if endpoint supports it, assuming it does based on Service
@@ -58,11 +59,11 @@ export const Contractors = () => {
         mutationFn: async (data: ContractorForm) => {
             // Transform optional empty strings if needed, backend should handle
             if (editingId) {
-                return axios.patch(`http://localhost:4180/contractors/${editingId}`, data, {
+                return axios.patch(`${API_URL}/contractors/${editingId}`, data, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
             }
-            return axios.post('http://localhost:4180/contractors', data, {
+            return axios.post(`${API_URL}/contractors`, data, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         },

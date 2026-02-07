@@ -34,7 +34,8 @@ export const CloseActivityModal = ({ isOpen, onClose, activity, token, existingR
 
     const closeMutation = useMutation({
         mutationFn: async (data: any) => {
-            return axios.post(`http://localhost:4180/activities/${activity.id}/close`, data, {
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
+            return axios.post(`${API_URL}/activities/${activity.id}/close`, data, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         },

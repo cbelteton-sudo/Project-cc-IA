@@ -10,7 +10,15 @@ import { Budgets } from './pages/Budgets'; // Imported New Page
 import { MaterialRequests } from './pages/MaterialRequests';
 import { PurchaseOrders } from './pages/PurchaseOrders';
 import { Invoices } from './pages/Invoices';
-import { Field } from './pages/Field';
+
+import FieldLayout from './layouts/FieldLayout';
+import { FieldDashboard } from './pages/field/FieldDashboard';
+import { FieldToday } from './pages/field/FieldToday';
+import { FieldEntryDetail } from './pages/field/FieldEntryDetail';
+import { FieldDailySummary } from './pages/field/FieldDailySummary';
+import { ActivityUpdate } from './pages/field/ActivityUpdate';
+import { IssueTracker } from './pages/field/IssueTracker';
+import { DailyLogView } from './pages/field/DailyLogView';
 import { ProjectReport } from './pages/ProjectReport';
 import { WhatsappSimulator } from './pages/WhatsappSimulator';
 import { Dashboard } from './pages/Dashboard';
@@ -45,16 +53,27 @@ function App() {
           <Route path="/procurement/orders" element={<PurchaseOrders />} />
 
           <Route path="/invoices" element={<Invoices />} />
-          <Route path="/field" element={<Field />} />
+
+
+          <Route path="/field" element={<FieldLayout />}>
+            <Route index element={<Navigate to="today" replace />} />
+            <Route path="today" element={<FieldToday />} />
+            <Route path="entry/:id" element={<FieldEntryDetail />} />
+            <Route path="activity/:id/update" element={<ActivityUpdate />} />
+            <Route path="issues" element={<IssueTracker />} />
+            <Route path="daily" element={<FieldDailySummary />} />
+            <Route path="logs" element={<DailyLogView />} />
+          </Route>
+
           <Route path="/whatsapp" element={<WhatsappSimulator />} />
+
           <Route path="/reports/project/:id" element={<ProjectReport />} />
 
           {/* Admin Routes */}
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/contractors" element={<Contractors />} />
 
-          <Route path="/admin/users" element={<AdminUsers />} />
-          <Route path="/admin/contractors" element={<Contractors />} />
+
 
           <Route path="*" element={<div className="p-10"><h1>404 - Page Coming Soon</h1><p>This module is currently being integrated.</p></div>} />
         </Route>

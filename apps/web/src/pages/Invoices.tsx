@@ -48,10 +48,11 @@ export const Invoices = () => {
     const simulatedFile = watch('simulatedFile');
 
     // Fetch Projects for dropdown
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: projects } = useQuery({
         queryKey: ['projects'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/projects', {
+            const res = await axios.get(`${API_URL}/projects`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
@@ -62,7 +63,7 @@ export const Invoices = () => {
     const { data: invoices, isLoading } = useQuery({
         queryKey: ['invoices'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/invoices', {
+            const res = await axios.get(`${API_URL}/invoices`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
@@ -71,7 +72,7 @@ export const Invoices = () => {
 
     const createInvoiceMutation = useMutation({
         mutationFn: async (data: CreateInvoiceForm) => {
-            return axios.post('http://localhost:4180/invoices', {
+            return axios.post(`${API_URL}/invoices`, {
                 ...data,
                 invoiceNumber: `INV-${Math.floor(Math.random() * 10000)}`,
                 total: parseFloat(data.total),

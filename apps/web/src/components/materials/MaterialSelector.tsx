@@ -45,18 +45,19 @@ export const MaterialSelector = ({ onSelect }: MaterialSelectorProps) => {
                 // For now, fetching all and filtering client-side or using the Basic CRUD list 
                 // assuming the backend returns all materials for the tenant.
                 // Optimally: GET /materials?search={query}
-                const res = await axios.get('http://localhost:4180/materials', {
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
+                const res = await axios.get(`${API_URL}/materials`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                
+
                 const allMaterials = res.data;
                 console.log('API Params:', query);
                 console.log('API Response:', allMaterials);
-                
-                const filtered = allMaterials.filter((m: Material) => 
+
+                const filtered = allMaterials.filter((m: Material) =>
                     m.name.toLowerCase().includes(query.toLowerCase())
                 );
-                
+
                 setResults(filtered.slice(0, 5)); // Limit to 5 results
             } catch (error) {
                 console.error("Search failed", error);

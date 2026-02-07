@@ -14,8 +14,9 @@ export const Login = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            // In a real app, use an env var for API URL
-            const res = await axios.post('http://localhost:4180/auth/login', { email, password });
+            // TEMPORARY: Hardcoded to ensure fix works immediately
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
+            const res = await axios.post(`${API_URL}/auth/login`, { email, password });
             const { access_token } = res.data;
 
             // Basic jwt decode simulation for MVP (since we don't have a /me endpoint yet)

@@ -90,6 +90,13 @@ model Project {
   activities       ProjectActivity[]
   milestones       ProjectMilestone[]
   contractorAssignments ContractorProjectAssignment[]
+
+  // Phase 6: Field Management
+  fieldUpdates    FieldUpdate[]
+  photos          Photo[]
+  issues          Issue[]
+  measurementTemplates MeasurementTemplate[]
+  fieldDailyReports FieldDailyReport[]
 }
 
 // --- BUDGET ---
@@ -371,6 +378,21 @@ model ProjectActivity {
   
   milestones      ProjectMilestone[]
 
+  // Phase 6: Field Management
+  measurementType String   @default("QUANTITY") // QUANTITY, CHECKLIST, MILESTONE, TIME_ESTIMATE
+  
+  measurementTemplateId String?
+  measurementTemplate   MeasurementTemplate? @relation(fields: [measurementTemplateId], references: [id])
+  
+  totalQty        Float?
+  unit            String?
+
+  fieldUpdates    FieldUpdateItem[]
+  photos          Photo[]
+  issues          Issue[]
+  
+  fieldDailyEntries FieldDailyEntry[]
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
@@ -468,4 +490,180 @@ model ContractorProjectAssignment {
   updatedAt    DateTime @updatedAt
 
   @@unique([tenantId, contractorId, projectId])
+}
+
+// --- FIELD MANAGEMENT (Phase 6) ---
+
+model MeasurementTemplate {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  name      String
+  type      String   @default("CHECKLIST") // CHECKLIST, MILESTONE
+  isDefault Boolean  @default(false)
+  items     MeasurementTemplateItem[]
+  
+  activities ProjectActivity[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MeasurementTemplateItem {
+  id         String              @id @default(uuid())
+  templateId String
+  template   MeasurementTemplate @relation(fields: [templateId], references: [id])
+  label      String
+  weight     Int // Sum should be 100 per template
+  orderIndex Int
+}
+
+model FieldUpdate {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  date        DateTime // The "daily log" date
+  
+  status      String   @default("DRAFT") // DRAFT, SUBMITTED, APPROVED, REJECTED
+  
+  submittedAt DateTime?
+  approvedAt  DateTime?
+  approvedBy  String? // User ID
+  rejectionReason String?
+
+  createdBy   String 
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items       FieldUpdateItem[]
+  photos      Photo[]
+}
+
+model FieldUpdateItem {
+  id             String   @id @default(uuid())
+  fieldUpdateId  String
+  fieldUpdate    FieldUpdate @relation(fields: [fieldUpdateId], references: [id])
+  
+  activityId     String
+  activity       ProjectActivity @relation(fields: [activityId], references: [id])
+
+  qtyDone        Float? // For QUANTITY type
+  checklistState String? // JSON: { itemId: boolean }
+  milestoneState String? // JSON: { itemId: boolean }
+  manualPercent  Int?
+  
+  notes          String?
+  isRisk         Boolean @default(false)
+  overrideJustification String?
+  
+  suggestedPercent Int?
+  confidenceScore  Int? // 0-100
+  deltaFromLast    Int?
+  requiresReview   Boolean @default(false)
+}
+
+model Photo {
+  id             String   @id @default(uuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id])
+  
+  activityId     String?
+  activity       ProjectActivity? @relation(fields: [activityId], references: [id])
+  
+  fieldUpdateId  String?
+  fieldUpdate    FieldUpdate? @relation(fields: [fieldUpdateId], references: [id])
+  
+  urlMain        String
+  urlThumb       String?
+  
+  width          Int?
+  height         Int?
+  sizeBytes      Int?
+  hash           String? // SHA-256 for dedup/integrity
+
+  dailyEntryId   String?
+  dailyEntry     FieldDailyEntry? @relation(fields: [dailyEntryId], references: [id])
+
+  capturedAt     DateTime?
+  uploadedAt     DateTime @default(now())
+  createdBy      String
+}
+
+model Issue {
+  id             String   @id @default(uuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id])
+  
+  activityId     String?
+  activity       ProjectActivity? @relation(fields: [activityId], references: [id])
+  
+  title          String
+  description    String?
+  severity       String   @default("MEDIUM") // HIGH, MEDIUM, LOW
+  status         String   @default("OPEN") // OPEN, IN_PROGRESS, BLOCKED, DONE
+  
+  ownerUserId    String?
+  dueDate        DateTime?
+  
+  comments       Comment[]
+
+  createdBy      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Comment {
+  id          String   @id @default(uuid())
+  
+  // Polymorphic-ish linking
+  issueId     String?
+  issue       Issue?   @relation(fields: [issueId], references: [id])
+  
+  // Could link to FieldUpdate or Activity too if needed, but starting with Issues
+  
+  text        String
+  createdBy   String
+  createdAt   DateTime @default(now())
+}
+
+// --- PHASE 7: FIELD QUICK REPORTING ---
+
+model FieldDailyReport {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  date        DateTime // YYYY-MM-DD
+  status      String   @default("DRAFT") // DRAFT, SUBMITTED, APPROVED
+  createdBy   String   // UserId
+  submittedAt DateTime?
+  approvedAt  DateTime?
+  approvedBy  String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  entries     FieldDailyEntry[]
+  
+  @@unique([projectId, date])
+}
+
+model FieldDailyEntry {
+  id                 String           @id @default(uuid())
+  dailyReportId      String
+  dailyReport        FieldDailyReport @relation(fields: [dailyReportId], references: [id])
+  
+  scheduleActivityId String?          // Optional link to ProjectActivity
+  activity           ProjectActivity? @relation(fields: [scheduleActivityId], references: [id])
+  
+  wbs                String?          // Snapshot
+  activityName       String
+  
+  status             String           // NOT_STARTED, IN_PROGRESS, DONE, BLOCKED
+  progressChip       Int?             // 0, 25, 50, 75, 100
+  note               String?
+  
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  
+  photos             Photo[]
 }

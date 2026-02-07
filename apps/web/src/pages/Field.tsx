@@ -10,10 +10,11 @@ export const Field = () => {
     const [activeTab, setActiveTab] = useState<'rfis' | 'inspections'>('rfis');
 
     // Fetch Data
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: rfis } = useQuery({
         queryKey: ['rfis'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/rfis', {
+            const res = await axios.get(`${API_URL}/rfis`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
@@ -23,7 +24,7 @@ export const Field = () => {
     const { data: inspections } = useQuery({
         queryKey: ['inspections'],
         queryFn: async () => {
-            const res = await axios.get('http://localhost:4180/inspections', {
+            const res = await axios.get(`${API_URL}/inspections`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
@@ -101,7 +102,7 @@ export const Field = () => {
                         <div key={insp.id} className="bg-white p-4 rounded-xl border border-gray-200 flex items-center justify-between hover:bg-gray-50 transition">
                             <div className="flex items-center gap-4">
                                 <div className={`p-3 rounded-full ${insp.status === 'PASSED' ? 'bg-green-100 text-green-600' :
-                                        insp.status === 'FAILED' ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-600'
+                                    insp.status === 'FAILED' ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-600'
                                     }`}>
                                     {insp.status === 'PASSED' ? <CheckCircle size={24} /> :
                                         insp.status === 'FAILED' ? <AlertTriangle size={24} /> : <ClipboardList size={24} />}
