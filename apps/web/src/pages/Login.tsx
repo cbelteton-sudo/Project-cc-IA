@@ -35,6 +35,8 @@ export const Login = () => {
 
             if (payload.role === 'CONTRATISTA') {
                 navigate('/portal/dashboard');
+            } else if (payload.role === 'PM') {
+                navigate('/field/dashboard');
             } else {
                 navigate('/');
             }

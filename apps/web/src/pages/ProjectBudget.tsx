@@ -2,7 +2,9 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { Plus, ArrowLeft, DollarSign, PieChart, ShoppingCart, FileText, Wallet, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { Plus, ArrowLeft, DollarSign, PieChart, ShoppingCart, FileText, Wallet, TrendingUp, AlertCircle, CheckCircle, Settings } from 'lucide-react';
 
 const KPICard = ({ title, value, icon: Icon, color }: any) => (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
@@ -18,6 +20,7 @@ const KPICard = ({ title, value, icon: Icon, color }: any) => (
 
 export const ProjectBudget = () => {
     const { id } = useParams();
+    const queryClient = useQueryClient();
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
     const { data: project, isLoading, error } = useQuery({
@@ -58,6 +61,20 @@ export const ProjectBudget = () => {
         enabled: !!budgetId
     });
 
+    const updateProjectMutation = useMutation({
+        mutationFn: async (data: any) => {
+            return axios.patch(`${API_URL}/projects/${id}`, data);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['project', id] });
+            setIsSettingsOpen(false);
+            toast.success('Project settings updated');
+        },
+        onError: () => toast.error('Failed to update settings')
+    });
+
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
     if (isProjectLoading) return <div className="p-8">Loading project...</div>;
     if (!projectData) return <div className="p-8">Project not found</div>;
 
@@ -68,26 +85,47 @@ export const ProjectBudget = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-4">
-                <Link to="/projects" className="p-2 hover:bg-gray-100 rounded-full transition">
-                    <ArrowLeft size={20} className="text-gray-600" />
-                </Link>
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-800">{projectData?.name}</h1>
-                    <div className="flex items-center gap-2 text-gray-500 mt-1">
-                        <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-mono">{projectData?.code}</span>
-                        <span>•</span>
-                        {projectData.globalBudget && (
-                            <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-mono font-bold">
-                                Global Budget: {currency(projectData.globalBudget)}
-                            </span>
-                        )}
-                        <span>•</span>
-                        <Link to={`/reports/project/${id}`} className="text-blue-600 hover:underline flex items-center gap-1 text-sm">
-                            <FileText size={14} /> View Financial Report
-                        </Link>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <Link to="/projects" className="p-2 hover:bg-gray-100 rounded-full transition">
+                        <ArrowLeft size={20} className="text-gray-600" />
+                    </Link>
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-800">{projectData?.name}</h1>
+                        <div className="flex items-center gap-2 text-gray-500 mt-1">
+                            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-mono">{projectData?.code}</span>
+                            <span>•</span>
+                            {projectData.globalBudget && (
+                                <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-mono font-bold">
+                                    Global Budget: {currency(projectData.globalBudget)}
+                                </span>
+                            )}
+                            <span>•</span>
+                            <Link to={`/reports/project/${id}`} className="text-blue-600 hover:underline flex items-center gap-1 text-sm">
+                                <FileText size={14} /> View Financial Report
+                            </Link>
+                            <span>•</span>
+                            <Link to={`/projects/${id}/report`} className="text-purple-600 hover:underline flex items-center gap-1 text-sm font-bold">
+                                <FileText size={14} /> Executive Report
+                            </Link>
+                            {projectData?.enablePMDashboard && (
+                                <>
+                                    <span>•</span>
+                                    <Link to={`/projects/${id}/pm`} className="text-orange-600 hover:underline flex items-center gap-1 text-sm font-bold">
+                                        <PieChart size={14} /> PM Dashboard
+                                    </Link>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
+                <button
+                    onClick={() => setIsSettingsOpen(true)}
+                    className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 transition"
+                    title="Project Settings"
+                >
+                    <Settings size={20} />
+                </button>
             </div>
 
             {!budgetId ? (
@@ -170,6 +208,42 @@ export const ProjectBudget = () => {
                         )}
                     </div>
                 </>
+            )}
+
+            {/* Settings Modal */}
+            {isSettingsOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl">
+                        <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+                            <h3 className="text-xl font-bold text-gray-800">Project Settings</h3>
+                            <button onClick={() => setIsSettingsOpen(false)} className="text-gray-400 hover:text-gray-600"><Plus size={24} className="rotate-45" /></button>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h4 className="font-medium text-gray-900">PM Dashboard</h4>
+                                    <p className="text-sm text-gray-500">Enable advanced risk tracking and dashboard.</p>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    checked={projectData?.enablePMDashboard || false}
+                                    onChange={(e) => updateProjectMutation.mutate({ enablePMDashboard: e.target.checked })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mt-8 flex justify-end">
+                            <button
+                                onClick={() => setIsSettingsOpen(false)}
+                                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

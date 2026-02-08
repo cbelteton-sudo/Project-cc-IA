@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Camera, Save, AlertTriangle, FileText, X, Check, Clock } from 'lucide-react';
 import { useNetwork } from '../../context/NetworkContext';
+import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import { getDB } from '../../services/db';
 import { SyncQueue } from '../../services/sync-queue';
@@ -31,6 +32,7 @@ export const FieldEntryDetail: React.FC = () => {
     const location = useLocation();
     const { state } = location;
     const { isOnline } = useNetwork();
+    const { token, user } = useAuth(); // Get user
 
     // Data State
     const [activity, setActivity] = useState<ActivityDetail | null>(null);
@@ -135,9 +137,26 @@ export const FieldEntryDetail: React.FC = () => {
                         status: e.status,
                         note: e.note,
                         createdAt: new Date(e.updatedAt).toISOString(),
-                        author: 'Tú', // For now, local items author = "Tú" (You)
+                        author: e.createdByName || (e.createdBy === user?.userId ? user?.name : 'Usuario'),
                         photos
                     };
+                }));
+
+                // 3. Load Offline Queue for this Activity
+                const queue = await db.getAll('offline_queue');
+                const pendingItems = queue.filter((q: any) => q.payload.activityId === id).map((q: any) => ({
+                    id: q.localId,
+                    date: q.payload.date || new Date().toISOString(),
+                    status: q.payload.status,
+                    note: q.payload.note,
+                    createdAt: new Date(q.createdAt).toISOString(),
+                    author: user?.name,
+                    isPending: true,
+                    photos: q.photos.map((p: any) => ({
+                        id: p.id,
+                        urlThumb: URL.createObjectURL(p.blob),
+                        urlMain: URL.createObjectURL(p.blob)
+                    }))
                 }));
 
                 const formattedApiItems = apiItems.map((e: any) => ({
@@ -156,7 +175,7 @@ export const FieldEntryDetail: React.FC = () => {
 
                 const apiIds = new Set(formattedApiItems.map(i => i.id));
                 const uniqueLocal = localItems.filter(l => !apiIds.has(l.id));
-                const merged = [...uniqueLocal, ...formattedApiItems].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                const merged = [...pendingItems, ...uniqueLocal, ...formattedApiItems].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                 setLogItems(merged);
 
             } catch (e) {
@@ -212,12 +231,16 @@ export const FieldEntryDetail: React.FC = () => {
             const entryData = {
                 id: entryId,
                 dailyReportId: report.id,
+                projectId, // Add for Backend resolution
+                dateString: dateStr, // Add for Backend resolution
                 scheduleActivityId: activity.id,
                 activityName: activity.name,
-                status: activity.status, // FIX: Inherit current activity status instead of hardcoded 'IN_PROGRESS'
+                status: activity.status,
                 note,
                 progressChip: 0, // Placeholder
-                updatedAt: Date.now()
+                updatedAt: Date.now(),
+                createdBy: user?.userId, // Capture author ID at creation
+                createdByName: user?.name // Capture author Name for local display
             };
             await db.put('field_daily_entries', entryData);
 
@@ -242,8 +265,8 @@ export const FieldEntryDetail: React.FC = () => {
             const newItem = {
                 id: entryId,
                 date: new Date().toISOString(),
-                status: activity.status, // FIX: Inherit status
-                author: 'Tú', // FIX: Author name for optimistic update
+                status: activity.status,
+                author: user?.name || 'Usuario', // FIX: Use real user name
                 note,
                 createdAt: new Date().toISOString(),
                 photos: tempPhotos.map(p => ({

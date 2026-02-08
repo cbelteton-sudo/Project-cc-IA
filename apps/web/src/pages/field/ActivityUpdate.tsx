@@ -238,7 +238,11 @@ export const ActivityUpdate: React.FC = () => {
                         </div>
                     </>
                 ) : (
-                    <ActivityLogTimeline items={logItems} onPhotoClick={openLightbox} />
+                    <ActivityLogTimeline
+                        items={logItems}
+                        onPhotoClick={openLightbox}
+                        onReportToday={() => setActiveTab('UPDATE')}
+                    />
                 )}
             </div>
 

@@ -14,8 +14,8 @@ export class FieldReportsController {
     }
 
     @Post('entries')
-    upsertEntry(@Body() dto: any) {
-        return this.fieldReportsService.upsertEntry(dto);
+    upsertEntry(@Body() dto: any, @ActiveUser() user: any) {
+        return this.fieldReportsService.upsertEntry(dto, user.userId);
     }
 
     @Patch(':id/submit')
@@ -26,5 +26,10 @@ export class FieldReportsController {
     @Get(':id/pdf')
     generatePdf(@Param('id') id: string) {
         return this.fieldReportsService.generatePdf(id);
+    }
+
+    @Get('pm/dashboard')
+    getPMDashboardMetrics(@Query('projectId') projectId: string) {
+        return this.fieldReportsService.getPMDashboardMetrics(projectId);
     }
 }

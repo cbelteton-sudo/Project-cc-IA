@@ -21,6 +21,9 @@ import { PhotosModule } from './modules/photos/photos.module';
 import { IssuesModule } from './modules/issues/issues.module';
 import { DailyLogModule } from './modules/daily-log/daily-log.module';
 import { FieldReportsModule } from './modules/field-reports/field-reports.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { PMDashboardModule } from './modules/pm-dashboard/pm-dashboard.module';
 
 @Module({
   imports: [
@@ -43,7 +46,10 @@ import { FieldReportsModule } from './modules/field-reports/field-reports.module
     PhotosModule,
     IssuesModule,
     DailyLogModule,
-    FieldReportsModule
+    FieldReportsModule,
+    ReportsModule,
+    NotificationsModule,
+    PMDashboardModule
   ],
   controllers: [AppController],
   providers: [AppService],

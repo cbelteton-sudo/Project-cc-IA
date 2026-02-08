@@ -18,6 +18,11 @@ export class ReportsController {
     return this.reportsService.getProjectReport(id, user.tenantId);
   }
 
+  @Get('project/:id/executive')
+  getExecutiveReport(@Param('id') id: string, @ActiveUser() user: any, @Query() query: any) {
+    return this.reportsService.getExecutiveReport(id, user.tenantId, query);
+  }
+
   @Get('project/:id/s-curve')
   getSCurve(@Param('id') id: string, @ActiveUser() user: any) {
     return this.reportsService.getSCurve(id, user.tenantId);

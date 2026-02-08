@@ -44,6 +44,7 @@ model User {
 
   auditLogs AuditLog[]
   assignedActivities ProjectActivity[]
+  notifications      Notification[]
 }
 
 model AuditLog {
@@ -97,7 +98,19 @@ model Project {
   issues          Issue[]
   measurementTemplates MeasurementTemplate[]
   fieldDailyReports FieldDailyReport[]
+
+  // Phase 16: Reports
+  enableReports Boolean @default(false)
+
+  // Phase 17: PM Dashboard
+  enablePMDashboard Boolean @default(false)
+
+  // Phase 18: Field Offline Queue
+  enableOfflineQueue Boolean @default(false)
 }
+
+// ... (Budget model starts here)
+
 
 // --- BUDGET ---
 
@@ -337,6 +350,7 @@ model Contractor {
   users      User[]
   assignments ContractorProjectAssignment[]
   purchaseOrders PurchaseOrder[]
+  issues         Issue[]
 }
 
 model ProjectActivity {
@@ -392,6 +406,15 @@ model ProjectActivity {
   issues          Issue[]
   
   fieldDailyEntries FieldDailyEntry[]
+
+  lastUpdateAt    DateTime @default(now())
+  
+  blockedReason       String?
+  blockedComment      String?
+  blockedEta          DateTime?
+  blockedOwnerUserId  String?
+  
+  committedDate       DateTime?
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -599,8 +622,13 @@ model Issue {
   
   title          String
   description    String?
-  severity       String   @default("MEDIUM") // HIGH, MEDIUM, LOW
-  status         String   @default("OPEN") // OPEN, IN_PROGRESS, BLOCKED, DONE
+  severity       String   @default("MEDIUM") // HIGH, MEDIUM, LOW, CRITICAL
+  status         String   @default("OPEN") // OPEN, IN_PROGRESS, BLOCKED, DONE, CLOSED
+  
+  // Phase 16
+  closedAt       DateTime?
+  contractorId   String?
+  contractor     Contractor? @relation(fields: [contractorId], references: [id])
   
   ownerUserId    String?
   dueDate        DateTime?
@@ -666,4 +694,18 @@ model FieldDailyEntry {
   updatedAt          DateTime         @updatedAt
   
   photos             Photo[]
+  
+  createdBy          String?          // User ID of the actual editor
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // DUE_SOON, OVERDUE, NO_UPDATE, MENTION, REQUEST_UPDATE
+  entityType String  // ACTIVITY, ISSUE
+  entityId   String
+  message    String
+  readAt     DateTime?
+  createdAt  DateTime @default(now())
 }

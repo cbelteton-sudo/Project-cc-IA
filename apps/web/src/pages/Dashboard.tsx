@@ -10,10 +10,21 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useTranslation } from 'react-i18next';
 import { useRegion } from '../context/RegionContext';
 
+import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+
 export const Dashboard = () => {
     const { token, user } = useAuth();
     const { t } = useTranslation();
     const { formatCurrency } = useRegion();
+    const navigate = useNavigate();
+
+    // Redirect PMs who land here by accident (e.g. direct URL)
+    useEffect(() => {
+        if (user?.role === 'PM') {
+            navigate('/field/dashboard', { replace: true });
+        }
+    }, [user, navigate]);
 
     const [period, setPeriod] = useState('6m');
 
@@ -83,6 +94,21 @@ export const Dashboard = () => {
                     color="bg-red-500"
                     subValue="RFIs & Inspections"
                 />
+
+                {/* FIELD MODE CARD */}
+                <div
+                    onClick={() => navigate('/field')}
+                    className="bg-white p-6 rounded-2xl shadow-sm border border-blue-200 flex items-center justify-between cursor-pointer hover:shadow-md transition-all group"
+                >
+                    <div>
+                        <p className="text-blue-500 text-sm font-medium mb-1">Modo Campo</p>
+                        <h3 className="text-xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">Ir a Campo</h3>
+                        <p className="text-xs mt-2 text-gray-500">Reportes, Bitácora y Avance</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-blue-100 group-hover:bg-blue-600 transition-colors">
+                        <Activity size={24} className="text-blue-600 group-hover:text-white transition-colors" />
+                    </div>
+                </div>
             </div>
 
             {/* Quick Actions & Charts */}

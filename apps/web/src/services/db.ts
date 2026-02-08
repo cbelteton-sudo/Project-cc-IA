@@ -97,6 +97,31 @@ interface FieldDB extends DBSchema {
         };
         indexes: { 'by-report': string };
     };
+    offline_queue: {
+        key: string;
+        value: {
+            localId: string; // uuid v4
+            projectId: string;
+            payload: {
+                activityId: string;
+                activityName: string;
+                status: string; // 'IN_PROGRESS', 'BLOCKED', 'DONE'
+                note?: string;
+                date: string; // ISO date target
+            };
+
+            photos: {
+                id: string;
+                blob: Blob;
+                previewUrl?: string; // For UI display
+            }[];
+
+            createdAt: number;
+            retries: number;
+            lastError?: string;
+        };
+        indexes: { 'by-project': string };
+    };
 }
 
 let dbPromise: Promise<IDBPDatabase<FieldDB>>;
@@ -104,7 +129,7 @@ let dbPromise: Promise<IDBPDatabase<FieldDB>>;
 export const getDB = async () => {
     if (!dbPromise) {
         const { openDB } = await import('idb');
-        dbPromise = openDB<FieldDB>('field-db', 3, {
+        dbPromise = openDB<FieldDB>('field-db', 4, {
             upgrade(db, oldVersion, newVersion, transaction) {
                 // v1 Stores
                 if (oldVersion < 1) {
@@ -150,6 +175,14 @@ export const getDB = async () => {
                     if (!db.objectStoreNames.contains('field_daily_entries')) {
                         const entryStore = db.createObjectStore('field_daily_entries', { keyPath: 'id' });
                         entryStore.createIndex('by-report', 'dailyReportId');
+                    }
+                }
+
+                // v4 Stores (Field Offline Queue - Phase 18)
+                if (oldVersion < 4) {
+                    if (!db.objectStoreNames.contains('offline_queue')) {
+                        const queueStore = db.createObjectStore('offline_queue', { keyPath: 'localId' });
+                        queueStore.createIndex('by-project', 'projectId');
                     }
                 }
             },

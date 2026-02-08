@@ -5,4 +5,5 @@ export class CreateProjectDto {
     startDate?: string | Date;
     endDate?: string | Date;
     globalBudget?: number;
+    enablePMDashboard?: boolean;
 }

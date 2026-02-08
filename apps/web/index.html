@@ -7,6 +7,11 @@
     <title>web</title>
   </head>
   <body>
+    <script>
+      window.onerror = function(message, source, lineno, colno, error) {
+        document.body.innerHTML += '<div style="color:red; background:white; font-size:16px; padding:10px; border:1px solid red; margin:10px;">GLOBAL: ' + message + ' at ' + source + ':' + lineno + '</div>';
+      };
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
