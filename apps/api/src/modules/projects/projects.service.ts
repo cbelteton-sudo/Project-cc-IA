@@ -65,4 +65,22 @@ export class ProjectsService {
       where: { id },
     });
   }
+
+  async reorderItems(tenantId: string, items: { id: string; type: 'ACTIVITY' | 'MILESTONE' }[]) {
+    return this.prisma.$transaction(
+      items.map((item, index) => {
+        if (item.type === 'ACTIVITY') {
+          return this.prisma.projectActivity.update({
+            where: { id: item.id },
+            data: { orderIndex: index } as any, // Cast to any to avoid partial type mismatch if types aren't fully generated yet
+          });
+        } else {
+          return this.prisma.projectMilestone.update({
+            where: { id: item.id },
+            data: { orderIndex: index } as any,
+          });
+        }
+      })
+    );
+  }
 }

@@ -35,6 +35,11 @@ export class ActivitiesController {
         return this.activitiesService.addDependency(tenantId, id, dto);
     }
 
+    @Delete(':id/dependencies/:dependencyId')
+    removeDependency(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string, @Param('dependencyId') dependencyId: string) {
+        return this.activitiesService.removeDependency(tenantId, id, dependencyId);
+    }
+
     @Post(':id/close')
     close(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string, @Body() dto: CloseActivityDto) {
         return this.activitiesService.closeActivity(tenantId, id, dto);

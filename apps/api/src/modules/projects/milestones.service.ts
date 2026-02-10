@@ -52,4 +52,19 @@ export class MilestonesService {
 
         return this.prisma.projectMilestone.delete({ where: { id } });
     }
+
+    async reorder(tenantId: string, orderedIds: string[]) {
+        // Validate ownership of at least one to ensure tenant safety, 
+        // or just rely on the updateMany if we could, but updateMany doesn't support different values.
+        // Transaction is best.
+
+        return this.prisma.$transaction(
+            orderedIds.map((id, index) =>
+                this.prisma.projectMilestone.update({
+                    where: { id, tenantId }, // Ensure tenant isolation
+                    data: { orderIndex: index }
+                })
+            )
+        );
+    }
 }

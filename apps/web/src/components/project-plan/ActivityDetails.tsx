@@ -43,7 +43,10 @@ export const ActivityDetails = ({ activityId, token, onUpdate, onCreateSubActivi
             queryClient.invalidateQueries({ queryKey: ['activity', activityId] });
             onUpdate(); // Refresh tree
         },
-        onError: () => toast.error('Failed to update')
+        onError: (err: any) => {
+            const msg = err.response?.data?.message || 'Failed to update';
+            toast.error(msg);
+        }
     });
 
     // Fetch Budget Lines (Project Level)
@@ -90,6 +93,67 @@ export const ActivityDetails = ({ activityId, token, onUpdate, onCreateSubActivi
 
         // For progress history, we might need a dedicated endpoint, but let's stick to simple PATCH 'percent' for MVP Visuals
         updateMutation.mutate({ percent, notes });
+    };
+
+    // Dependency Management
+    const [selectedDependencyId, setSelectedDependencyId] = useState("");
+
+    // Fetch All Activities for Dropdown (Optimized: Can be passed via props or fetched here)
+    // For MVP, simple fetch
+    const { data: allActivities } = useQuery({
+        queryKey: ['activities-flat', (activity as any)?.projectId],
+        queryFn: async () => {
+            const pid = (activity as any)?.projectId;
+            if (!pid) return [];
+            const res = await axios.get(`${API_URL}/activities/project/${pid}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            // Flatten the tree or just use the list if backend returns flat list (it returns tree usually)
+            // Wait, findAllByProject likely returns flat list or backend calculates CPM but returns list.
+            // Looking at service, it returns list with CPM data.
+            return res.data;
+        },
+        enabled: !!activity
+    });
+
+    const addDependencyMutation = useMutation({
+        mutationFn: async () => {
+            return axios.post(`${API_URL}/activities/${activityId}/dependencies`, {
+                dependsOnActivityId: selectedDependencyId
+            }, { headers: { Authorization: `Bearer ${token}` } });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['activity', activityId] });
+            queryClient.invalidateQueries({ queryKey: ['activities', (activity as any)?.projectId] }); // Refresh Gantt
+            setSelectedDependencyId("");
+            toast.success("Dependencia agregada");
+        },
+        onError: (err: any) => toast.error(err.response?.data?.message || "Error al agregar dependencia")
+    });
+
+    const removeDependencyMutation = useMutation({
+        mutationFn: async (depId: string) => {
+            return axios.delete(`${API_URL}/activities/${activityId}/dependencies/${depId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['activity', activityId] });
+            queryClient.invalidateQueries({ queryKey: ['activities', (activity as any)?.projectId] });
+            toast.success("Dependencia eliminada");
+        },
+        onError: () => toast.error("Error al eliminar dependencia")
+    });
+
+    const handleAddDependency = () => {
+        if (!selectedDependencyId) return;
+        addDependencyMutation.mutate();
+    };
+
+    const handleRemoveDependency = (depId: string) => {
+        if (confirm("¿Eliminar esta dependencia?")) {
+            removeDependencyMutation.mutate(depId);
+        }
     };
 
     if (isLoading) return <div className="p-8 text-center text-gray-400">{t('common.loading')}</div>;
@@ -259,22 +323,59 @@ export const ActivityDetails = ({ activityId, token, onUpdate, onCreateSubActivi
                     </div>
                 </div>
 
-                {/* Dependencies (Read Only for now) */}
-                {activity.dependencies && activity.dependencies.length > 0 && (
-                    <div>
-                        <h4 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
-                            <Clock size={16} /> {t('activities.dependencies')}
-                        </h4>
-                        <div className="space-y-2">
-                            {activity.dependencies.map((dep: any) => (
-                                <div key={dep.id} className="flex items-center gap-2 text-xs text-gray-600 bg-orange-50 p-2 rounded border border-orange-100">
-                                    <AlertTriangle size={12} className="text-orange-500" />
-                                    {t('activities.depends_on')}: <span className="font-medium">{dep.dependsOn?.name}</span>
-                                </div>
+                {/* Dependencies */}
+                <div>
+                    <h4 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
+                        <Clock size={16} /> {t('activities.dependencies')}
+                    </h4>
+
+                    {/* Add Dependency UI */}
+                    <div className="flex gap-2 mb-3">
+                        <select
+                            className="flex-1 text-xs border border-gray-200 rounded px-2 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                            value={selectedDependencyId}
+                            onChange={(e) => setSelectedDependencyId(e.target.value)}
+                        >
+                            <option value="">Agregar predecesora...</option>
+                            {allActivities?.map((act: any) => (
+                                act.id !== activity.id && (
+                                    <option key={act.id} value={act.id}>
+                                        {act.name}
+                                    </option>
+                                )
                             ))}
-                        </div>
+                        </select>
+                        <button
+                            onClick={handleAddDependency}
+                            disabled={!selectedDependencyId || addDependencyMutation.isPending}
+                            className="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
+                        >
+                            Agregar
+                        </button>
                     </div>
-                )}
+
+                    <div className="space-y-2">
+                        {activity.dependencies && activity.dependencies.length > 0 ? (
+                            activity.dependencies.map((dep: any) => (
+                                <div key={dep.id} className="flex items-center justify-between text-xs text-gray-600 bg-orange-50 p-2 rounded border border-orange-100 group">
+                                    <div className="flex items-center gap-2">
+                                        <AlertTriangle size={12} className="text-orange-500" />
+                                        <span>{t('activities.depends_on')}: <span className="font-medium">{dep.dependsOn?.name}</span></span>
+                                    </div>
+                                    <button
+                                        onClick={() => handleRemoveDependency(dep.id)}
+                                        className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                        title="Eliminar dependencia"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-xs text-gray-400 italic">No hay dependencias configuradas</p>
+                        )}
+                    </div>
+                </div>
 
                 {/* Linked Milestones */}
                 {activity.milestones && activity.milestones.length > 0 && (
@@ -334,7 +435,7 @@ export const ActivityDetails = ({ activityId, token, onUpdate, onCreateSubActivi
                 token={token}
                 existingRecord={activity.closureRecord}
             />
-        </div>
+        </div >
     );
 };
 

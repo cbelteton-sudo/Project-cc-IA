@@ -62,7 +62,7 @@ export const ProjectPlan = () => {
             });
             return res.data;
         },
-        enabled: activeTab === 'milestones'
+        enabled: activeTab === 'milestones' || activeTab === 'gantt'
     });
 
     // Create Milestone Mutation
@@ -122,6 +122,36 @@ export const ProjectPlan = () => {
             toast.success('Orden actualizado');
         },
         onError: () => toast.error('Error al reordenar actividades')
+    });
+
+    // Reorder Milestone Mutation
+    const reorderMilestoneMutation = useMutation({
+        mutationFn: async ({ orderedIds }: { orderedIds: string[] }) => {
+            return axios.post(`${API_URL}/projects/${projectId}/milestones/reorder`, { orderedIds }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['activities', projectId] });
+            queryClient.invalidateQueries({ queryKey: ['milestones', projectId] as any });
+            toast.success('Orden de hitos actualizado');
+        },
+        onError: () => toast.error('Error al reordenar hitos')
+    });
+
+    // Reorder Mixed Items Mutation (New)
+    const reorderItemsMutation = useMutation({
+        mutationFn: async ({ items }: { items: { id: string; type: 'ACTIVITY' | 'MILESTONE' }[] }) => {
+            return axios.post(`${API_URL}/projects/${projectId}/reorder-items`, { items }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['activities', projectId] });
+            queryClient.invalidateQueries({ queryKey: ['milestones', projectId] as any });
+            toast.success('Orden actualizado');
+        },
+        onError: () => toast.error('Error al reordenar elementos')
     });
 
     // ...
@@ -310,25 +340,36 @@ export const ProjectPlan = () => {
             </div>
 
             {/* Main Content Split */}
+            {/* Main Content Split */}
             <div className="flex-1 overflow-hidden p-4 flex gap-4">
-                {activeTab === 'schedule' ? (
+                {(activeTab === 'schedule' || activeTab === 'gantt') ? (
                     <>
-                        {/* Left: Tree */}
-                        <div className={`${selectedActivityId ? 'w-2/3' : 'w-full'} transition-all duration-300 ease-in-out`}>
-                            <ActivitiesTree
-                                activities={activities || []}
-                                selectedId={selectedActivityId}
-                                onSelect={setSelectedActivityId}
-                                onAssignContractor={(id) => {
-                                    setActivityToAssign(id);
-                                    setIsAssignModalOpen(true);
-                                }}
-                                onCreate={() => setIsCreateModalOpen(true)}
-                                onReorder={(orderedIds) => reorderActivityMutation.mutate({ orderedIds })}
-                            />
+                        <div className={`${selectedActivityId ? 'w-2/3' : 'w-full'} h-full transition-all duration-300 ease-in-out`}>
+                            {activeTab === 'schedule' ? (
+                                <ActivitiesTree
+                                    activities={activities || []}
+                                    selectedId={selectedActivityId}
+                                    onSelect={setSelectedActivityId}
+                                    onAssignContractor={(id) => {
+                                        setActivityToAssign(id);
+                                        setIsAssignModalOpen(true);
+                                    }}
+                                    onCreate={() => setIsCreateModalOpen(true)}
+                                    onReorder={(orderedIds) => reorderActivityMutation.mutate({ orderedIds })}
+                                    onReorderMilestone={(orderedIds) => reorderMilestoneMutation.mutate({ orderedIds })}
+                                    onReorderItems={(items) => reorderItemsMutation.mutate({ items })}
+                                />
+                            ) : (
+                                <div className="w-full h-full overflow-hidden animate-fade-in">
+                                    <GanttChart
+                                        activities={activities || []}
+                                        milestones={milestones || []}
+                                        onSelect={setSelectedActivityId}
+                                    />
+                                </div>
+                            )}
                         </div>
 
-                        {/* Right: Details */}
                         {selectedActivityId && (
                             <div className="w-1/3 bg-white rounded-xl shadow-lg border border-gray-200 p-5 overflow-hidden animate-slide-in-right">
                                 <ActivityDetails
@@ -347,11 +388,6 @@ export const ProjectPlan = () => {
                             </div>
                         )}
                     </>
-                ) : activeTab === 'gantt' ? (
-                    // Gantt View
-                    <div className="w-full h-full overflow-hidden animate-fade-in">
-                        <GanttChart activities={activities || []} />
-                    </div>
                 ) : activeTab === 'analytics' ? (
                     // Analytics View
                     <div className="w-full h-full overflow-hidden animate-fade-in">

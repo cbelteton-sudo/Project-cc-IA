@@ -109,8 +109,10 @@ model Project {
   enableOfflineQueue Boolean @default(false)
 
   // Punch List Pro
-  // Punch List Pro
   enablePunchListPro Boolean @default(false)
+
+  // Gantt Pro
+  enableGanttPro Boolean @default(false)
   
   managerName     String?  // Company managing the project
 }
@@ -380,6 +382,7 @@ model ProjectActivity {
   
   status          String   @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, BLOCKED, DONE, CLOSED
   percent         Int      @default(0) // 0-100 (Cumulative)
+  manualProgress  Int?     // For Gantt Pro manual override
   plannedWeight   Float    @default(1.0)
   orderIndex      Int      @default(0) // For Drag & Drop ordering
   
@@ -470,6 +473,7 @@ model ProjectMilestone {
   date          DateTime
   description   String?
   status        String   @default("PLANNED") // PLANNED, ACHIEVED, MISSED
+  orderIndex    Int      @default(0)
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

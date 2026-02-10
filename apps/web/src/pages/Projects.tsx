@@ -193,7 +193,7 @@ export const Projects = () => {
                                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-center text-white/80">Estado</th>
                                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-white/80">Presupuesto</th>
                                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-white/80">Entrega</th>
-                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-right text-white/80">Acciones</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-center text-white/80">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -202,14 +202,8 @@ export const Projects = () => {
                                 return (
                                     <tr key={project.id} className="hover:bg-field-gray/50 transition-colors group">
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-lg bg-field-gray flex items-center justify-center text-field-blue border border-gray-200 group-hover:border-field-blue/30 transition-colors">
-                                                    <Folder size={20} />
-                                                </div>
-                                                <div>
-                                                    <div className="font-bold text-gray-900 group-hover:text-field-blue transition-colors">{project.name}</div>
-                                                    <div className="text-xs text-gray-500 font-mono bg-gray-100 px-1.5 py-0.5 rounded inline-block mt-1">{project.code}</div>
-                                                </div>
+                                            <div className="font-bold text-gray-900 group-hover:text-field-blue transition-colors text-base py-2">
+                                                {project.name}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">

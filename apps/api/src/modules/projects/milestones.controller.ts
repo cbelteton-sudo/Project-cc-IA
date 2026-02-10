@@ -25,6 +25,14 @@ export class MilestonesController {
         return this.milestonesService.findAll(tenantId, projectId);
     }
 
+    @Post('reorder')
+    reorder(
+        @ActiveUser('tenantId') tenantId: string,
+        @Body() body: { orderedIds: string[] }
+    ) {
+        return this.milestonesService.reorder(tenantId, body.orderedIds);
+    }
+
     @Patch(':id')
     update(
         @ActiveUser('tenantId') tenantId: string,

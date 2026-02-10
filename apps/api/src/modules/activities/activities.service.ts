@@ -53,9 +53,9 @@ export class ActivitiesService {
                     projectId: dto.projectId,
                     parentId: safeParentId // Match siblings
                 },
-                _max: { orderIndex: true }
+                _max: { orderIndex: true } as any
             });
-            const nextIndex = (aggregations._max.orderIndex ?? -1) + 1;
+            const nextIndex = ((aggregations._max as any).orderIndex ?? -1) + 1;
 
             const result = await this.prisma.projectActivity.create({
                 data: {
@@ -70,7 +70,7 @@ export class ActivitiesService {
                     status: 'NOT_STARTED',
                     plannedWeight: safeWeight,
                     orderIndex: nextIndex,
-                },
+                } as any,
             });
             console.log('Activity Created:', result);
 
@@ -109,7 +109,7 @@ export class ActivitiesService {
                 progressRecords: { orderBy: { weekStartDate: 'desc' }, take: 1 },
                 milestones: true // Include milestones for tree visualization
             },
-            orderBy: { orderIndex: 'asc' }, // Changed from startDate to orderIndex for stability
+            orderBy: { orderIndex: 'asc' } as any, // Changed from startDate to orderIndex for stability
         });
 
         console.log('Found results (No Tenant Filter):', results.length);
@@ -242,7 +242,7 @@ export class ActivitiesService {
         const activity = await this.prisma.projectActivity.findFirst({
             where: { id, tenantId },
             include: {
-                dependencies: true,
+                dependencies: { include: { dependsOn: true } },
                 progressRecords: { orderBy: { weekStartDate: 'desc' } },
                 closureRecord: true,
                 milestones: true // Include linked milestones
@@ -254,6 +254,19 @@ export class ActivitiesService {
 
     async update(tenantId: string, id: string, dto: UpdateActivityDto) {
         const activity = await this.findOne(tenantId, id);
+
+        // Validation: Dependency Rule (Must be > 85% to start)
+        // Check if we are starting the activity (either by setting status or adding progress)
+        const isStarting = (dto.percent !== undefined && Number(dto.percent) > 0 && activity.percent === 0) ||
+            (dto.status === 'IN_PROGRESS' && activity.status !== 'IN_PROGRESS');
+
+        if (isStarting) {
+            const blockingDeps = activity.dependencies.filter(d => d.dependsOn.percent < 85);
+            if (blockingDeps.length > 0) {
+                const names = blockingDeps.map(d => d.dependsOn.name).join(', ');
+                throw new BadRequestException(`No se puede iniciar: Dependencias incompletas (${names} < 85%)`);
+            }
+        }
 
         // If progress update requested
         if (dto.percent !== undefined) {
@@ -371,6 +384,20 @@ export class ActivitiesService {
                 activityId,
                 dependsOnId: dto.dependsOnActivityId
             }
+        });
+    }
+
+    async removeDependency(tenantId: string, activityId: string, dependencyId: string) {
+        // Verify ownership/existence via deleteMany or findFirst
+        // Safer to find first
+        const dep = await this.prisma.activityDependency.findFirst({
+            where: { id: dependencyId, activityId, tenantId }
+        });
+
+        if (!dep) throw new NotFoundException('Dependency not found');
+
+        return this.prisma.activityDependency.delete({
+            where: { id: dependencyId }
         });
     }
 
@@ -511,7 +538,7 @@ export class ActivitiesService {
             dto.orderedIds.map((id, index) =>
                 this.prisma.projectActivity.updateMany({
                     where: { id, tenantId }, // Ensure tenant safety
-                    data: { orderIndex: index }
+                    data: { orderIndex: index } as any
                 })
             )
         );
