@@ -1,6 +1,8 @@
 import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateActivityDto, UpdateActivityDto, AddDependencyDto, CloseActivityDto } from './dto/create-activity.dto';
+import { ReorderActivitiesDto } from './dto/reorder-activities.dto';
+// Trigger rebuild after prisma generate
 
 @Injectable()
 export class ActivitiesService {
@@ -44,6 +46,17 @@ export class ActivitiesService {
             const safeContractorId = dto.contractorId ? dto.contractorId : undefined;
             const safeParentId = dto.parentId ? dto.parentId : undefined;
 
+            // 3. Calc orderIndex (append to end)
+            // Ideally should check parent's existing children count or max orderIndex
+            const aggregations = await this.prisma.projectActivity.aggregate({
+                where: {
+                    projectId: dto.projectId,
+                    parentId: safeParentId // Match siblings
+                },
+                _max: { orderIndex: true }
+            });
+            const nextIndex = (aggregations._max.orderIndex ?? -1) + 1;
+
             const result = await this.prisma.projectActivity.create({
                 data: {
                     tenantId,
@@ -56,9 +69,16 @@ export class ActivitiesService {
                     contractorId: safeContractorId,
                     status: 'NOT_STARTED',
                     plannedWeight: safeWeight,
+                    orderIndex: nextIndex,
                 },
             });
             console.log('Activity Created:', result);
+
+            // 4. Trigger Rollup if this activity has a parent
+            if (result.parentId) {
+                await this.updateParentChain(tenantId, result.parentId);
+            }
+
             return result;
         } catch (error) {
             console.error('CREATE ERROR FULL DETAIL:', error);
@@ -89,7 +109,7 @@ export class ActivitiesService {
                 progressRecords: { orderBy: { weekStartDate: 'desc' }, take: 1 },
                 milestones: true // Include milestones for tree visualization
             },
-            orderBy: { startDate: 'asc' },
+            orderBy: { orderIndex: 'asc' }, // Changed from startDate to orderIndex for stability
         });
 
         console.log('Found results (No Tenant Filter):', results.length);
@@ -299,6 +319,24 @@ export class ActivitiesService {
             if (activity.parentId) {
                 await this.updateParentChain(tenantId, activity.parentId);
             }
+
+            // 5. AUTOMATION: If progress > 0 and Project is not started, start it
+            if (finalPercent > 0) {
+                const project = await this.prisma.project.findUnique({
+                    where: { id: activity.projectId }
+                });
+
+                if (project && !project.startDate) {
+                    console.log(`[AUTOMATION] Starting Project ${project.id} due to Activity ${activity.id} progress`);
+                    await this.prisma.project.update({
+                        where: { id: project.id },
+                        data: {
+                            startDate: new Date(),
+                            status: 'IN_PROGRESS'
+                        }
+                    });
+                }
+            }
         }
 
         return this.prisma.projectActivity.update({
@@ -424,12 +462,40 @@ export class ActivitiesService {
         const newPercent = totalWeight > 0 ? Math.round(weightedProgress / totalWeight) : 0;
 
         // 3. Update Parent
+        let newStatus = 'NOT_STARTED';
+        if (newPercent > 0 && newPercent < 100) newStatus = 'IN_PROGRESS';
+        else if (newPercent >= 100) newStatus = 'DONE';
+
+        // Preserve BLOCKED if it was blocked? 
+        // For now, simplicity: Progress dictates status for parent containers.
+        // But if we want to respect manual status, we should check current parent status.
+        // User request: "Same logic". If activity starts -> Parent starts.
+
+        const currentParent = await this.prisma.projectActivity.findUnique({
+            where: { id: parentId },
+            select: { status: true }
+        });
+
+        if (currentParent && currentParent.status !== 'BLOCKED' && currentParent.status !== 'CLOSED') {
+            // Only update if not blocked/closed
+            if (newPercent > 0 && currentParent.status === 'NOT_STARTED') {
+                newStatus = 'IN_PROGRESS';
+            } else if (newPercent >= 100 && currentParent.status === 'IN_PROGRESS') {
+                newStatus = 'DONE';
+            } else {
+                newStatus = currentParent.status; // Keep existing if no transition needed
+            }
+        } else if (currentParent) {
+            newStatus = currentParent.status;
+        }
+
         const parent = await this.prisma.projectActivity.update({
             where: { id: parentId },
             data: {
                 startDate: minStart,
                 endDate: maxEnd,
                 percent: newPercent,
+                status: newStatus
             }
         });
 
@@ -437,5 +503,17 @@ export class ActivitiesService {
         if (parent.parentId) {
             await this.updateParentChain(tenantId, parent.parentId);
         }
+    }
+    async reorder(tenantId: string, dto: ReorderActivitiesDto) {
+        // Bulk update using transaction
+        // Since we receive a flat list ordered by user, we just update orderIndex based on array position
+        return this.prisma.$transaction(
+            dto.orderedIds.map((id, index) =>
+                this.prisma.projectActivity.updateMany({
+                    where: { id, tenantId }, // Ensure tenant safety
+                    data: { orderIndex: index }
+                })
+            )
+        );
     }
 }

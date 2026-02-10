@@ -24,6 +24,7 @@ import { FieldReportsModule } from './modules/field-reports/field-reports.module
 import { ReportsModule } from './modules/reports/reports.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PMDashboardModule } from './modules/pm-dashboard/pm-dashboard.module';
+import { ContractorsModule } from './modules/contractors/contractors.module';
 
 @Module({
   imports: [
@@ -49,7 +50,8 @@ import { PMDashboardModule } from './modules/pm-dashboard/pm-dashboard.module';
     FieldReportsModule,
     ReportsModule,
     NotificationsModule,
-    PMDashboardModule
+    PMDashboardModule,
+    ContractorsModule
   ],
   controllers: [AppController],
   providers: [AppService],

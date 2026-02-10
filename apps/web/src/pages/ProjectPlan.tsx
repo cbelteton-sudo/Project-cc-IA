@@ -13,17 +13,20 @@ import { ActivityDetails } from '../components/project-plan/ActivityDetails';
 import { ProjectSettingsModal } from '../components/project-plan/ProjectSettingsModal';
 import { GanttChart } from '../components/project-plan/GanttChart';
 import { ProjectAnalytics } from '../components/project-plan/ProjectAnalytics';
+import { PunchKanban } from '../components/punch-list/PunchKanban';
+import { PunchQuickCreate } from '../components/punch-list/PunchQuickCreate';
 
 export const ProjectPlan = () => {
     const { id: projectId } = useParams();
     const { token } = useAuth();
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState<'schedule' | 'gantt' | 'analytics' | 'milestones'>('schedule'); // Added analytics tab
+    const [activeTab, setActiveTab] = useState<'schedule' | 'gantt' | 'analytics' | 'milestones' | 'punch_list'>('schedule'); // Added analytics and punch_list tab
     const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [defaultParentId, setDefaultParentId] = useState<string | undefined>(undefined);
     const [isCreateMilestoneModalOpen, setIsCreateMilestoneModalOpen] = useState(false);
     const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+    const [isCreatePunchModalOpen, setIsCreatePunchModalOpen] = useState(false);
 
     // Assignment State
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -71,6 +74,7 @@ export const ProjectPlan = () => {
         },
         onSuccess: () => {
             refetchMilestones();
+            queryClient.invalidateQueries({ queryKey: ['activities', projectId] });
             setIsCreateMilestoneModalOpen(false);
             toast.success('Hito creado');
         },
@@ -78,14 +82,15 @@ export const ProjectPlan = () => {
     });
 
     // Fetch Contractors
-    const { data: contractors } = useQuery({
+    const { data: contractors, isLoading: isLoadingContractors, isError: isErrorContractors } = useQuery({
         queryKey: ['contractors'],
         queryFn: async () => {
             const res = await axios.get(`${API_URL}/contractors`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
-        }
+        },
+        enabled: !!token
     });
 
     // Assign Contractor Mutation
@@ -99,9 +104,24 @@ export const ProjectPlan = () => {
             queryClient.invalidateQueries({ queryKey: ['activities', projectId] });
             setIsAssignModalOpen(false);
             setActivityToAssign(null);
-            toast.success('Contratista asignado');
+            toast.success('Responsable asignado');
         },
-        onError: () => toast.error('Error al asignar contratista')
+        onError: () => toast.error('Error al asignar responsable')
+    });
+
+    // Reorder Activity Mutation
+    const reorderActivityMutation = useMutation({
+        mutationFn: async ({ orderedIds }: { orderedIds: string[] }) => {
+            return axios.post(`${API_URL}/activities/reorder`, { orderedIds }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+        },
+        onSuccess: () => {
+            // Invalidate to refetch and ensure consistency
+            queryClient.invalidateQueries({ queryKey: ['activities', projectId] });
+            toast.success('Orden actualizado');
+        },
+        onError: () => toast.error('Error al reordenar actividades')
     });
 
     // ...
@@ -144,11 +164,22 @@ export const ProjectPlan = () => {
     const buildTree = (items: Activity[]) => {
         const rootItems: any[] = [];
         const lookup: any = {};
-        items.forEach((item: any) => {
+
+        // Sort items by orderIndex if available, else by startDate
+        const sortedItems = [...items].sort((a: any, b: any) => {
+            // Use orderIndex if both have it
+            if (a.orderIndex !== undefined && b.orderIndex !== undefined) {
+                return a.orderIndex - b.orderIndex;
+            }
+            // Fallback to start date
+            return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+        });
+
+        sortedItems.forEach((item: any) => {
             item.children = [];
             lookup[item.id] = item;
         });
-        items.forEach((item: any) => {
+        sortedItems.forEach((item: any) => {
             if (item.parentId && lookup[item.parentId]) {
                 lookup[item.parentId].children.push(item);
             } else {
@@ -163,92 +194,119 @@ export const ProjectPlan = () => {
     return (
         <div className="flex flex-col h-[calc(100vh-64px)] bg-gray-50">
             {/* Toolbar */}
-            <div className="px-6 py-4 bg-white border-b border-gray-200 flex justify-between items-center shadow-sm z-10">
-                <div className="flex items-center gap-4">
-                    <Link to="/projects" className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition-colors">
-                        <ArrowLeft size={20} />
-                    </Link>
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-900 tracking-tight">
-                            {project?.name || 'Project Plan'}
-                        </h1>
-                        <div className="flex items-center gap-4 text-xs text-gray-500 mt-1 mb-2">
-                            <div className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded">
-                                <span className="font-semibold">Presupuesto:</span>
-                                <span className="text-gray-900 font-mono">
-                                    {project?.globalBudget
-                                        ? new Intl.NumberFormat('es-GT', { style: 'currency', currency: project.currency || 'USD' }).format(project.globalBudget)
-                                        : 'N/A'}
-                                </span>
-                            </div>
-                            {(project?.startDate || project?.endDate) && (
-                                <div className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded">
-                                    <span className="font-semibold">Fechas:</span>
-                                    <span>
-                                        {project.startDate ? new Date(project.startDate).toLocaleDateString() : '?'}
-                                        {' - '}
-                                        {project.endDate ? new Date(project.endDate).toLocaleDateString() : '?'}
+            {/* Toolbar - Redesigned */}
+            <div className="bg-white border-b border-gray-200 shadow-sm z-10">
+                {/* Upper Row: Title & Key Meta */}
+                <div className="px-6 py-4 flex justify-between items-start">
+                    <div className="flex items-start gap-4">
+                        <Link to="/projects" className="mt-1 p-2 hover:bg-gray-100 rounded-full text-gray-500 transition-colors">
+                            <ArrowLeft size={20} />
+                        </Link>
+                        <div>
+                            <div className="flex items-center gap-3">
+                                <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+                                    {project?.name || 'Cargando...'}
+                                </h1>
+                                {project?.status && (
+                                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${project.status === 'IN_PROGRESS' || project.status === 'ACTIVE' ? 'bg-blue-100 text-blue-700' :
+                                        project.status === 'DONE' || project.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                                            project.status === 'BLOCKED' ? 'bg-red-100 text-red-700' :
+                                                'bg-gray-100 text-gray-600'
+                                        }`}>
+                                        {project.status === 'IN_PROGRESS' || project.status === 'ACTIVE' ? 'En Progreso' :
+                                            project.status === 'DONE' || project.status === 'COMPLETED' ? 'Completado' :
+                                                project.status === 'BLOCKED' ? 'Bloqueado' :
+                                                    'No Iniciado'}
                                     </span>
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex gap-4">
-                            <button
-                                onClick={() => setActiveTab('schedule')}
-                                className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${activeTab === 'schedule' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100'}`}
-                            >
-                                Cronograma
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('gantt')}
-                                className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${activeTab === 'gantt' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:bg-gray-100'}`}
-                            >
-                                Gantt
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('analytics')}
-                                className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${activeTab === 'analytics' ? 'bg-orange-100 text-orange-700' : 'text-gray-500 hover:bg-gray-100'}`}
-                            >
-                                Análisis EVM
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('milestones')}
-                                className={`text-xs font-medium px-2 py-0.5 rounded-md transition-colors ${activeTab === 'milestones' ? 'bg-purple-100 text-purple-700' : 'text-gray-500 hover:bg-gray-100'}`}
-                            >
-                                Hitos
-                            </button>
+                                )}
+                            </div>
+
+                            {/* Meta Info Row */}
+                            <div className="flex items-center gap-6 mt-1.5">
+                                {(project?.startDate || project?.endDate) && (
+                                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
+                                        <span>
+                                            {project.startDate ? new Date(project.startDate).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '?'}
+                                            {' - '}
+                                            {project.endDate ? new Date(project.endDate).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '?'}
+                                        </span>
+                                    </div>
+                                )}
+                                {project?.managerName && (
+                                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
+                                        <span className="font-medium text-gray-700">{project.managerName}</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-                {activeTab === 'schedule' ? (
-                    <div className="flex gap-2">
+
+                    {/* Right Actions */}
+                    <div className="flex items-center gap-3">
                         <button
                             onClick={() => setIsSettingsModalOpen(true)}
-                            className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-                            title="Configuración"
+                            className="p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors"
+                            title="Configuración del Proyecto"
                         >
                             <Settings size={20} />
                         </button>
-                        <button
-                            onClick={() => {
-                                setDefaultParentId(undefined);
-                                setIsCreateModalOpen(true);
-                            }}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-all text-sm font-medium"
-                        >
-                            <Plus size={18} />
-                            Nueva Actividad
-                        </button>
+                        <div className="h-6 w-px bg-gray-200 mx-1"></div>
+                        {activeTab === 'schedule' && (
+                            <button
+                                onClick={() => {
+                                    setDefaultParentId(undefined);
+                                    setIsCreateModalOpen(true);
+                                }}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-all text-sm font-medium"
+                            >
+                                <Plus size={18} />
+                                Nueva Actividad
+                            </button>
+                        )}
+                        {activeTab === 'milestones' && (
+                            <button
+                                onClick={() => setIsCreateMilestoneModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-sm transition-all text-sm font-medium"
+                            >
+                                <Plus size={18} />
+                                Nuevo Hito
+                            </button>
+                        )}
+                        {activeTab === 'punch_list' && (
+                            <button
+                                onClick={() => setIsCreatePunchModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 shadow-sm transition-all text-sm font-medium"
+                            >
+                                <Plus size={18} />
+                                Nuevo Punch
+                            </button>
+                        )}
                     </div>
-                ) : activeTab === 'milestones' ? (
-                    <button
-                        onClick={() => setIsCreateMilestoneModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-sm transition-all text-sm font-medium"
-                    >
-                        <Plus size={18} />
-                        Nuevo Hito
-                    </button>
-                ) : null}
+                </div>
+
+                {/* Lower Row: Navigation Tabs */}
+                <div className="px-6 flex gap-8 border-t border-gray-100">
+                    {[
+                        { id: 'schedule', label: 'Cronograma', color: 'blue' },
+                        { id: 'gantt', label: 'Gantt Chart', color: 'indigo' },
+                        { id: 'analytics', label: 'Análisis EVM', color: 'orange' },
+                        { id: 'milestones', label: 'Hitos', color: 'purple' },
+                        { id: 'punch_list', label: 'Punch List', color: 'red' }
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id as any)}
+                            className={`py-3 text-sm font-medium border-b-2 transition-all ${activeTab === tab.id
+                                ? `border-${tab.color}-600 text-${tab.color}-700`
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'
+                                }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* Main Content Split */}
@@ -265,6 +323,8 @@ export const ProjectPlan = () => {
                                     setActivityToAssign(id);
                                     setIsAssignModalOpen(true);
                                 }}
+                                onCreate={() => setIsCreateModalOpen(true)}
+                                onReorder={(orderedIds) => reorderActivityMutation.mutate({ orderedIds })}
                             />
                         </div>
 
@@ -296,6 +356,11 @@ export const ProjectPlan = () => {
                     // Analytics View
                     <div className="w-full h-full overflow-hidden animate-fade-in">
                         <ProjectAnalytics projectId={projectId || ''} token={token} />
+                    </div>
+                ) : activeTab === 'punch_list' ? (
+                    // Punch List View
+                    <div className="w-full h-full overflow-hidden animate-fade-in">
+                        <PunchKanban projectId={projectId || ''} />
                     </div>
                 ) : (
                     // Milestones View
@@ -463,10 +528,20 @@ export const ProjectPlan = () => {
             {isAssignModalOpen && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                     <div className="bg-white p-6 rounded-xl w-full max-w-sm shadow-2xl animate-fade-in">
-                        <h3 className="text-lg font-bold mb-4 text-gray-800">Asignar Contratista</h3>
+                        <h3 className="text-lg font-bold mb-4 text-gray-800">Asignar Responsable</h3>
                         <div className="space-y-4">
-                            <p className="text-sm text-gray-600">Selecciona el contratista responsable de esta actividad.</p>
-                            <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+                            <p className="text-sm text-gray-600">Selecciona el responsable de esta actividad.</p>
+                            <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100 min-h-[100px] relative">
+                                {isLoadingContractors && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
+                                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                                    </div>
+                                )}
+                                {isErrorContractors && (
+                                    <div className="p-4 text-center text-sm text-red-500">
+                                        Error al cargar responsables. Por favor intenta de nuevo.
+                                    </div>
+                                )}
                                 {contractors?.map((c: any) => (
                                     <button
                                         key={c.id}
@@ -477,8 +552,8 @@ export const ProjectPlan = () => {
                                         <span className="text-xs text-gray-400 group-hover:text-blue-400">{c.type}</span>
                                     </button>
                                 ))}
-                                {contractors?.length === 0 && (
-                                    <p className="p-4 text-center text-sm text-gray-500">No hay contratistas registrados.</p>
+                                {!isLoadingContractors && !isErrorContractors && contractors?.length === 0 && (
+                                    <p className="p-4 text-center text-sm text-gray-500">No hay responsables registrados.</p>
                                 )}
                             </div>
                             <button
@@ -498,6 +573,18 @@ export const ProjectPlan = () => {
                 project={project}
                 token={token!}
             />
+
+            {/* Punch Create Modal */}
+            {isCreatePunchModalOpen && (
+                <PunchQuickCreate
+                    projectId={projectId!}
+                    onClose={() => setIsCreatePunchModalOpen(false)}
+                    onSuccess={() => {
+                        // Invalidate/refetch if needed, though hook handles opt updates usually
+                        queryClient.invalidateQueries({ queryKey: ['punch-list', projectId] });
+                    }}
+                />
+            )}
         </div>
     );
 };

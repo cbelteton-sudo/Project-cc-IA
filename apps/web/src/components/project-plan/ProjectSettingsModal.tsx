@@ -18,6 +18,7 @@ interface SettingsForm {
     endDate: string;
     globalBudget: number;
     currency: string;
+    managerName?: string;
 }
 
 export const ProjectSettingsModal = ({ isOpen, onClose, project, token }: ProjectSettingsModalProps) => {
@@ -31,7 +32,8 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project, token }: Projec
                 startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '',
                 endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '',
                 globalBudget: project.globalBudget || 0,
-                currency: project.currency || 'USD'
+                currency: project.currency || 'USD',
+                managerName: project.managerName || ''
             });
         }
     }, [project, reset, isOpen]);
@@ -39,7 +41,18 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project, token }: Projec
     const mutation = useMutation({
         mutationFn: async (data: SettingsForm) => {
             const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
-            return axios.patch(`${API_URL}/projects/${project.id}`, data, {
+
+            // Sanitize data
+            const payload = {
+                ...data,
+                // Handle empty dates (send null or undefined if empty string)
+                startDate: data.startDate ? data.startDate : null,
+                endDate: data.endDate ? data.endDate : null,
+                // Ensure number
+                globalBudget: data.globalBudget ? Number(data.globalBudget) : 0,
+            };
+
+            return axios.patch(`${API_URL}/projects/${project.id}`, payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         },
@@ -104,7 +117,7 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project, token }: Projec
                                     <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
                                     <input
                                         type="number"
-                                        {...register('globalBudget')}
+                                        {...register('globalBudget', { valueAsNumber: true })}
                                         className="w-full pl-7 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                         placeholder="0.00"
                                     />
@@ -125,6 +138,16 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project, token }: Projec
                         </div>
                     </div>
 
+                    {/* Manager Section */}
+                    <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Proyecto Gestionado por</label>
+                        <input
+                            {...register('managerName')}
+                            placeholder="Ej. Gerencia de Proyectos S.A."
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                    </div>
+
                     <div className="pt-4 flex justify-end gap-3">
                         <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">
                             Cancelar
@@ -142,8 +165,8 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project, token }: Projec
                             )}
                         </button>
                     </div>
-                </form>
-            </div>
-        </div>
+                </form >
+            </div >
+        </div >
     );
 };

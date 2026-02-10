@@ -1,0 +1,56 @@
+flowchart TD
+    %% Nodes
+    User([Usuario])
+    subgraph Frontend [Web App]
+        Login[Login Page]
+        Dashboard[Dashboard]
+        Projects[Lista de Proyectos]
+        ProjectDetail[Detalle Proyecto]
+        WBS[Planificación / WBS]
+        Field[Módulo de Campo]
+    end
+
+    subgraph Backend [API NestJS]
+        AuthCtrl[Auth Controller]
+        ProjectsCtrl[Projects Controller]
+        ActivitiesCtrl[Activities Controller]
+        FieldCtrl[FieldUpdates Controller]
+        IssuesCtrl[Issues Controller]
+    end
+
+    subgraph Database [SQLite / Prisma]
+        UserDB[(User)]
+        ProjectDB[(Project)]
+        ActivityDB[(ProjectActivity)]
+        UpdateDB[(FieldUpdate)]
+        IssueDB[(Issue)]
+    end
+
+    %% Flows
+    User -->|Credenciales| Login
+    Login -->|POST /auth/login| AuthCtrl
+    AuthCtrl -.->|JWT Token| User
+    
+    User -->|Navega| Dashboard
+    Dashboard -->|Selecciona| Projects
+    Projects -->|GET /projects| ProjectsCtrl
+    ProjectsCtrl -->|Query| ProjectDB
+    
+    User -->|Crea Proyecto| Projects
+    Projects -->|POST /projects| ProjectsCtrl
+    
+    User -->|Gestiona Cronograma| WBS
+    WBS -->|GET/POST /activities| ActivitiesCtrl
+    ActivitiesCtrl <-->|R/W| ActivityDB
+    
+    User -->|Reporta Avance| Field
+    Field -->|POST /field-updates| FieldCtrl
+    FieldCtrl -->|Save| UpdateDB
+    
+    User -->|Reporta Problema| Field
+    Field -->|POST /issues| IssuesCtrl
+    IssuesCtrl -->|Save| IssueDB
+
+    %% Styling
+    classDef box fill:#f9f9f9,stroke:#333,stroke-width:2px;
+    class Frontend,Backend,Database box;

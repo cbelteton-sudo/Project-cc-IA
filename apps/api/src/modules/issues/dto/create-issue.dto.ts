@@ -18,7 +18,7 @@ export class CreateIssueDto {
     description?: string;
 
     @IsOptional()
-    @IsEnum(['HIGH', 'MEDIUM', 'LOW'])
+    @IsEnum(['HIGH', 'MEDIUM', 'LOW', 'CRITICAL'])
     severity?: string;
 
     @IsOptional()
@@ -28,4 +28,29 @@ export class CreateIssueDto {
     @IsOptional()
     @IsDateString()
     dueDate?: string;
+
+    // Punch List Pro Fields
+    @IsOptional()
+    @IsString()
+    type?: string;
+
+    @IsOptional()
+    @IsString()
+    trade?: string;
+
+    @IsOptional()
+    @IsString()
+    locationBuilding?: string;
+
+    @IsOptional()
+    @IsString()
+    locationLevel?: string;
+
+    @IsOptional()
+    @IsString()
+    locationZone?: string;
+
+    @IsOptional()
+    @IsString()
+    contractorId?: string;
 }

@@ -34,6 +34,8 @@ const SyncManagerPage = React.lazy(() => import('./pages/field/SyncManagerPage')
 // Reports & Others
 const ProjectReport = React.lazy(() => import('./pages/ProjectReport').then(m => ({ default: m.ProjectReport })));
 const ExecutiveReport = React.lazy(() => import('./pages/ExecutiveReport').then(m => ({ default: m.ExecutiveReport })));
+const PunchListPro = React.lazy(() => import('./pages/field/PunchListPro').then(m => ({ default: m.PunchListPro })));
+const GeneralPunchList = React.lazy(() => import('./pages/field/GeneralPunchList').then(m => ({ default: m.GeneralPunchList })));
 const PMDashboard = React.lazy(() => import('./pages/pm/PMDashboard'));
 const WhatsappSimulator = React.lazy(() => import('./pages/WhatsappSimulator').then(m => ({ default: m.WhatsappSimulator })));
 
@@ -76,6 +78,7 @@ function App() {
             <Route path="/projects/:id" element={<ProjectBudget />} />
             <Route path="/projects/:id/plan" element={<ProjectPlan />} />
             <Route path="/projects/:id/pm" element={<PMDashboard />} />
+            <Route path="/projects/:id/punch" element={<PunchListPro />} />
 
             <Route path="/procurement/requests" element={<MaterialRequests />} />
             <Route path="/procurement/orders" element={<PurchaseOrders />} />
@@ -88,6 +91,7 @@ function App() {
               <Route path="entry/:id" element={<FieldEntryDetail />} />
               <Route path="activity/:id/update" element={<ActivityUpdate />} />
               <Route path="issues" element={<IssueTracker />} />
+              <Route path="punch-list" element={<GeneralPunchList />} />
               <Route path="daily" element={<FieldDailySummary />} />
               <Route path="logs" element={<DailyLogView />} />
               <Route path="sync" element={<SyncManagerPage />} />

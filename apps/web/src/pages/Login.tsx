@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { Hammer } from 'lucide-react';
+import { Hammer, Check } from 'lucide-react';
 
 export const Login = () => {
     const [email, setEmail] = useState('');
@@ -54,11 +54,14 @@ export const Login = () => {
 
     return (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-            <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-                <div className="flex justify-center mb-6">
-                    <Hammer className="text-blue-600 w-12 h-12" />
+            <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md border-t-4 border-field-orange">
+                <div className="flex flex-col items-center mb-8">
+                    <div className="flex items-center gap-3 mb-2">
+                        <span className="text-4xl font-bold text-field-blue tracking-tight">FIELD<span className="text-field-orange">CLOSE</span></span>
+                        <Check className="text-field-green" size={40} strokeWidth={4} />
+                    </div>
+                    <p className="text-gray-500 mt-2 font-medium">Gestión de Construcción Profesional</p>
                 </div>
-                <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Login to Constructora</h2>
 
                 {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4 text-sm text-center">{error}</div>}
 
@@ -85,9 +88,9 @@ export const Login = () => {
                     </div>
                     <button
                         type="submit"
-                        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition font-medium"
+                        className="w-full bg-field-blue text-white py-3 rounded hover:bg-[#111e33] transition font-bold tracking-wide"
                     >
-                        Sign In
+                        INICIAR SESIÓN
                     </button>
                 </form>
                 <div className="mt-4 text-center text-xs text-gray-500">

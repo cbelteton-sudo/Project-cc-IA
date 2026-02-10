@@ -107,7 +107,15 @@ model Project {
 
   // Phase 18: Field Offline Queue
   enableOfflineQueue Boolean @default(false)
+
+  // Punch List Pro
+  // Punch List Pro
+  enablePunchListPro Boolean @default(false)
+  
+  managerName     String?  // Company managing the project
 }
+
+
 
 // ... (Budget model starts here)
 
@@ -373,6 +381,7 @@ model ProjectActivity {
   status          String   @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, BLOCKED, DONE, CLOSED
   percent         Int      @default(0) // 0-100 (Cumulative)
   plannedWeight   Float    @default(1.0)
+  orderIndex      Int      @default(0) // For Drag & Drop ordering
   
   contractorId    String?
   contractor      Contractor? @relation(fields: [contractorId], references: [id])
@@ -617,21 +626,43 @@ model Issue {
   projectId      String
   project        Project  @relation(fields: [projectId], references: [id])
   
-  activityId     String?
-  activity       ProjectActivity? @relation(fields: [activityId], references: [id])
+  // Punch List Pro Fields
+  code           Int?     // Auto-increment per project (handled in app logic)
+  type           String   @default("ISSUE") // ISSUE (Legacy), PUNCH_LIST
   
   title          String
   description    String?
   severity       String   @default("MEDIUM") // HIGH, MEDIUM, LOW, CRITICAL
-  status         String   @default("OPEN") // OPEN, IN_PROGRESS, BLOCKED, DONE, CLOSED
+  status         String   @default("OPEN") // OPEN, IN_PROGRESS, READY_FOR_VALIDATION, BLOCKED, DONE, CLOSED, REOPENED
   
-  // Phase 16
-  closedAt       DateTime?
+  // Location Hierarchy
+  locationBuilding String?
+  locationLevel    String?
+  locationZone     String?
+  
+  // Categories
+  trade          String?
+  
+  // Assignment
+  ownerUserId    String?
   contractorId   String?
   contractor     Contractor? @relation(fields: [contractorId], references: [id])
   
-  ownerUserId    String?
   dueDate        DateTime?
+  
+  // Validation Workflow
+  readyForValidationAt DateTime?
+  validatedAt          DateTime?
+  validatedBy          String? // User ID
+  reopenedAt           DateTime?
+  reopenedBy           String? // User ID
+  
+  // Phase 16 Legacy Fields (maintained for compatibility)
+  closedAt       DateTime?
+  
+  // Links
+  activityId     String?
+  activity       ProjectActivity? @relation(fields: [activityId], references: [id])
   
   comments       Comment[]
 

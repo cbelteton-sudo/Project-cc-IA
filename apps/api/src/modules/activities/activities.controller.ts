@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { ActivitiesService } from './activities.service';
 import { CreateActivityDto, UpdateActivityDto, AddDependencyDto, CloseActivityDto } from './dto/create-activity.dto';
+import { ReorderActivitiesDto } from './dto/reorder-activities.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ActiveUser } from '../../common/decorators/active-user.decorator';
 
@@ -37,5 +38,10 @@ export class ActivitiesController {
     @Post(':id/close')
     close(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string, @Body() dto: CloseActivityDto) {
         return this.activitiesService.closeActivity(tenantId, id, dto);
+    }
+
+    @Post('reorder')
+    reorder(@ActiveUser('tenantId') tenantId: string, @Body() dto: ReorderActivitiesDto) {
+        return this.activitiesService.reorder(tenantId, dto);
     }
 }

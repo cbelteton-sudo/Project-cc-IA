@@ -1,0 +1,32 @@
+stateDiagram-v2
+    state "ABIETO" as OPEN
+    state "EN PROGRESO" as IN_PROGRESS
+    state "BLOQUEADO" as BLOCKED
+    state "RESUELTO" as DONE
+    state "CERRADO" as CLOSED
+
+    [*] --> OPEN: Reportado por Residente
+    
+    OPEN --> IN_PROGRESS: Asignado a Contratista/Responsable
+    OPEN --> BLOCKED: Falta de información/recursos
+    
+    IN_PROGRESS --> DONE: Trabajo completado
+    IN_PROGRESS --> BLOCKED: Impedimento surgido
+    
+    BLOCKED --> IN_PROGRESS: Impedimento resuelto
+    BLOCKED --> OPEN: Reasignación necesaria
+    
+    DONE --> CLOSED: Verificado por PM/Supervisor
+    DONE --> IN_PROGRESS: Rechazado (Correcciones)
+    
+    CLOSED --> [*]
+    
+    note right of OPEN
+        Severidad: HIGH, MEDIUM, LOW, CRITICAL
+        Creado con foto/evidencia inicial
+    end note
+    
+    note right of BLOCKED
+        Requiere "Blocked Reason"
+        y fecha estimada de resolución
+    end note

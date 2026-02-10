@@ -1,0 +1,35 @@
+graph TD
+    subgraph Auth [Autenticación]
+        Login[Pantalla Login] -- Credenciales --> API_Auth[POST /auth/login]
+        API_Auth -- Valida --> DB_User[(Tabla User)]
+        DB_User -- Retorna Role + TenantId --> API_Auth
+        API_Auth -- Token JWT --> Client[Cliente Web]
+    end
+
+    subgraph Roles [Roles y Permisos]
+        Admin((Administrador))
+        PM((Project Manager))
+        User((Usuario Estandar / Residente))
+        Contractor((Contratista / Portal))
+        
+        Admin -->|Full Access| Config[Configuración Tenant]
+        Admin -->|Gestiona| Users[Usuarios y Contratistas]
+        
+        PM -->|Gestiona| Projects[Proyectos y Presupuestos]
+        PM -->|Aprueba| Estimates[Estimaciones de Pago]
+        
+        User -->|Registra| DailyLog[Bitácora Diaria]
+        User -->|Reporta| Issues[Problemas en Campo]
+        User -.->|Solo Lectura| Budget[Presupuesto (Limitado)]
+        
+        Contractor -->|Acceso Portal| Portal[Portal de Proveedores]
+        Portal -->|Visualiza| RFI[RFIs y RFQs]
+        Portal -->|Carga| Invoices[Facturas]
+    end
+    
+    Client -->|Bearer Token| ProtectedRoutes{Rutas Protegidas}
+    ProtectedRoutes -- Role Check --> View[Vista Permitida]
+    
+    %% Styling
+    classDef role fill:#fce4ec,stroke:#880e4f,stroke-width:2px;
+    class Admin,PM,User,Contractor role;

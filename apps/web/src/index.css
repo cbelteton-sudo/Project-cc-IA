@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+@theme {
+  --color-field-blue: #1A2B49;
+  --color-field-orange: #E65100;
+  --color-field-green: #2E7D32;
+  --color-field-gray: #F5F7FA;
+}
+
 @layer base {
   body {
     @apply bg-gray-50 text-gray-900;

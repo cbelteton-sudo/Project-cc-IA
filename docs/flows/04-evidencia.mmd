@@ -1,0 +1,43 @@
+sequenceDiagram
+    participant User as Residente/Supervisor
+    participant App as Mobile/Web App
+    participant API as API NestJS
+    participant S3 as Storage (Photos)
+    participant DB as SQLite DB
+
+    %% Start Report
+    User->>App: Selecciona Actividad en "FieldToday"
+    App->>User: Muestra formulario "FieldEntryDetail"
+    
+    %% Capture Evidence
+    User->>App: Toma Foto / Sube Imagen
+    App->>S3: Upload Photo (Direct / SignedURL)
+    S3-->>App: Return URL (urlMain, urlThumb)
+    
+    %% Input Data
+    User->>App: Ingresa Progreso (%, Cantidad)
+    User->>App: Agrega Notas / Observaciones
+    
+    %% Submit
+    User->>App: Clic "Guardar Avance"
+    
+    alt Online
+        App->>API: POST /field-updates/draft
+        API->>DB: INSERT FieldUpdate + FieldUpdateItems
+        API->>DB: INSERT Photo records
+        DB-->>API: Success
+        API-->>App: 201 Created
+        App->>User: Confirmación "Guardado exitoso"
+    else Offline
+        App->>App: Guarda en IndexedDB (Cola Sincronización)
+        App->>User: "Guardado localmente (Offline)"
+        Note right of App: Background Sync activado al recuperar conexión
+    end
+
+    %% Timeline View
+    User->>App: Ver Historial de Actividad
+    App->>API: GET /activities/:id (include updates)
+    API->>DB: SELECT updates, photos FROM ...
+    DB-->>API: Data
+    API-->>App: JSON Response
+    App->>User: Renderiza Timeline con Fotos

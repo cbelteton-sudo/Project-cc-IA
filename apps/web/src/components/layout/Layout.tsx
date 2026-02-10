@@ -1,5 +1,5 @@
 import { Outlet, Link } from 'react-router-dom';
-import { Home, FolderKanban, Banknote, ShoppingCart, FileText, Settings, Hammer, ClipboardList, MessageSquare, Users, Briefcase, AlertCircle, BarChart2, PlusCircle } from 'lucide-react';
+import { Home, FolderKanban, Banknote, ShoppingCart, FileText, Settings, Hammer, ClipboardList, MessageSquare, Users, Briefcase, AlertCircle, BarChart2, PlusCircle, AlertTriangle, Check } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useRegion } from '../../context/RegionContext';
@@ -9,7 +9,7 @@ import { useQuickCapture } from '../../context/QuickCaptureContext';
 import { QuickCaptureModal } from '../field/QuickCaptureModal';
 
 const SidebarItem = ({ to, icon: Icon, label }: any) => (
-    <Link to={to} className="flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-slate-800 hover:text-white rounded-md transition-colors">
+    <Link to={to} className="flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-white/10 hover:text-white rounded-md transition-colors">
         <Icon size={20} />
         <span className="font-medium text-sm">{label}</span>
     </Link>
@@ -28,9 +28,15 @@ export const Layout = () => {
     return (
         <div className="flex h-screen w-full bg-gray-50 print:h-auto print:block">
             {/* Sidebar */}
-            <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col print:hidden">
-                <div className="h-16 flex items-center px-6 border-b border-slate-800">
-                    <span className="font-bold text-white text-lg tracking-tight">Admin<span className="text-blue-500">Panel</span></span>
+            <aside className="w-64 bg-field-blue border-r border-white/5 flex flex-col print:hidden">
+                <div className="h-16 flex items-center px-6 border-b border-white/5 bg-field-blue">
+                    <div className="flex items-center gap-2">
+                        {/* Logo Icon - Checkmark */}
+                        <div className="w-8 h-8 flex items-center justify-center">
+                            <Check className="text-field-green" size={28} strokeWidth={3} />
+                        </div>
+                        <span className="font-bold text-white text-lg tracking-tight">FIELD<span className="text-field-orange">CLOSE</span></span>
+                    </div>
                 </div>
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                     {['ADMIN', 'ADMINISTRADOR', 'DIRECTOR'].includes(user?.role || '') && (
@@ -62,10 +68,11 @@ export const Layout = () => {
                             <SidebarItem to="/field" icon={ClipboardList} label={t('sidebar.fieldMgmt')} />
                             <SidebarItem to="/field/daily" icon={FileText} label="Bitácora" />
                             <SidebarItem to="/field/issues" icon={AlertCircle} label="Problemas" />
+                            <SidebarItem to="/field/punch-list" icon={AlertTriangle} label="Punch List" />
 
                             <button
                                 onClick={() => openCapture()}
-                                className="w-full flex items-center gap-3 px-3 py-2 text-blue-400 hover:bg-slate-800 hover:text-blue-300 rounded-md transition-colors mt-2"
+                                className="w-full flex items-center gap-3 px-3 py-2 text-field-orange hover:bg-white/10 hover:text-orange-400 rounded-md transition-colors mt-2"
                             >
                                 <PlusCircle size={20} />
                                 <span className="font-bold text-sm">Captura Rápida</span>
@@ -97,7 +104,7 @@ export const Layout = () => {
                     </div>
                     <button
                         onClick={() => { logout(); window.location.href = '/login'; }}
-                        className="w-full bg-slate-800 hover:bg-slate-700 text-gray-300 text-xs py-2 rounded font-medium"
+                        className="w-full bg-white/5 hover:bg-white/10 text-gray-300 text-xs py-2 rounded font-medium"
                     >
                         {t('common.logout')}
                     </button>

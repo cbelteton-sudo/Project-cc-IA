@@ -1,0 +1,38 @@
+graph TD
+    subgraph WBS [Estructura de Desglose de Trabajo]
+        Root[Proyecto Raíz]
+        Phase1[Fase 1: Cimentación]
+        Phase2[Fase 2: Estructura]
+        Act1[Excavación]
+        Act2[Colado]
+        Act3[Levantamiento Muros]
+        
+        Root --> Phase1
+        Root --> Phase2
+        Phase1 --> Act1
+        Phase1 --> Act2
+        Phase2 --> Act3
+    end
+
+    subgraph Assignments [Asignaciones]
+        Cont1[Contratista A: Movimiento Tierras]
+        Cont2[Contratista B: Obra Civil]
+        
+        Act1 -.->|Asignado a| Cont1
+        Act2 -.->|Asignado a| Cont2
+        Act3 -.->|Asignado a| Cont2
+    end
+    
+    subgraph Interactions [Acciones UI]
+        PM[Project Manager]
+        PM -->|Drag & Drop| Root
+        PM -->|Crear Hijo| Phase1
+        PM -->|Editar Fechas| Act1
+        PM -->|Asignar Contratista| Assignments
+    end
+    
+    %% Styles
+    classDef phase fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef activity fill:#fff9c4,stroke:#fbc02d,stroke-width:1px;
+    class Root,Phase1,Phase2 phase;
+    class Act1,Act2,Act3 activity;

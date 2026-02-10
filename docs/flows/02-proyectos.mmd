@@ -1,0 +1,30 @@
+sequenceDiagram
+    participant PM as Project Manager
+    participant UI as Web Interface
+    participant API as API Controller
+    participant DB as Database
+
+    %% Creating Project
+    PM->>UI: Clic en "Nuevo Proyecto"
+    UI->>PM: Muestra modal de creación
+    PM->>UI: Ingresa Nombre, Código, Fechas, Presupuesto
+    UI->>API: POST /projects (CreateProjectDto)
+    Note right of UI: Valida campos requeridos
+    API->>DB: INSERT INTO Project
+    DB-->>API: Retorna Project Created
+    API-->>UI: 201 Created + Datos
+    UI->>PM: Redirige a /projects/:id
+
+    %% Initial Configuration
+    PM->>UI: Configura Presupuesto Global
+    UI->>API: PATCH /projects/:id (budget)
+    API->>DB: UPDATE Project SET globalBudget = ...
+    DB-->>API: OK
+    API-->>UI: 200 OK
+
+    %% Navigation
+    PM->>UI: Accede a "Plan de Proyecto" (WBS)
+    UI->>API: GET /projects/:id/plan
+    API->>DB: SELECT * FROM ProjectActivity WHERE projectId = ...
+    DB-->>API: Return activities
+    API-->>UI: Renderiza Árbol de Actividades

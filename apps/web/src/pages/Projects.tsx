@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
-import { Plus, Folder, ArrowRight } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Folder, ArrowRight, AlertTriangle, LayoutGrid, List as ListIcon, MoreVertical, Calendar, TrendingUp, Building2, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,6 +23,8 @@ interface Project {
     _count?: {
         budgets: number;
     };
+    thumbnail?: string; // Mock for now
+    managerName?: string;
 }
 
 // Zod Schema
@@ -36,7 +38,9 @@ type CreateProjectForm = z.infer<typeof createProjectSchema>;
 export const Projects = () => {
     const { token } = useAuth();
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
     const { t } = useTranslation();
 
     // Form Hooks
@@ -93,12 +97,19 @@ export const Projects = () => {
     };
 
     const getProjectStatus = (project: Project) => {
-        // "En tiempo, En Riesgo, Atrasado, Terminado"
+        // 1. Projects marked as finished
         if (project.status === 'DONE' || project.status === 'CLOSED') {
             return { label: 'Terminado', color: 'bg-green-100 text-green-700 border-green-200' };
         }
 
+        // 2. Projects without start date (Newly created) -> "No iniciado"
+        if (!project.startDate) {
+            return { label: 'No iniciado', color: 'bg-gray-100 text-gray-500 border-gray-200' };
+        }
+
+        // 3. Status checks based on endDate
         if (!project.endDate) {
+            // Default active status (homologated from "En Progreso") -> "En Tiempo" (Optimistic)
             return { label: 'En Tiempo', color: 'bg-blue-100 text-blue-700 border-blue-200' };
         }
 
@@ -114,149 +125,194 @@ export const Projects = () => {
             return { label: 'En Tiempo', color: 'bg-blue-100 text-blue-700 border-blue-200' };
         }
     };
+    const filteredProjects = projects?.filter((p: Project) =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.code.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-    if (isLoading) return <div className="p-8"><div className="animate-pulse h-10 bg-gray-200 w-1/4 rounded mb-8"></div><div className="space-y-4">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-gray-100 rounded w-full"></div>)}</div></div>;
+    if (isLoading) return (
+        <div className="container mx-auto max-w-7xl p-6">
+            <div className="flex justify-between items-center mb-8 animate-pulse">
+                <div className="h-8 w-48 bg-gray-200 rounded"></div>
+                <div className="h-10 w-32 bg-gray-200 rounded"></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="h-64 bg-gray-100 rounded-xl animate-pulse"></div>)}
+            </div>
+        </div>
+    );
 
     return (
-        <div className="container mx-auto max-w-7xl">
-            <div className="flex justify-between items-center mb-8">
+        <div className="container mx-auto max-w-7xl p-6 min-h-screen">
+            {/* Header Area */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800 tracking-tight">{t('projects.title')}</h2>
-                    <p className="text-gray-500 text-sm mt-1">Gestiona y monitorea tus proyectos activos</p>
+                    <h2 className="text-3xl font-bold text-gray-900 tracking-tight">{t('projects.title')}</h2>
+                    <p className="text-gray-500 mt-1">Gestiona tus proyectos, presupuestos y avances.</p>
                 </div>
-                <button
-                    onClick={() => { reset(); setIsModalOpen(true); }}
-                    className="bg-blue-600 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition shadow-sm font-medium"
-                >
-                    <Plus size={18} />
-                    {t('projects.newProject')}
-                </button>
+
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-80">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Buscar por nombre o código..."
+                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-field-blue outline-none transition-all shadow-sm"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+
+                    <button
+                        onClick={() => { reset(); setIsModalOpen(true); }}
+                        className="bg-field-orange text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-orange-700 transition shadow-md shadow-orange-200 font-bold whitespace-nowrap active:scale-95"
+                    >
+                        <Plus size={20} />
+                        <span className="hidden sm:inline">{t('projects.newProject')}</span>
+                    </button>
+                </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="bg-gray-50/50 border-b border-gray-200 text-xs uppercase text-gray-500 font-semibold tracking-wider">
-                            <th className="px-6 py-4 w-32">{t('projects.code')}</th>
-                            <th className="px-6 py-4">Nombre del Proyecto</th>
-                            <th className="px-6 py-4 w-48 text-right">Presupuesto</th>
-                            <th className="px-6 py-4 w-40 text-center">Estado</th>
-                            <th className="px-6 py-4 w-64 text-right">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {projects?.length === 0 ? (
+            {/* Content */}
+            {/* Projects Table List View */}
+            {filteredProjects?.length === 0 ? (
+                <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+                    <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Folder size={32} className="text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900">No se encontraron proyectos</h3>
+                    <p className="text-gray-500 mb-6">Prueba con otra búsqueda o crea uno nuevo.</p>
+                </div>
+            ) : (
+                <div className="bg-white rounded-xl shadow-lg border-0 overflow-hidden ring-1 ring-black/5">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="bg-field-blue text-white shadow-md z-10 relative">
                             <tr>
-                                <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
-                                    <Folder size={48} className="mx-auto mb-3 text-gray-300" />
-                                    <p>{t('common.noData')}</p>
-                                </td>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-white/80">Proyecto</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-white/80">Construye</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-center text-white/80">Estado</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-white/80">Presupuesto</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-white/80">Entrega</th>
+                                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-right text-white/80">Acciones</th>
                             </tr>
-                        ) : (
-                            projects?.map((project: Project) => {
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {filteredProjects?.map((project: Project) => {
                                 const status = getProjectStatus(project);
                                 return (
-                                    <tr key={project.id} className="hover:bg-gray-50/80 transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <span className="font-mono text-sm text-gray-600 font-medium bg-gray-100 px-2 py-1 rounded">
-                                                {project.code || 'N/A'}
-                                            </span>
-                                        </td>
+                                    <tr key={project.id} className="hover:bg-field-gray/50 transition-colors group">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-100 transition-colors">
-                                                    <Folder size={18} />
+                                                <div className="w-10 h-10 rounded-lg bg-field-gray flex items-center justify-center text-field-blue border border-gray-200 group-hover:border-field-blue/30 transition-colors">
+                                                    <Folder size={20} />
                                                 </div>
                                                 <div>
-                                                    <div className="font-semibold text-gray-900">{project.name}</div>
-                                                    <div className="text-xs text-gray-500 mt-0.5">{project._count?.budgets || 0} {t('projects.budgets')}</div>
+                                                    <div className="font-bold text-gray-900 group-hover:text-field-blue transition-colors">{project.name}</div>
+                                                    <div className="text-xs text-gray-500 font-mono bg-gray-100 px-1.5 py-0.5 rounded inline-block mt-1">{project.code}</div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-right">
-                                            {project.globalBudget ? (
-                                                <span className="font-mono font-medium text-gray-900">
-                                                    {new Intl.NumberFormat('es-GT', { style: 'currency', currency: project.currency || 'USD' }).format(project.globalBudget)}
-                                                </span>
-                                            ) : (
-                                                <span className="text-gray-400 text-sm italic">Sin presupuesto</span>
-                                            )}
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-600">
+                                                {/* Mocking Client/Manager for now if not available, or use managerName if added to interface */}
+                                                {(project as any).managerName || <span className="text-gray-400 italic">No asignado</span>}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${status.color}`}>
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${status.color}`}>
                                                 {status.label}
                                             </span>
                                         </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-bold text-gray-900">
+                                                    {project.globalBudget ? new Intl.NumberFormat('es-GT', { style: 'currency', currency: project.currency || 'USD' }).format(project.globalBudget) : <span className="text-gray-400 italic">---</span>}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400 uppercase">Global</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                <Calendar size={14} className="text-gray-400" />
+                                                {project.endDate ? new Date(project.endDate).toLocaleDateString() : <span className="text-gray-400 italic">---</span>}
+                                            </div>
+                                        </td>
                                         <td className="px-6 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-2">
+                                            <div className="flex justify-end gap-2">
                                                 <Link
                                                     to={`/projects/${project.id}/plan`}
-                                                    className="text-xs font-medium text-gray-700 hover:text-blue-600 bg-white border border-gray-200 hover:border-blue-300 px-3 py-1.5 rounded-md transition-all shadow-sm hover:shadow active:scale-95"
+                                                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-field-orange bg-orange-50 hover:bg-orange-100 rounded-md transition-colors border border-orange-100/50"
+                                                    title="Actividades"
                                                 >
-                                                    Plan de Proyecto
+                                                    <ListIcon size={16} />
+                                                    <span>Plan</span>
                                                 </Link>
                                                 <Link
                                                     to={`/projects/${project.id}`}
-                                                    className="text-xs font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md transition-all flex items-center gap-1 active:scale-95"
+                                                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-field-blue bg-blue-50 hover:bg-blue-100 rounded-md transition-colors border border-blue-100/50"
+                                                    title="Ver Detalles"
                                                 >
-                                                    Detalles Generales
-                                                    <ArrowRight size={14} />
+                                                    <span>Detalles</span>
+                                                    <ArrowRight size={16} />
                                                 </Link>
                                             </div>
                                         </td>
                                     </tr>
                                 );
-                            })
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
-            {/* Zod Validated Modal */}
+            {/* Modal remains mostly the same, just styled a bit if needed. Keeping original modal logic. */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl transform transition-all scale-100">
-                        <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in p-4">
+                    <div className="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl transform transition-all scale-100 border border-gray-100">
+                        <div className="flex justify-between items-center mb-6">
                             <h3 className="text-xl font-bold text-gray-800">{t('projects.newProject')}</h3>
-                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600"><Plus size={24} className="rotate-45" /></button>
+                            <button onClick={() => setIsModalOpen(false)} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200 transition">
+                                <Plus size={20} className="rotate-45 text-gray-600" />
+                            </button>
                         </div>
 
-                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('projects.title')}</label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">{t('projects.title')}</label>
                                 <input
                                     type="text"
                                     {...register('name')}
-                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow ${errors.name ? 'border-red-500 focus:ring-red-200' : 'border-gray-300'}`}
-                                    placeholder="e.g. Torre Reforma"
+                                    className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all ${errors.name ? 'border-red-300 focus:ring-red-200 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'}`}
+                                    placeholder="Ej. Torre Reforma"
                                 />
                                 {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('projects.code')}</label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">{t('projects.code')}</label>
                                 <input
                                     type="text"
                                     {...register('code')}
-                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow ${errors.code ? 'border-red-500 focus:ring-red-200' : 'border-gray-300'}`}
-                                    placeholder="e.g. TR-001"
+                                    className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all ${errors.code ? 'border-red-300 focus:ring-red-200 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'}`}
+                                    placeholder="Ej. TR-001"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Debe ser alfanumérico y único.</p>
+                                <p className="text-xs text-gray-500 mt-1.5">Código único alfanumérico para identificar el proyecto.</p>
                                 {errors.code && <p className="text-xs text-red-500 mt-1">{errors.code.message}</p>}
                             </div>
-                            <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-50">
+
+                            <div className="grid grid-cols-2 gap-3 pt-4">
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
+                                    className="px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-xl font-medium transition-colors"
                                 >
                                     {t('common.cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-bold shadow-md shadow-blue-200 transition-all hover:shadow-lg transform active:scale-95"
+                                    className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 font-bold shadow-lg shadow-blue-200 transition-all active:scale-[0.98]"
                                 >
-                                    {isSubmitting ? t('common.loading') : 'Crear Proyecto'}
+                                    {isSubmitting ? 'Creando...' : 'Crear Proyecto'}
                                 </button>
                             </div>
                         </form>
