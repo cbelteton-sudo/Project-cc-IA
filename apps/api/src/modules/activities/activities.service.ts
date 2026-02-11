@@ -245,14 +245,32 @@ export class ActivitiesService {
                 dependencies: { include: { dependsOn: true } },
                 progressRecords: { orderBy: { weekStartDate: 'desc' } },
                 closureRecord: true,
-                milestones: true // Include linked milestones
+                milestones: true, // Include linked milestones
+                contractor: true,
+                parent: { include: { contractor: true } },
+                dailyUpdates: {
+                    orderBy: { createdAt: 'desc' },
+                    include: { user: true, photos: true }
+                },
+                fieldUpdates: {
+                    include: { fieldUpdate: true },
+                    orderBy: { fieldUpdate: { date: 'desc' } }
+                },
+                fieldDailyEntries: {
+                    include: { dailyReport: true, photos: true },
+                    orderBy: { dailyReport: { date: 'desc' } }
+                },
+                children: true, // Include sub-activities
+                backlogItems: {
+                    include: { assigneeUser: true }
+                }
             }
         });
         if (!activity) throw new NotFoundException('Activity not found');
         return activity;
     }
 
-    async update(tenantId: string, id: string, dto: UpdateActivityDto) {
+    async update(tenantId: string, id: string, dto: UpdateActivityDto, userId: string) {
         const activity = await this.findOne(tenantId, id);
 
         // Validation: Dependency Rule (Must be > 85% to start)
@@ -285,35 +303,27 @@ export class ActivitiesService {
             const weekStart = new Date(d.setDate(diff));
             weekStart.setHours(0, 0, 0, 0);
 
-            // 1. Create/Update Weekly Record (Snapshot)
-            await this.prisma.activityWeeklyProgress.upsert({
-                where: {
-                    activityId_weekStartDate: {
-                        activityId: id,
-                        weekStartDate: weekStart
-                    }
-                },
-                update: {
-                    percent: inputPercent, // Update snapshot to latest value
-                    notes: dto.notes
-                },
-                create: {
+            // 1. Create a NEW Progress Record (History Log)
+            // We use specific timestamp to avoid overwriting previous updates in the same week
+            await this.prisma.activityWeeklyProgress.create({
+                data: {
                     tenantId,
                     projectId: activity.projectId,
                     activityId: id,
-                    weekStartDate: weekStart,
+                    weekStartDate: new Date(), // Use exact timestamp to act as a log
                     percent: inputPercent,
                     notes: dto.notes
                 }
             });
 
             // 2. Update Main Activity Status & Percent directly (User Input is Source of Truth)
-            // We do NOT sum records anymore because users input "Cumulative Progress".
             const finalPercent = Math.min(100, Math.max(0, inputPercent)); // Clamp 0-100
 
-            // Auto-update Status logic
+            // Auto-update Status logic only if not manually setting status
             let newStatus = activity.status;
-            if (finalPercent > 0 && finalPercent < 100 && activity.status === 'NOT_STARTED') {
+            if (dto.status) {
+                newStatus = dto.status;
+            } else if (finalPercent > 0 && finalPercent < 100 && activity.status === 'NOT_STARTED') {
                 newStatus = 'IN_PROGRESS';
             } else if (finalPercent >= 100) {
                 newStatus = 'DONE';
@@ -324,7 +334,8 @@ export class ActivitiesService {
                 where: { id },
                 data: {
                     status: newStatus,
-                    percent: finalPercent
+                    percent: finalPercent,
+                    assignedUserId: dto.assignedUserId // Allow updating supervisor
                 }
             });
 
@@ -350,6 +361,19 @@ export class ActivitiesService {
                     });
                 }
             }
+
+            // 6. CREATE HISTORY LOG (DailyUpdate)
+            // This ensures every report is saved as a discrete history item, not just updating the weekly snapshot.
+            if (dto.notes) {
+                await this.prisma.dailyUpdate.create({
+                    data: {
+                        projectId: activity.projectId,
+                        wbsActivityId: id,
+                        text: dto.notes,
+                        userId: (dto as any).userId || 'UNKNOWN', // Fallback if missing
+                    }
+                }).catch(e => console.error('Failed to create DailyUpdate log', e));
+            }
         }
 
         return this.prisma.projectActivity.update({
@@ -360,7 +384,7 @@ export class ActivitiesService {
                 endDate: dto.endDate ? new Date(dto.endDate) : undefined,
                 status: dto.status,
                 contractorId: dto.contractorId,
-                budgetLineId: (dto as any).budgetLineId, // Temporary cast until DTO is updated
+                budgetLineId: (dto as any).budgetLineId,
             },
         });
     }

@@ -15,12 +15,13 @@ import { GanttChart } from '../components/project-plan/GanttChart';
 import { ProjectAnalytics } from '../components/project-plan/ProjectAnalytics';
 import { PunchKanban } from '../components/punch-list/PunchKanban';
 import { PunchQuickCreate } from '../components/punch-list/PunchQuickCreate';
+import { ScrumDashboard } from '../components/scrum/ScrumDashboard';
 
 export const ProjectPlan = () => {
     const { id: projectId } = useParams();
     const { token } = useAuth();
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState<'schedule' | 'gantt' | 'analytics' | 'milestones' | 'punch_list'>('schedule'); // Added analytics and punch_list tab
+    const [activeTab, setActiveTab] = useState<'schedule' | 'gantt' | 'analytics' | 'milestones' | 'punch_list' | 'scrum'>('schedule'); // Added scrum tab
     const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [defaultParentId, setDefaultParentId] = useState<string | undefined>(undefined);
@@ -321,6 +322,7 @@ export const ProjectPlan = () => {
                     {[
                         { id: 'schedule', label: 'Cronograma', color: 'blue' },
                         { id: 'gantt', label: 'Gantt Chart', color: 'indigo' },
+                        { id: 'scrum', label: 'Semanas de Obra (Agile)', color: 'emerald' },
                         { id: 'analytics', label: 'Análisis EVM', color: 'orange' },
                         { id: 'milestones', label: 'Hitos', color: 'purple' },
                         { id: 'punch_list', label: 'Punch List', color: 'red' }
@@ -365,6 +367,7 @@ export const ProjectPlan = () => {
                                         activities={activities || []}
                                         milestones={milestones || []}
                                         onSelect={setSelectedActivityId}
+                                        contractors={contractors || []}
                                     />
                                 </div>
                             )}
@@ -388,6 +391,11 @@ export const ProjectPlan = () => {
                             </div>
                         )}
                     </>
+                ) : activeTab === 'scrum' ? (
+                    // Scrum Dashboard
+                    <div className="w-full h-full overflow-hidden animate-fade-in">
+                        <ScrumDashboard projectId={projectId || ''} />
+                    </div>
                 ) : activeTab === 'analytics' ? (
                     // Analytics View
                     <div className="w-full h-full overflow-hidden animate-fade-in">

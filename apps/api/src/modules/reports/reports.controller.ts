@@ -32,4 +32,9 @@ export class ReportsController {
   getHistogram(@Param('id') id: string, @ActiveUser() user: any) {
     return this.reportsService.getResourceHistogram(id, user.tenantId);
   }
+
+  @Get('project/:id/pnl')
+  getPnL(@Param('id') id: string, @ActiveUser() user: any) {
+    return this.reportsService.getPnL(id, user.tenantId);
+  }
 }

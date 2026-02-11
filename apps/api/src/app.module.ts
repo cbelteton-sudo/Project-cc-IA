@@ -25,6 +25,8 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PMDashboardModule } from './modules/pm-dashboard/pm-dashboard.module';
 import { ContractorsModule } from './modules/contractors/contractors.module';
+import { ScrumModule } from './modules/scrum/scrum.module';
+import { TimesheetsModule } from './modules/timesheets/timesheets.module';
 
 @Module({
   imports: [
@@ -51,7 +53,9 @@ import { ContractorsModule } from './modules/contractors/contractors.module';
     ReportsModule,
     NotificationsModule,
     PMDashboardModule,
-    ContractorsModule
+    ContractorsModule,
+    ScrumModule,
+    TimesheetsModule
   ],
   controllers: [AppController],
   providers: [AppService],

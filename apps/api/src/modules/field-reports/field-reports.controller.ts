@@ -32,4 +32,9 @@ export class FieldReportsController {
     getPMDashboardMetrics(@Query('projectId') projectId: string) {
         return this.fieldReportsService.getPMDashboardMetrics(projectId);
     }
+
+    @Get('activities/:id/log')
+    getActivityLog(@Param('id') id: string) {
+        return this.fieldReportsService.getActivityLog(id);
+    }
 }

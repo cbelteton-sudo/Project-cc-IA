@@ -126,6 +126,12 @@
         "error_lower_progress": "Error: El nuevo avance no puede ser menor a {{current}}%",
         "notes_required": "Las notas son obligatorias",
         "not_found": "Actividad no encontrada",
+        "status_NOT_STARTED": "No Iniciado",
+        "status_IN_PROGRESS": "En Progreso",
+        "status_DONE": "Completado",
+        "status_BLOCKED": "Bloqueado",
+        "status_CLOSED": "Cerrado",
+        "create_subtask": "Crear Sub-tarea",
         "table": {
             "name": "Actividad",
             "start": "Inicio",

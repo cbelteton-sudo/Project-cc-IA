@@ -1,0 +1,12 @@
+
+ NX   The current directory isn't part of an Nx workspace.
+
+To create a workspace run:
+npx create-nx-workspace@latest <workspace name>
+
+To add Nx to an existing workspace with a workspace-specific nx.json, run:
+npx nx@latest init
+
+
+ NX   For more information please visit https://nx.dev/
+

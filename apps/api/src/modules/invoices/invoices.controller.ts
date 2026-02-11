@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
@@ -16,8 +16,8 @@ export class InvoicesController {
   }
 
   @Get()
-  findAll(@ActiveUser() user: any) {
-    return this.invoicesService.findAll(user.tenantId);
+  findAll(@ActiveUser() user: any, @Query('projectId') projectId?: string) {
+    return this.invoicesService.findAll(user.tenantId, projectId);
   }
 
   @Get(':id')

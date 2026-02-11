@@ -28,7 +28,7 @@ export class ReportsService {
     projects.forEach((p: any) => {
       p.budgets.forEach((b: any) => {
         b.budgetLines.forEach((l: any) => {
-          totalBudget += l.amountParam || 0;
+          totalBudget += (l.budgetBase || 0) + (l.budgetCO || 0) + (l.budgetTransfer || 0) || l.amountParam || 0;
           totalExecuted += l.amountExecuted || 0;
         });
       });
@@ -160,6 +160,19 @@ export class ReportsService {
       throw new NotFoundException('Project not found');
     }
 
+    // Fetch real-time actuals from CostLedger
+    const ledgerEntries = await prisma.costLedger.groupBy({
+      by: ['wbsActivityId', 'costType'],
+      where: { projectId },
+      _sum: { amount: true }
+    });
+
+    // Helper to find actuals
+    const getActual = (wbsId: string | null, costType: string) => {
+      const entry = ledgerEntries.find((e: any) => e.wbsActivityId === wbsId && e.costType === costType);
+      return entry?._sum.amount || 0;
+    };
+
     // Detailed breakdown by Budget Line
     const lines: any[] = [];
     let totalBudget = 0;
@@ -168,17 +181,27 @@ export class ReportsService {
 
     project.budgets.forEach((b: any) => {
       b.budgetLines.forEach((l: any) => {
+        // Use real-time executed amount from Ledger if available, else fallback to line cache
+        // Actually, for strict reporting, we should trust the Ledger.
+        const realExecuted = getActual(l.wbsActivityId, l.costType);
+
+        // Use Budget Base + CO + Transfers. Fallback to amountParam only if legacy 0.
+        const budgetTotal = (l.budgetBase || 0) + (l.budgetCO || 0) + (l.budgetTransfer || 0) || l.amountParam || 0;
+
+        console.log(`[Report Debug] Line ${l.code}: Base=${l.budgetBase}, CO=${l.budgetCO}, Param=${l.amountParam} -> Total=${budgetTotal}`);
+
         lines.push({
           code: l.code,
           name: l.name,
-          budget: l.amountParam,
+          costType: l.costType,
+          budget: budgetTotal,
           committed: l.amountCommitted,
-          executed: l.amountExecuted,
-          variance: l.amountParam - l.amountExecuted
+          executed: realExecuted,
+          variance: budgetTotal - realExecuted // Variance vs Budget
         });
-        totalBudget += l.amountParam;
+        totalBudget += budgetTotal;
         totalCommitted += l.amountCommitted;
-        totalExecuted += l.amountExecuted;
+        totalExecuted += realExecuted;
       });
     });
 
@@ -189,9 +212,80 @@ export class ReportsService {
         totalBudget,
         totalCommitted,
         totalExecuted,
-        remainingBudget: totalBudget - totalCommitted
+        remainingBudget: totalBudget - totalExecuted // Remaining to Spend
       },
-      lines: lines.sort((a, b) => a.code.localeCompare(b.code))
+      lines: lines.sort((a, b) => (a.code || '').localeCompare(b.code || ''))
+    };
+  }
+
+  async getPnL(projectId: string, tenantId: string) {
+    const prisma = this.prisma as any;
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: {
+        activities: { include: { budgetLine: true, progressRecords: { orderBy: { weekStartDate: 'desc' }, take: 1 } } }
+      }
+    });
+
+    if (!project || project.tenantId !== tenantId) throw new NotFoundException('Project not found');
+
+    // 1. Calculate Earned Value (Revenue Proxy)
+    // Formula: Sum of (Activity Weight/Budget * % Complete)
+    let earnedValue = 0;
+    let totalProjectBudget = project.globalBudget || 0;
+
+    // If global budget is set, we can use it to prorate, or sum bottom-up budget
+    // Let's use bottom-up sum if global is 0
+    // If global budget is set, we can use it to prorate, or sum bottom-up budget
+    // Let's use bottom-up sum if global is 0
+    const bottomUpBudget = project.activities.reduce((sum: number, act: any) => {
+      const line = act.budgetLine;
+      const lineBudget = line ? ((line.budgetBase || 0) + (line.budgetCO || 0) + (line.budgetTransfer || 0) || line.amountParam || 0) : 0;
+      return sum + lineBudget;
+    }, 0);
+    const baseForEV = totalProjectBudget > 0 ? totalProjectBudget : bottomUpBudget;
+
+    // We need usage of weights if available, or straight budget %
+    // Simplified EV: Sum(ActivityBudget * %Complete)
+    project.activities.forEach((act: any) => {
+      const percent = act.progressRecords[0]?.percent || 0;
+      const line = act.budgetLine;
+      const lineBudget = line ? ((line.budgetBase || 0) + (line.budgetCO || 0) + (line.budgetTransfer || 0) || line.amountParam || 0) : 0;
+
+      earnedValue += (lineBudget * (percent / 100));
+    });
+
+    // If Global Budget exists (Price to Client) and is different from Base Budget (Cost),
+    // we should apply the margin factor. 
+    // Margin Factor = Global / Base.
+    // Revenue = EV * Margin Factor?
+    // Or simply: Revenue = GlobalBudget * (Overall % Complete)
+    // Let's calculate Overall % first.
+    let overallPercent = 0;
+    if (bottomUpBudget > 0) {
+      overallPercent = earnedValue / bottomUpBudget;
+    }
+
+    const revenue = (totalProjectBudget > 0 ? totalProjectBudget : bottomUpBudget) * overallPercent;
+
+    // 2. Calculate Actual Costs (Expenses)
+    const ledgerSum = await prisma.costLedger.aggregate({
+      where: { projectId },
+      _sum: { amount: true }
+    });
+    const expenses = ledgerSum._sum.amount || 0;
+
+    // 3. Net Margin
+    const margin = revenue - expenses;
+    const marginPercent = revenue > 0 ? (margin / revenue) * 100 : 0;
+
+    return {
+      revenue,
+      expenses,
+      margin,
+      marginPercent,
+      overallProgress: overallPercent * 100,
+      currency: project.currency || 'USD'
     };
   }
 
@@ -240,7 +334,10 @@ export class ReportsService {
       const s = new Date(act.startDate).getTime();
       const e = new Date(act.endDate).getTime();
       const duration = Math.max(1, (e - s) / (1000 * 60 * 60 * 24));
-      const budget = act.budgetLine?.amountParam || (act.plannedWeight * 1000); // Fallback to weight * 1000 if no budget
+
+      const line = act.budgetLine;
+      const amount = line ? ((line.budgetBase || 0) + (line.budgetCO || 0) + (line.budgetTransfer || 0) || line.amountParam || 0) : 0;
+      const budget = amount || (act.plannedWeight * 1000); // Fallback to weight * 1000 if no budget
 
       return {
         ...act,

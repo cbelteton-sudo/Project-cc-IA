@@ -129,22 +129,51 @@ export const GanttProvider = ({ children, activities, milestones, onSelectActivi
             });
         }
 
+        // Recursive Filter Check
+        const matchesFilter = (node: any): boolean => {
+            // Check self
+            let selfMatch = true;
+            if (filterOwner && node.contractorId !== filterOwner) selfMatch = false; // Changed responsibleId to contractorId
+            if (filterStatus) {
+                if (filterStatus === 'DELAYED') {
+                    const isDelayed = new Date(node.endDate) < new Date() && node.status !== 'DONE' && node.status !== 'CLOSED';
+                    if (!isDelayed) selfMatch = false;
+                } else if (node.status !== filterStatus) {
+                    selfMatch = false;
+                }
+            }
+
+            if (selfMatch) return true;
+
+            // Check children
+            if (node.children && node.children.length > 0) {
+                if (node.children.some((child: any) => matchesFilter(child))) return true;
+            }
+
+            // Check milestones (optional: if we want milestones to trigger parent visibility)
+            // For now, let's say NO, milestones don't force parent visibility unless parent itself matches or sibling activity matches.
+            // Actually, if a milestone matches filter, parent should probably show? 
+            // Milestones don't usually have "owner", but might have status.
+            // Let's keep it simple: Activity Filters drive visibility.
+
+            return false;
+        };
+
         const flatten = (nodes: any[], depth = 0): any[] => {
             return nodes.reduce((acc, node) => {
-                // Apply Filters
-                let matches = true;
-                if (filterOwner && node.responsibleId !== filterOwner) matches = false;
-                if (filterStatus && node.status !== filterStatus) matches = false;
-
+                const isMatch = matchesFilter(node);
                 const nodeMilestones = milestonesByParent[node.id] || [];
                 const hasChildren = !!node.children?.length || nodeMilestones.length > 0;
 
-                if (matches) {
-                    acc.push({ ...node, depth, hasChildren: hasChildren });
-                }
+                // If it's a match OR a descendant matches (which matchesFilter checks for children), strictly speaking matchesFilter returns true if SELF or CHILDREN match.
+                // But we need to distinguish:
+                // 1. Show fully (Self match)
+                // 2. Show dimmed (Only child match) - Not implementing dimming yet, just visibility.
 
-                if (expanded.has(node.id)) {
-                    if (matches) {
+                if (isMatch) {
+                    acc.push({ ...node, depth, hasChildren });
+
+                    if (expanded.has(node.id)) {
                         if (node.children) {
                             acc.push(...flatten(node.children, depth + 1));
                         }
@@ -153,6 +182,8 @@ export const GanttProvider = ({ children, activities, milestones, onSelectActivi
                             // Sort milestones by date
                             const sortedMs = [...nodeMilestones].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
                             sortedMs.forEach(m => {
+                                // Define standard milestone matching? 
+                                // For now milestones always show if parent is expanded
                                 acc.push({
                                     id: m.id,
                                     name: m.name,
@@ -177,6 +208,8 @@ export const GanttProvider = ({ children, activities, milestones, onSelectActivi
         // Append Root Milestones (if any)
         const rootMilestones = milestonesByParent['root'];
         if (rootMilestones && rootMilestones.length > 0) {
+            // Root milestones visible always? Or apply logic?
+            // Let's show them always for now as they are top level
             const sortedMs = [...rootMilestones].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
             sortedMs.forEach(m => {
                 list.push({

@@ -33,11 +33,15 @@ const SyncManagerPage = React.lazy(() => import('./pages/field/SyncManagerPage')
 
 // Reports & Others
 const ProjectReport = React.lazy(() => import('./pages/ProjectReport').then(m => ({ default: m.ProjectReport })));
+const ReportsView = React.lazy(() => import('./pages/ReportsView').then(m => ({ default: m.ReportsView })));
+
 const ExecutiveReport = React.lazy(() => import('./pages/ExecutiveReport').then(m => ({ default: m.ExecutiveReport })));
 const PunchListPro = React.lazy(() => import('./pages/field/PunchListPro').then(m => ({ default: m.PunchListPro })));
 const GeneralPunchList = React.lazy(() => import('./pages/field/GeneralPunchList').then(m => ({ default: m.GeneralPunchList })));
 const PMDashboard = React.lazy(() => import('./pages/pm/PMDashboard'));
 const WhatsappSimulator = React.lazy(() => import('./pages/WhatsappSimulator').then(m => ({ default: m.WhatsappSimulator })));
+const ScrumProjects = React.lazy(() => import('./pages/ScrumProjects').then(m => ({ default: m.ScrumProjects })));
+const ScrumPage = React.lazy(() => import('./pages/ScrumPage').then(m => ({ default: m.ScrumPage })));
 
 // Admin
 const AdminUsers = React.lazy(() => import('./pages/admin/Users').then(m => ({ default: m.AdminUsers })));
@@ -76,6 +80,7 @@ function App() {
             <Route path="/budgets" element={<Budgets />} />
 
             <Route path="/projects/:id" element={<ProjectBudget />} />
+            <Route path="/projects/:id/reports" element={<ReportsView />} />
             <Route path="/projects/:id/plan" element={<ProjectPlan />} />
             <Route path="/projects/:id/pm" element={<PMDashboard />} />
             <Route path="/projects/:id/punch" element={<PunchListPro />} />
@@ -101,6 +106,10 @@ function App() {
 
             <Route path="/reports/project/:id" element={<ProjectReport />} />
             <Route path="/projects/:id/report" element={<ExecutiveReport />} />
+
+            {/* Scrum Module */}
+            <Route path="/scrum" element={<ScrumProjects />} />
+            <Route path="/scrum/:projectId" element={<ScrumPage />} />
 
             {/* Admin Routes */}
             <Route path="/admin/users" element={<AdminUsers />} />

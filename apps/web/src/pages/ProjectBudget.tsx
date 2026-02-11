@@ -4,16 +4,19 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Plus, ArrowLeft, DollarSign, PieChart, ShoppingCart, FileText, Wallet, TrendingUp, AlertCircle, CheckCircle, Settings } from 'lucide-react';
+import { Plus, ArrowLeft, DollarSign, PieChart, ShoppingCart, FileText, Wallet, TrendingUp, AlertCircle, CheckCircle, Settings, Grid, Users, Receipt, Target } from 'lucide-react';
+import { BudgetGrid } from '../components/budget/BudgetGrid';
+import { BudgetProcurement } from '../components/budget/BudgetProcurement';
+import { LaborView } from '../components/budget/LaborView';
 
 const KPICard = ({ title, value, icon: Icon, color }: any) => (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+    <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-all group">
         <div>
-            <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">{title}</p>
+            <p className="text-2xl font-bold text-gray-900 h-8 flex items-center">{value}</p>
         </div>
-        <div className={`p-3 rounded-lg ${color}`}>
-            <Icon size={24} />
+        <div className={`p-2.5 rounded-full ${color} opacity-90 group-hover:opacity-100 transition-opacity`}>
+            <Icon size={20} strokeWidth={2} />
         </div>
     </div>
 );
@@ -21,26 +24,9 @@ const KPICard = ({ title, value, icon: Icon, color }: any) => (
 export const ProjectBudget = () => {
     const { id } = useParams();
     const queryClient = useQueryClient();
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'matrix' | 'procurement' | 'labor'>('dashboard');
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
-    const { data: project, isLoading, error } = useQuery({
-        queryKey: ['project-budget', id],
-        queryFn: async () => {
-            const res = await axios.get(`${API_URL}/budgets/${id}/summary`);
-            return res.data;
-        },
-        // We currently query by budget ID directly for simplicity in this MVP view, 
-        // but typically we'd look up the budget FOR a project. 
-        // For now assuming ID passed is the BUDGET ID or we link from Project to Budget.
-        // Actually, let's fix the flow: Project List -> Project Detail -> Budget Tab.
-        // But to match the route, I'll fetch the project first to find its budget.
-        // Wait, the backend endpoint `GET /projects/:id` returns `budgets[]`.
-        // So let's fetch Project first.
-    });
-
-    // Refetch strategy: Get Project -> Get Budget ID -> Get Budget Summary
-    // For MVP speed, let's just make the route /projects/:projectId/budget/:budgetId
-    // Or better: Fetch Project, find the first budget (Active), show summary.
 
     const { data: projectData, isLoading: isProjectLoading } = useQuery({
         queryKey: ['project', id],
@@ -75,6 +61,21 @@ export const ProjectBudget = () => {
 
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+    const createBudgetMutation = useMutation({
+        mutationFn: async () => {
+            return axios.post(`${API_URL}/budgets`, { projectId: id, name: 'Project Budget' });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['project', id] });
+            toast.success('Presupuesto inicializado correctamente');
+            setActiveTab('matrix');
+        },
+        onError: (err: any) => {
+            console.error(err);
+            toast.error(err.response?.data?.message || 'Error al crear presupuesto');
+        }
+    });
+
     if (isProjectLoading) return <div className="p-8">Loading project...</div>;
     if (!projectData) return <div className="p-8">Project not found</div>;
 
@@ -95,37 +96,67 @@ export const ProjectBudget = () => {
                         <div className="flex items-center gap-2 text-gray-500 mt-1">
                             <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-mono">{projectData?.code}</span>
                             <span>•</span>
-                            {projectData.globalBudget && (
-                                <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-mono font-bold">
-                                    Global Budget: {currency(projectData.globalBudget)}
-                                </span>
-                            )}
-                            <span>•</span>
-                            <Link to={`/reports/project/${id}`} className="text-blue-600 hover:underline flex items-center gap-1 text-sm">
-                                <FileText size={14} /> View Financial Report
-                            </Link>
-                            <span>•</span>
-                            <Link to={`/projects/${id}/report`} className="text-purple-600 hover:underline flex items-center gap-1 text-sm font-bold">
-                                <FileText size={14} /> Executive Report
-                            </Link>
-                            {projectData?.enablePMDashboard && (
-                                <>
-                                    <span>•</span>
-                                    <Link to={`/projects/${id}/pm`} className="text-orange-600 hover:underline flex items-center gap-1 text-sm font-bold">
-                                        <PieChart size={14} /> PM Dashboard
-                                    </Link>
-                                </>
-                            )}
+                            <span className="text-sm font-medium">Control Presupuestario</span>
                         </div>
                     </div>
                 </div>
-                <button
-                    onClick={() => setIsSettingsOpen(true)}
-                    className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 transition"
-                    title="Project Settings"
-                >
-                    <Settings size={20} />
-                </button>
+                <div className="flex items-center gap-2">
+                    <Link to={`/projects/${id}/plan`} className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 transition flex items-center gap-2 text-sm font-medium">
+                        <FileText size={18} /> Cronograma
+                    </Link>
+                    <Link to={`/projects/${id}/reports`} className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 transition flex items-center gap-2 text-sm font-medium">
+                        <PieChart size={18} /> Reportes
+                    </Link>
+                    <button
+                        onClick={() => setIsSettingsOpen(true)}
+                        className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 transition"
+                        title="Project Settings"
+                    >
+                        <Settings size={20} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="border-b border-gray-200">
+                <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                    <button
+                        onClick={() => setActiveTab('dashboard')}
+                        className={`${activeTab === 'dashboard'
+                            ? 'border-blue-500 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+                    >
+                        <PieChart size={18} /> Dashboard
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('matrix')}
+                        className={`${activeTab === 'matrix'
+                            ? 'border-blue-500 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+                    >
+                        <Grid size={18} /> Matriz de Presupuesto
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('procurement')}
+                        className={`${activeTab === 'procurement'
+                            ? 'border-blue-500 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+                    >
+                        <ShoppingCart size={18} /> Adquisiciones
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('labor')}
+                        className={`${activeTab === 'labor'
+                            ? 'border-blue-500 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+                    >
+                        <Users size={18} /> Mano de Obra
+                    </button>
+                </nav>
             </div>
 
             {!budgetId ? (
@@ -140,82 +171,202 @@ export const ProjectBudget = () => {
                             />
                         </div>
                     )}
-                    <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg text-yellow-800 flex flex-col gap-2">
-                        <p className="font-bold">No detailed budget lines yet.</p>
-                        <p className="text-sm">You have defined a Global Budget, but haven't broken it down into specific lines (Materials, Labor, etc.).</p>
+                    <div className="bg-yellow-50 border border-yellow-200 p-8 rounded-xl text-yellow-800 flex flex-col items-center gap-4 text-center">
+                        <Wallet size={48} className="text-yellow-400" />
+                        <div>
+                            <p className="font-bold text-lg">No hay presupuesto definido</p>
+                            <p className="text-sm max-w-md mx-auto mt-2">Este proyecto aún no tiene líneas de presupuesto detalladas. Inicializa el presupuesto para comenzar.</p>
+                        </div>
+                        <button
+                            onClick={() => createBudgetMutation.mutate()}
+                            disabled={createBudgetMutation.isPending}
+                            className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 font-medium disabled:opacity-50"
+                        >
+                            {createBudgetMutation.isPending ? 'Creando...' : 'Inicializar Presupuesto'}
+                        </button>
                     </div>
                 </div>
             ) : isBudgetLoading ? (
-                <div className="p-8">Loading budget details...</div>
+                <div className="p-8 text-center text-gray-500">Cargando presupuesto...</div>
             ) : (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <KPICard
-                            title="Planned Budget"
-                            value={currency(budgetData.summary.totalPlanned)}
-                            icon={Wallet}
-                            color="bg-blue-100 text-blue-600"
-                        />
-                        <KPICard
-                            title="Committed (PO)"
-                            value={currency(budgetData.summary.totalCommitted)}
-                            icon={CheckCircle}
-                            color="bg-purple-100 text-purple-600"
-                        />
-                        <KPICard
-                            title="Executed (Invoiced)"
-                            value={currency(budgetData.summary.totalExecuted)}
-                            icon={TrendingUp}
-                            color="bg-green-100 text-green-600"
-                        />
-                        <KPICard
-                            title="Variance"
-                            value={currency(budgetData.summary.variance)}
-                            icon={AlertCircle}
-                            color={budgetData.summary.variance >= 0 ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600"}
-                        />
-                    </div>
+                    {activeTab === 'dashboard' && (
+                        <div className="space-y-6 animate-fade-in">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                                <KPICard
+                                    title="Ppto. Global (Meta)"
+                                    value={currency(projectData.globalBudget)}
+                                    icon={Target}
+                                    color="bg-indigo-50 text-indigo-600"
+                                />
+                                <KPICard
+                                    title="Presupuesto Base"
+                                    value={currency(budgetData.summary.totalPlanned)}
+                                    icon={Wallet}
+                                    color="bg-blue-100 text-blue-600"
+                                />
+                                <KPICard
+                                    title="Comprometido (OC)"
+                                    value={currency(budgetData.summary.totalCommitted)}
+                                    icon={CheckCircle}
+                                    color="bg-purple-100 text-purple-600"
+                                />
+                                <KPICard
+                                    title="Ejecutado (Facturado)"
+                                    value={currency(budgetData.summary.totalExecuted)}
+                                    icon={TrendingUp}
+                                    color="bg-green-100 text-green-600"
+                                />
+                                <KPICard
+                                    title="Variación (Ppto. Base)"
+                                    value={currency(budgetData.summary.variance)}
+                                    icon={AlertCircle}
+                                    color={budgetData.summary.variance >= 0 ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600"}
+                                />
+                            </div>
 
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                            <h3 className="font-semibold text-gray-800">Budget Lines</h3>
-                            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">+ Add Line</button>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* Top Variations */}
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                                    <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                        <AlertCircle size={18} className="text-red-500" />
+                                        Alertas de Desviación
+                                    </h3>
+                                    <div className="space-y-4">
+                                        {budgetData.budgetLines
+                                            .filter((l: any) => {
+                                                const current = (l.budgetBase || 0) + (l.budgetCO || 0) + (l.budgetTransfer || 0);
+                                                const spent = (l.amountCommitted || 0) + (l.amountExecuted || 0);
+                                                return (current - spent) < 0;
+                                            })
+                                            .sort((a: any, b: any) => {
+                                                const varA = (a.budgetBase + a.budgetCO + a.budgetTransfer) - (a.amountCommitted + a.amountExecuted);
+                                                const varB = (b.budgetBase + b.budgetCO + b.budgetTransfer) - (b.amountCommitted + b.amountExecuted);
+                                                return varA - varB; // Most negative first
+                                            })
+                                            .slice(0, 5)
+                                            .map((line: any) => {
+                                                const current = (line.budgetBase || 0) + (line.budgetCO || 0) + (line.budgetTransfer || 0);
+                                                const spent = (line.amountCommitted || 0) + (line.amountExecuted || 0);
+                                                const variance = current - spent;
+                                                const percent = current > 0 ? (spent / current) * 100 : 0;
+
+                                                return (
+                                                    <div key={line.id} className="border-b border-gray-50 last:border-0 pb-3 last:pb-0">
+                                                        <div className="flex justify-between items-start mb-1">
+                                                            <div className="font-medium text-sm text-gray-800">{line.name}</div>
+                                                            <div className="font-bold text-sm text-red-600">{currency(variance)}</div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                                                            <span>{line.code}</span>
+                                                            <span>•</span>
+                                                            <span>{line.costType}</span>
+                                                        </div>
+                                                        <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                                            <div className="bg-red-500 h-full rounded-full" style={{ width: `${Math.min(percent, 100)}%` }}></div>
+                                                        </div>
+                                                        <div className="text-[10px] text-right text-gray-400 mt-1">
+                                                            Gastado: {currency(spent)} / Ppto: {currency(current)}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        {budgetData.budgetLines.filter((l: any) => ((l.budgetBase || 0) + (l.budgetCO || 0) + (l.budgetTransfer || 0) - ((l.amountCommitted || 0) + (l.amountExecuted || 0))) < 0).length === 0 && (
+                                            <div className="text-center py-8 text-gray-400 flex flex-col items-center">
+                                                <CheckCircle size={32} className="text-green-500 mb-2 opacity-50" />
+                                                <p>¡Todo bajo control! No hay partidas excedidas.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Cost Distribution */}
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                                    <h3 className="font-bold text-gray-800 mb-4">Distribución por Tipo de Costo</h3>
+                                    {(() => {
+                                        const typeTotals: Record<string, number> = {};
+                                        let grandTotal = 0;
+                                        budgetData.budgetLines.forEach((l: any) => {
+                                            const val = (l.budgetBase || 0) + (l.budgetCO || 0) + (l.budgetTransfer || 0);
+                                            typeTotals[l.costType] = (typeTotals[l.costType] || 0) + val;
+                                            grandTotal += val;
+                                        });
+
+                                        const types = [
+                                            { id: 'MATERIAL', label: 'Material', color: 'bg-blue-500' },
+                                            { id: 'LABOR', label: 'Mano de Obra', color: 'bg-blue-400' },
+                                            { id: 'SUB', label: 'Subcontrato', color: 'bg-indigo-500' },
+                                            { id: 'EQUIPMENT', label: 'Equipo', color: 'bg-sky-500' },
+                                            { id: 'OVERHEAD', label: 'Indirectos', color: 'bg-gray-400' },
+                                        ];
+
+                                        if (grandTotal === 0) return <div className="text-center py-12 text-gray-400">Sin datos de presupuesto</div>;
+
+                                        return (
+                                            <div className="space-y-6">
+                                                <div className="flex h-8 rounded-lg overflow-hidden w-full">
+                                                    {types.map(t => {
+                                                        const val = typeTotals[t.id] || 0;
+                                                        if (val === 0) return null;
+                                                        const pct = (val / grandTotal) * 100;
+                                                        return (
+                                                            <div key={t.id} className={`${t.color} hover:opacity-90 transition cursor-help`} style={{ width: `${pct}%` }} title={`${t.label}: ${currency(val)}`}></div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    {types.map(t => {
+                                                        const val = typeTotals[t.id] || 0;
+                                                        if (val === 0) return null;
+                                                        const pct = (val / grandTotal) * 100;
+                                                        return (
+                                                            <div key={t.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className={`w-3 h-3 rounded-full ${t.color}`}></div>
+                                                                    <span className="text-sm font-medium text-gray-700">{t.label}</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <div className="text-sm font-bold text-gray-900">{Math.round(pct)}%</div>
+                                                                    <div className="text-xs text-gray-500">{currency(val)}</div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            </div>
                         </div>
-                        <table className="w-full">
-                            <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase">
-                                <tr>
-                                    <th className="px-6 py-3">Code</th>
-                                    <th className="px-6 py-3">Description</th>
-                                    <th className="px-6 py-3 text-right">Planned</th>
-                                    <th className="px-6 py-3 text-right">Committed</th>
-                                    <th className="px-6 py-3 text-right">Executed</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {budgetData.budgetLines.map((line: any) => (
-                                    <tr key={line.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-3 text-sm text-gray-900 font-medium">{line.code}</td>
-                                        <td className="px-6 py-3 text-sm text-gray-600">{line.name}</td>
-                                        <td className="px-6 py-3 text-sm text-right">{currency(line.amountParam)}</td>
-                                        <td className="px-6 py-3 text-sm text-right">{currency(line.amountCommitted)}</td>
-                                        <td className="px-6 py-3 text-sm text-right">{currency(line.amountExecuted)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        {budgetData.budgetLines.length === 0 && (
-                            <div className="p-8 text-center text-gray-500 text-sm">No budget lines defined</div>
-                        )}
-                    </div>
+                    )}
+
+                    {activeTab === 'matrix' && (
+                        <div className="animate-fade-in">
+                            <BudgetGrid budgetId={budgetId} projectId={id!} currency={projectData.currency} />
+                        </div>
+                    )}
+
+                    {activeTab === 'procurement' && (
+                        <div className="animate-fade-in">
+                            <BudgetProcurement projectId={id!} currency={projectData.currency} />
+                        </div>
+                    )}
+
+                    {activeTab === 'labor' && (
+                        <div className="animate-fade-in">
+                            <LaborView projectId={id!} />
+                        </div>
+                    )}
                 </>
             )}
 
-            {/* Settings Modal */}
+            {/* Settings Modal - Keeping existing logic */}
             {isSettingsOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in">
                     <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl">
                         <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
-                            <h3 className="text-xl font-bold text-gray-800">Project Settings</h3>
+                            <h3 className="text-xl font-bold text-gray-800">Configuración del Proyecto</h3>
                             <button onClick={() => setIsSettingsOpen(false)} className="text-gray-400 hover:text-gray-600"><Plus size={24} className="rotate-45" /></button>
                         </div>
 
@@ -223,7 +374,7 @@ export const ProjectBudget = () => {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <h4 className="font-medium text-gray-900">PM Dashboard</h4>
-                                    <p className="text-sm text-gray-500">Enable advanced risk tracking and dashboard.</p>
+                                    <p className="text-sm text-gray-500">Habilitar panel de control avanzado.</p>
                                 </div>
                                 <input
                                     type="checkbox"
@@ -239,7 +390,7 @@ export const ProjectBudget = () => {
                                 onClick={() => setIsSettingsOpen(false)}
                                 className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
                             >
-                                Close
+                                Cerrar
                             </button>
                         </div>
                     </div>

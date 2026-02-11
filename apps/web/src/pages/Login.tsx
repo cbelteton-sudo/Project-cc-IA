@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { Hammer, Check } from 'lucide-react';
+import { Hammer } from 'lucide-react';
 
 export const Login = () => {
     const [email, setEmail] = useState('');
@@ -58,7 +58,6 @@ export const Login = () => {
                 <div className="flex flex-col items-center mb-8">
                     <div className="flex items-center gap-3 mb-2">
                         <span className="text-4xl font-bold text-field-blue tracking-tight">FIELD<span className="text-field-orange">CLOSE</span></span>
-                        <Check className="text-field-green" size={40} strokeWidth={4} />
                     </div>
                     <p className="text-gray-500 mt-2 font-medium">Gestión de Construcción Profesional</p>
                 </div>

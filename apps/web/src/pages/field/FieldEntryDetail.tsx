@@ -159,17 +159,26 @@ export const FieldEntryDetail: React.FC = () => {
                     }))
                 }));
 
+                const getImageUrl = (path: string) => {
+                    if (!path) return '';
+                    if (path.startsWith('http')) return path;
+
+                    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+                    const cleanApiUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
+                    return `${cleanApiUrl}${cleanPath}`;
+                };
+
                 const formattedApiItems = apiItems.map((e: any) => ({
                     id: e.id,
-                    date: new Date(e.updatedAt).toISOString(),
+                    date: e.date ? new Date(e.date).toISOString() : new Date(e.createdAt).toISOString(),
                     status: e.status,
-                    author: e.author?.name || 'Usuario',
+                    author: e.authorName || e.author?.name || 'Usuario',
                     note: e.note,
-                    createdAt: new Date(e.updatedAt).toISOString(),
+                    createdAt: e.createdAt ? new Date(e.createdAt).toISOString() : new Date().toISOString(),
                     photos: e.photos?.map((p: any) => ({
                         id: p.id,
-                        urlThumb: p.urlThumb || p.urlMain,
-                        urlMain: p.urlMain
+                        urlThumb: getImageUrl(p.urlThumb || p.urlMain),
+                        urlMain: getImageUrl(p.urlMain)
                     })) || []
                 }));
 
@@ -226,33 +235,50 @@ export const FieldEntryDetail: React.FC = () => {
                 await db.put('field_daily_reports', report);
             }
 
-            // 2. Entry
+            // 2. Prepare Photos (Convert to Base64 for Sync)
+            const photoPayloads = await Promise.all(tempPhotos.map(async (p) => {
+                return new Promise<any>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        resolve({
+                            id: p.id,
+                            blob: p.blob, // Keep blob for local IDB
+                            base64: reader.result as string
+                        });
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(p.blob);
+                });
+            }));
+
+            // 3. Entry Data (Include Photos)
             const entryId = crypto.randomUUID();
             const entryData = {
                 id: entryId,
                 dailyReportId: report.id,
-                projectId, // Add for Backend resolution
-                dateString: dateStr, // Add for Backend resolution
+                projectId,
+                dateString: dateStr,
                 scheduleActivityId: activity.id,
                 activityName: activity.name,
                 status: activity.status,
                 note,
-                progressChip: 0, // Placeholder
+                progressChip: 0,
                 updatedAt: Date.now(),
-                createdBy: user?.userId, // Capture author ID at creation
-                createdByName: user?.name // Capture author Name for local display
+                createdBy: user?.userId,
+                createdByName: user?.name,
+                photos: photoPayloads.map(p => ({ id: p.id, base64: p.base64 })) // Send Base64 to backend
             };
             await db.put('field_daily_entries', entryData);
 
-            // 3. Photos
-            for (const photo of tempPhotos) {
+            // 4. Save Photos Locally (IDB)
+            for (const photo of photoPayloads) {
                 await db.put('photos', {
                     id: photo.id,
                     blob: photo.blob,
                     projectId,
                     activityId: activity.id,
                     fieldUpdateId: entryId,
-                    uploaded: false
+                    uploaded: false // Mark as false until sync confirms? SyncQueue doesn't update this yet.
                 });
             }
 

@@ -1,0 +1,28 @@
+npm warn exec The following package was not found and will be installed: nx@22.5.0
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'minimatch@10.1.1',
+npm warn EBADENGINE   required: { node: '20 || >=22' },
+npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@isaacs/brace-expansion@5.0.1',
+npm warn EBADENGINE   required: { node: '20 || >=22' },
+npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+npm warn EBADENGINE }
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@isaacs/balanced-match@4.0.1',
+npm warn EBADENGINE   required: { node: '20 || >=22' },
+npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+npm warn EBADENGINE }
+
+ NX   The current directory isn't part of an Nx workspace.
+
+To create a workspace run:
+npx create-nx-workspace@latest <workspace name>
+
+To add Nx to an existing workspace with a workspace-specific nx.json, run:
+npx nx@latest init
+
+
+ NX   For more information please visit https://nx.dev/
+

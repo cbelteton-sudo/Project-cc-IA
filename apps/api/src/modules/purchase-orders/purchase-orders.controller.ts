@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { PurchaseOrdersService } from './purchase-orders.service';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { UpdatePurchaseOrderDto } from './dto/update-purchase-order.dto';
@@ -16,8 +16,8 @@ export class PurchaseOrdersController {
   }
 
   @Get()
-  findAll(@ActiveUser() user: any) {
-    return this.purchaseOrdersService.findAll(user.tenantId);
+  findAll(@ActiveUser() user: any, @Query('projectId') projectId?: string) {
+    return this.purchaseOrdersService.findAll(user.tenantId, projectId);
   }
 
   @Get(':id')

@@ -26,8 +26,8 @@ export class ActivitiesController {
     }
 
     @Patch(':id')
-    update(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string, @Body() updateActivityDto: UpdateActivityDto) {
-        return this.activitiesService.update(tenantId, id, updateActivityDto);
+    update(@ActiveUser('tenantId') tenantId: string, @ActiveUser('id') userId: string, @Param('id') id: string, @Body() updateActivityDto: UpdateActivityDto) {
+        return this.activitiesService.update(tenantId, id, updateActivityDto, userId);
     }
 
     @Post(':id/dependencies')

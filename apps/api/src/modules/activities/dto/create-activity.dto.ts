@@ -64,6 +64,10 @@ export class UpdateActivityDto {
     @IsOptional()
     @IsString()
     budgetLineId?: string;
+
+    @IsOptional()
+    @IsString()
+    assignedUserId?: string;
 }
 
 export class AddDependencyDto {

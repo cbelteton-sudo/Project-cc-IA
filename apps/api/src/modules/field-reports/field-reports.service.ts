@@ -99,8 +99,10 @@ export class FieldReportsService {
             }
         });
 
+        let entry;
+
         if (existingEntry) {
-            const updated = await this.prisma.fieldDailyEntry.update({
+            entry = await this.prisma.fieldDailyEntry.update({
                 where: { id: existingEntry.id },
                 data: {
                     status,
@@ -110,30 +112,20 @@ export class FieldReportsService {
                     createdBy: authorId
                 }
             });
-
-            // Update Activity lastUpdateAt
-            if (scheduleActivityId) {
-                await this.prisma.projectActivity.update({
-                    where: { id: scheduleActivityId },
-                    data: { lastUpdateAt: new Date() }
-                }).catch(e => console.error('Failed to update activity timestamp', e));
-            }
-
-            return updated;
+        } else {
+            entry = await this.prisma.fieldDailyEntry.create({
+                data: {
+                    dailyReportId,
+                    scheduleActivityId,
+                    activityName,
+                    wbs,
+                    status,
+                    progressChip,
+                    note,
+                    createdBy: authorId
+                },
+            });
         }
-
-        const newEntry = await this.prisma.fieldDailyEntry.create({
-            data: {
-                dailyReportId,
-                scheduleActivityId,
-                activityName,
-                wbs,
-                status,
-                progressChip,
-                note,
-                createdBy: authorId
-            },
-        });
 
         // Update Activity lastUpdateAt
         if (scheduleActivityId) {
@@ -143,7 +135,39 @@ export class FieldReportsService {
             }).catch(e => console.error('Failed to update activity timestamp', e));
         }
 
-        return newEntry;
+        // Handle Photos (Base64)
+        if (dto.photos && Array.isArray(dto.photos) && dto.photos.length > 0) {
+            const photoList = dto.photos as any[];
+            for (const p of photoList) {
+                // Check if photo exists
+                const existingPhoto = await this.prisma.photo.findUnique({ where: { id: p.id } });
+                if (!existingPhoto) {
+                    // Ensure we have projectId
+                    let validProjectId = projectId;
+                    if (!validProjectId && dailyReportId) {
+                        const dr = await this.prisma.fieldDailyReport.findUnique({ where: { id: dailyReportId }, select: { projectId: true } });
+                        if (dr) validProjectId = dr.projectId;
+                    }
+
+                    if (validProjectId) {
+                        await this.prisma.photo.create({
+                            data: {
+                                id: p.id,
+                                urlMain: p.base64,
+                                urlThumb: p.base64,
+                                dailyEntryId: entry.id, // Correct relation
+                                projectId: validProjectId,
+                                createdBy: authorId
+                            }
+                        }).catch(e => console.error('Failed to save photo', e));
+                    } else {
+                        console.warn('Skipping photo save: Missing Project ID');
+                    }
+                }
+            }
+        }
+
+        return entry;
     }
 
     async submitReport(id: string, userId: string) {
@@ -167,9 +191,8 @@ export class FieldReportsService {
 
 
     async getActivityLog(activityId: string, limit: number = 20) {
-        // Fetch entries for this activity joined with user and photos
-        // We want the Author NAME, Status, Note, Progress, Date
-        const entries = await this.prisma.fieldDailyEntry.findMany({
+        // 1. Fetch Field Entries
+        const fieldEntries = await this.prisma.fieldDailyEntry.findMany({
             where: { scheduleActivityId: activityId },
             orderBy: { createdAt: 'desc' },
             take: Number(limit),
@@ -179,24 +202,33 @@ export class FieldReportsService {
                 },
                 photos: {
                     select: { id: true, urlThumb: true, urlMain: true }
-                },
-                // Include author if relation exists? If not, we join manually later or assume createdBy ID
+                }
             }
         });
 
-        // Manual join for User Name if needed, or if relation exists in schema
-        // Assuming no strict relation in schema yet, let's fetch users or if we added relation in previous steps
-        // Ideally we should have author relation. Let's check schema/service or just return ID and let frontend handle if simple.
-        // Actually, previous task added author relation/lookup. Let's do a quick lookup for names.
+        // 2. Fetch Scrum Daily Updates linked to this WBS Activity
+        const scrumUpdates = await this.prisma.dailyUpdate.findMany({
+            where: { wbsActivityId: activityId },
+            orderBy: { createdAt: 'desc' },
+            take: Number(limit),
+            include: {
+                user: { select: { id: true, name: true } },
+                photos: {
+                    select: { id: true, urlMain: true, urlThumb: true }
+                }
+            }
+        });
 
-        const userIds = [...new Set(entries.map(e => e.createdBy).filter((id): id is string => id !== null))];
+        // 3. Get User Names for Field Entries
+        const userIds = [...new Set(fieldEntries.map(e => e.createdBy).filter((id): id is string => id !== null))];
         const users = await this.prisma.user.findMany({
             where: { id: { in: userIds } },
             select: { id: true, name: true }
         });
         const userMap = new Map(users.map(u => [u.id, u.name]));
 
-        return entries.map(e => ({
+        // 4. Map and Merge
+        const mappedFieldEntries = fieldEntries.map(e => ({
             id: e.id,
             date: e.dailyReport.date,
             status: e.status,
@@ -205,9 +237,35 @@ export class FieldReportsService {
             createdAt: e.createdAt,
             createdBy: e.createdBy,
             authorName: (e.createdBy ? userMap.get(e.createdBy) : null) || 'Usuario',
+            source: 'FIELD',
             photos: e.photos,
             photosCount: e.photos.length
         }));
+
+        const mappedScrumUpdates = scrumUpdates.map((u: any) => ({
+            id: u.id,
+            date: u.createdAt, // Scrum updates don't have separate date field yet, use createdAt
+            status: 'SCRUM_UPDATE', // specific status tag
+            progressChip: null,
+            note: u.text,
+            createdAt: u.createdAt,
+            createdBy: u.userId,
+            authorName: u.user?.name || 'Usuario',
+            source: 'SCRUM',
+            photos: u.photos.map((p: any) => ({
+                id: p.id,
+                urlThumb: p.urlThumb || p.urlMain,
+                urlMain: p.urlMain
+            })),
+            photosCount: u.photos.length
+        }));
+
+        // Merge and Sort
+        const allItems = [...mappedFieldEntries, ...mappedScrumUpdates].sort((a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+        return allItems.slice(0, limit);
     }
 
     async getActivityPhotos(activityId: string, limit: number = 50) {

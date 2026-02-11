@@ -23,6 +23,11 @@ export class ProjectsService {
         _count: {
           select: { budgets: true },
         },
+        sprints: {
+          where: { status: 'ACTIVE' },
+          select: { id: true, name: true },
+          take: 1
+        },
       },
     });
   }
