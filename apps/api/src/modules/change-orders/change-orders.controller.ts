@@ -34,4 +34,9 @@ export class ChangeOrdersController {
   remove(@Param('id') id: string, @ActiveUser() user: any) {
     return this.changeOrdersService.remove(id, user.tenantId);
   }
+
+  @Post(':id/approve')
+  approve(@Param('id') id: string, @ActiveUser() user: any) {
+    return this.changeOrdersService.approve(id, user.tenantId, user.id);
+  }
 }

@@ -10,13 +10,16 @@ import { BudgetProcurement } from '../components/budget/BudgetProcurement';
 import { LaborView } from '../components/budget/LaborView';
 
 const KPICard = ({ title, value, icon: Icon, color }: any) => (
-    <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-all group">
-        <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">{title}</p>
-            <p className="text-2xl font-bold text-gray-900 h-8 flex items-center">{value}</p>
+    <div className="bg-white px-5 py-5 rounded-xl border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-lg transition-all duration-300 group">
+        <div className="flex items-start justify-between mb-4">
+            <div className={`p-2 rounded-lg ${color.split(' ')[0]} bg-opacity-60 group-hover:bg-opacity-100 transition-all`}>
+                <Icon size={18} className={color.split(' ')[1]} strokeWidth={2} />
+            </div>
+            {/* Optional: Add a sparkline or trend indicator here if available */}
         </div>
-        <div className={`p-2.5 rounded-full ${color} opacity-90 group-hover:opacity-100 transition-opacity`}>
-            <Icon size={20} strokeWidth={2} />
+        <div>
+            <p className="text-2xl font-bold text-gray-800 tracking-tight leading-none mb-1">{value}</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{title}</p>
         </div>
     </div>
 );
@@ -81,7 +84,11 @@ export const ProjectBudget = () => {
 
     // Formatter
     const currency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: projectData.currency || 'USD' }).format(amount || 0);
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: projectData.currency || 'USD',
+            maximumFractionDigits: 0
+        }).format(amount || 0);
     }
 
     return (
@@ -92,27 +99,28 @@ export const ProjectBudget = () => {
                         <ArrowLeft size={20} className="text-gray-600" />
                     </Link>
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-800">{projectData?.name}</h1>
+                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{projectData?.name}</h1>
                         <div className="flex items-center gap-2 text-gray-500 mt-1">
-                            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-mono">{projectData?.code}</span>
-                            <span>•</span>
-                            <span className="text-sm font-medium">Control Presupuestario</span>
+                            <span className="text-xs">Control Presupuestario</span>
                         </div>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Link to={`/projects/${id}/plan`} className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 transition flex items-center gap-2 text-sm font-medium">
-                        <FileText size={18} /> Cronograma
+                    <Link to={`/projects/${id}/plan`} className="p-2 hover:bg-gray-50 rounded-lg text-gray-600 transition flex items-center gap-2 text-xs font-medium border border-transparent hover:border-gray-200">
+                        <FileText size={16} /> Cronograma
                     </Link>
-                    <Link to={`/projects/${id}/reports`} className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 transition flex items-center gap-2 text-sm font-medium">
-                        <PieChart size={18} /> Reportes
+                    <Link to={`/projects/${id}/reports`} className="p-2 hover:bg-gray-50 rounded-lg text-gray-600 transition flex items-center gap-2 text-xs font-medium border border-transparent hover:border-gray-200">
+                        <PieChart size={16} /> Reportes
+                    </Link>
+                    <Link to={`/projects/${id}/change-orders`} className="p-2 hover:bg-gray-50 rounded-lg text-gray-600 transition flex items-center gap-2 text-xs font-medium border border-transparent hover:border-gray-200">
+                        <FileText size={16} /> Órdenes de Cambio
                     </Link>
                     <button
                         onClick={() => setIsSettingsOpen(true)}
-                        className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 transition"
+                        className="p-2 hover:bg-gray-50 rounded-lg text-gray-600 transition border border-transparent hover:border-gray-200"
                         title="Project Settings"
                     >
-                        <Settings size={20} />
+                        <Settings size={18} />
                     </button>
                 </div>
             </div>
@@ -123,38 +131,38 @@ export const ProjectBudget = () => {
                     <button
                         onClick={() => setActiveTab('dashboard')}
                         className={`${activeTab === 'dashboard'
-                            ? 'border-blue-500 text-blue-600'
+                            ? 'border-gray-900 text-gray-900'
                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
                     >
-                        <PieChart size={18} /> Dashboard
+                        Dashboard
                     </button>
                     <button
                         onClick={() => setActiveTab('matrix')}
                         className={`${activeTab === 'matrix'
-                            ? 'border-blue-500 text-blue-600'
+                            ? 'border-gray-900 text-gray-900'
                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
                     >
-                        <Grid size={18} /> Matriz de Presupuesto
+                        Matriz de Presupuesto
                     </button>
                     <button
                         onClick={() => setActiveTab('procurement')}
                         className={`${activeTab === 'procurement'
-                            ? 'border-blue-500 text-blue-600'
+                            ? 'border-gray-900 text-gray-900'
                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
                     >
-                        <ShoppingCart size={18} /> Adquisiciones
+                        Adquisiciones
                     </button>
                     <button
                         onClick={() => setActiveTab('labor')}
                         className={`${activeTab === 'labor'
-                            ? 'border-blue-500 text-blue-600'
+                            ? 'border-gray-900 text-gray-900'
                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
                     >
-                        <Users size={18} /> Mano de Obra
+                        Mano de Obra
                     </button>
                 </nav>
             </div>
@@ -192,7 +200,7 @@ export const ProjectBudget = () => {
                 <>
                     {activeTab === 'dashboard' && (
                         <div className="space-y-6 animate-fade-in">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
                                 <KPICard
                                     title="Ppto. Global (Meta)"
                                     value={currency(projectData.globalBudget)}
@@ -200,28 +208,34 @@ export const ProjectBudget = () => {
                                     color="bg-indigo-50 text-indigo-600"
                                 />
                                 <KPICard
-                                    title="Presupuesto Base"
+                                    title="Presupuesto Actual"
                                     value={currency(budgetData.summary.totalPlanned)}
                                     icon={Wallet}
-                                    color="bg-blue-100 text-blue-600"
+                                    color="bg-blue-50 text-blue-600"
                                 />
                                 <KPICard
-                                    title="Comprometido (OC)"
+                                    title="Reformas (Cambios)"
+                                    value={currency(budgetData.budgetLines.reduce((acc: number, line: any) => acc + (line.budgetCO || 0), 0))}
+                                    icon={FileText}
+                                    color="bg-orange-50 text-orange-600"
+                                />
+                                <KPICard
+                                    title="Comprometido"
                                     value={currency(budgetData.summary.totalCommitted)}
                                     icon={CheckCircle}
-                                    color="bg-purple-100 text-purple-600"
+                                    color="bg-purple-50 text-purple-600"
                                 />
                                 <KPICard
-                                    title="Ejecutado (Facturado)"
+                                    title="Ejecutado"
                                     value={currency(budgetData.summary.totalExecuted)}
                                     icon={TrendingUp}
-                                    color="bg-green-100 text-green-600"
+                                    color="bg-green-50 text-green-600"
                                 />
                                 <KPICard
-                                    title="Variación (Ppto. Base)"
+                                    title="Variación"
                                     value={currency(budgetData.summary.variance)}
                                     icon={AlertCircle}
-                                    color={budgetData.summary.variance >= 0 ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600"}
+                                    color={budgetData.summary.variance >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}
                                 />
                             </div>
 

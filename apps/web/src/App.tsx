@@ -19,6 +19,7 @@ const Budgets = React.lazy(() => import('./pages/Budgets').then(m => ({ default:
 const MaterialRequests = React.lazy(() => import('./pages/MaterialRequests').then(m => ({ default: m.MaterialRequests })));
 const PurchaseOrders = React.lazy(() => import('./pages/PurchaseOrders').then(m => ({ default: m.PurchaseOrders })));
 const Invoices = React.lazy(() => import('./pages/Invoices').then(m => ({ default: m.Invoices })));
+const ChangeOrders = React.lazy(() => import('./pages/ChangeOrders').then(m => ({ default: m.ChangeOrders })));
 
 // Field Pages
 const FieldDashboard = React.lazy(() => import('./pages/field/FieldDashboard').then(m => ({ default: m.FieldDashboard })));
@@ -82,6 +83,7 @@ function App() {
             <Route path="/projects/:id" element={<ProjectBudget />} />
             <Route path="/projects/:id/reports" element={<ReportsView />} />
             <Route path="/projects/:id/plan" element={<ProjectPlan />} />
+            <Route path="/projects/:id/change-orders" element={<ChangeOrders />} />
             <Route path="/projects/:id/pm" element={<PMDashboard />} />
             <Route path="/projects/:id/punch" element={<PunchListPro />} />
 

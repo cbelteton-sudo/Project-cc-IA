@@ -194,6 +194,8 @@ model BudgetLine {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  changeOrderItems ChangeOrderItem[]
+
   @@unique([budgetId, wbsActivityId, costType]) 
 }
 
@@ -366,9 +368,30 @@ model ChangeOrder {
   title       String
   description String?
   amount      Float
-  status      String   @default("DRAFT") // DRAFT, APPROVED, REJECTED
+  status      String   @default("DRAFT") // DRAFT, PENDING, APPROVED, REJECTED
+  
+  items       ChangeOrderItem[]
+  
+  approverId  String?
+  approvedAt  DateTime?
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model ChangeOrderItem {
+  id            String      @id @default(uuid())
+  changeOrderId String
+  changeOrder   ChangeOrder @relation(fields: [changeOrderId], references: [id], onDelete: Cascade)
+  
+  budgetLineId  String
+  budgetLine    BudgetLine  @relation(fields: [budgetLineId], references: [id])
+  
+  description   String
+  amount        Float       // Can be positive (increase) or negative (decrease)
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 // --- PROCUREMENT CATALOG ---

@@ -43,7 +43,8 @@
             "pendingApprovals": "Pending Approvals",
             "openIssues": "Open Field Issues",
             "total": "Total",
-            "budget": "Budget"
+            "budget": "Budget",
+            "actual": "Executed"
         },
         "charts": {
             "financialPerformance": "Financial Performance",

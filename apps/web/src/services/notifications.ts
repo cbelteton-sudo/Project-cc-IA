@@ -23,7 +23,8 @@ export const useNotifications = () => {
             });
             return data;
         },
-        refetchInterval: 30000 // Poll every 30s
+        refetchInterval: 30000, // Poll every 30s
+        enabled: !!localStorage.getItem('token'),
     });
 };
 
@@ -36,7 +37,8 @@ export const useUnreadCount = () => {
             });
             return data;
         },
-        refetchInterval: 30000
+        refetchInterval: 30000,
+        enabled: !!localStorage.getItem('token'),
     });
 };
 

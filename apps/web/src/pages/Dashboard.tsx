@@ -37,7 +37,8 @@ export const Dashboard = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             return res.data;
-        }
+        },
+        enabled: !!token
     });
 
     if (isLoading) return <div className="p-8 text-center text-gray-500">{t('common.loading')}</div>;

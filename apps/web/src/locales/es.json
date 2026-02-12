@@ -43,7 +43,8 @@
             "pendingApprovals": "Aprobaciones Pendientes",
             "openIssues": "Incidencias de Campo",
             "total": "Total",
-            "budget": "Presupuesto"
+            "budget": "Presupuesto",
+            "actual": "Ejecutado"
         },
         "charts": {
             "financialPerformance": "Rendimiento Financiero",

@@ -17,8 +17,27 @@ export class ChangeOrdersService {
       throw new BadRequestException('Invalid Project');
     }
 
+    // Calculate total amount from items
+    const totalAmount = createChangeOrderDto.items.reduce((sum, item) => sum + item.amount, 0);
+
     return this.prisma.changeOrder.create({
-      data: createChangeOrderDto,
+      data: {
+        projectId: createChangeOrderDto.projectId,
+        title: createChangeOrderDto.title,
+        description: createChangeOrderDto.description,
+        amount: totalAmount,
+        status: 'DRAFT',
+        items: {
+          create: createChangeOrderDto.items.map(item => ({
+            budgetLineId: item.budgetLineId,
+            description: item.description,
+            amount: item.amount
+          }))
+        }
+      },
+      include: {
+        items: true,
+      }
     });
   }
 
@@ -31,14 +50,25 @@ export class ChangeOrdersService {
       },
       include: {
         project: true,
+        items: true,
       },
+      orderBy: {
+        createdAt: 'desc',
+      }
     });
   }
 
   async findOne(id: string, tenantId: string) {
     const co = await this.prisma.changeOrder.findUnique({
       where: { id },
-      include: { project: true },
+      include: {
+        project: true,
+        items: {
+          include: {
+            budgetLine: true
+          }
+        }
+      },
     });
 
     if (!co || co.project.tenantId !== tenantId) {
@@ -49,17 +79,73 @@ export class ChangeOrdersService {
   }
 
   async update(id: string, updateChangeOrderDto: UpdateChangeOrderDto, tenantId: string) {
-    await this.findOne(id, tenantId);
+    const co = await this.findOne(id, tenantId);
+
+    if (co.status === 'APPROVED') {
+      throw new BadRequestException('Cannot update an approved Change Order');
+    }
+
+    // For simplicity, we won't allow full item updates in this basic version, 
+    // just title/desc updates. Re-implementing full item sync is complex for this iteration.
+    // If items are passed, we'd need to delete existing and recreate.
+
+    // Simplification: Block item updates for now if complex logic is needed, 
+    // or just update header fields.
+    // Let's assume frontend sends full object.
+
+    const { items, ...headerData } = updateChangeOrderDto;
+
+    // Recalculate amount if items are present? 
+    // For this MVP, let's stick to header updates or require deleting/recreating for complex item changes.
+    // But to be user friendly, let's just update the header info.
+
     return this.prisma.changeOrder.update({
       where: { id },
-      data: updateChangeOrderDto,
+      data: headerData,
     });
   }
 
   async remove(id: string, tenantId: string) {
-    await this.findOne(id, tenantId);
+    const co = await this.findOne(id, tenantId);
+    if (co.status === 'APPROVED') {
+      throw new BadRequestException('Cannot delete an approved Change Order');
+    }
     return this.prisma.changeOrder.delete({
       where: { id },
+    });
+  }
+
+  async approve(id: string, tenantId: string, userId: string) {
+    const co = await this.findOne(id, tenantId);
+
+    if (co.status !== 'DRAFT') {
+      throw new BadRequestException('Change Order is not in DRAFT status');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Update CO Status
+      const updatedCo = await tx.changeOrder.update({
+        where: { id },
+        data: {
+          status: 'APPROVED',
+          approverId: userId,
+          approvedAt: new Date(),
+        }
+      });
+
+      // 2. Update Budget Lines
+      for (const item of co.items) {
+        await tx.budgetLine.update({
+          where: { id: item.budgetLineId },
+          data: {
+            budgetCO: {
+              increment: item.amount
+            }
+          }
+        });
+      }
+
+      return updatedCo;
     });
   }
 }
