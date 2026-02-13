@@ -1,0 +1,200 @@
+.
+./pnpm-lock.yaml
+./api.log
+./infra
+./infra/node
+./infra/node/LICENSE
+./infra/node/bin
+./infra/node/CHANGELOG.md
+./infra/node/include
+./infra/node/README.md
+./infra/node/lib
+./infra/node/share
+./infra/bootstrap_node.sh
+./Backlog ejecutado.md
+./node_modules
+./docs
+./docs/SESSION_MEMORY.md
+./docs/flows
+./docs/flows/05-punchlist.png
+./docs/flows/01-overview.mmd
+./docs/flows/02-proyectos.png
+./docs/flows/02-proyectos.mmd
+./docs/flows/06-roles.mmd
+./docs/flows/05-punchlist.mmd
+./docs/flows/01-overview.png
+./docs/flows/README.md
+./docs/flows/00-inventario.md
+./docs/flows/export-diagrams.sh
+./docs/flows/04-evidencia.png
+./docs/flows/03-actividades.png
+./docs/flows/04-evidencia.mmd
+./docs/flows/03-actividades.mmd
+./packages
+./packages/shared
+./packages/shared/node_modules
+./packages/shared/package.json
+./packages/shared/tsconfig.json
+./packages/shared/src
+./auth_debug.log
+./api_v2.log
+./api_v3.log
+./apps
+./apps/web
+./apps/web/tsconfig.node.json
+./apps/web/dev_restore.log
+./apps/web/index.html
+./apps/web/tsconfig.app.json
+./apps/web/dev_fixed.log
+./apps/web/dist
+./apps/web/node_modules
+./apps/web/README.md
+./apps/web/public
+./apps/web/package-lock.json
+./apps/web/package.json
+./apps/web/dev.log
+./apps/web/dev_4174.log
+./apps/web/serve.log
+./apps/web/serve_force.log
+./apps/web/tsconfig.json
+./apps/web/eslint.config.js
+./apps/web/vite.config.ts
+./apps/web/preview.log
+./apps/web/postcss.config.js
+./apps/web/src
+./apps/api
+./apps/api/debug_users.js
+./apps/api/seed-materials-only.ts
+./apps/api/debug-materials.ts
+./apps/api/test
+./apps/api/enable-pm-dashboard.js
+./apps/api/dist
+./apps/api/debug-tenants.ts
+./apps/api/nest-cli.json
+./apps/api/node_modules
+./apps/api/prisma
+./apps/api/uploads
+./apps/api/dev.db
+./apps/api/README.md
+./apps/api/package.json
+./apps/api/tsconfig.build.json
+./apps/api/debug-timesheet.ts
+./apps/api/tsconfig.json
+./apps/api/debug-data.ts
+./apps/api/eslint.config.mjs
+./apps/api/src
+./env_setup.sh
+./PROJECT_ANALYSIS
+./PROJECT_ANALYSIS/project-structure.txt
+./api_v6.log
+./chrome_profile_notebooklm
+./chrome_profile_notebooklm/ChromeFeatureState
+./chrome_profile_notebooklm/NativeMessagingHosts
+./chrome_profile_notebooklm/Safe Browsing
+./chrome_profile_notebooklm/GrShaderCache
+./chrome_profile_notebooklm/GrShaderCache/data_1
+./chrome_profile_notebooklm/GrShaderCache/data_0
+./chrome_profile_notebooklm/GrShaderCache/index
+./chrome_profile_notebooklm/GrShaderCache/data_2
+./chrome_profile_notebooklm/GrShaderCache/data_3
+./chrome_profile_notebooklm/Last Version
+./chrome_profile_notebooklm/WasmTtsEngine
+./chrome_profile_notebooklm/AutofillStates
+./chrome_profile_notebooklm/TpcdMetadata
+./chrome_profile_notebooklm/PrivacySandboxAttestationsPreloaded
+./chrome_profile_notebooklm/first_party_sets.db
+./chrome_profile_notebooklm/OpenCookieDatabase
+./chrome_profile_notebooklm/CertificateRevocation
+./chrome_profile_notebooklm/OnDeviceHeadSuggestModel
+./chrome_profile_notebooklm/Variations
+./chrome_profile_notebooklm/FirstPartySetsPreloaded
+./chrome_profile_notebooklm/SSLErrorAssistant
+./chrome_profile_notebooklm/ShaderCache
+./chrome_profile_notebooklm/ShaderCache/data_1
+./chrome_profile_notebooklm/ShaderCache/data_0
+./chrome_profile_notebooklm/ShaderCache/index
+./chrome_profile_notebooklm/ShaderCache/data_2
+./chrome_profile_notebooklm/ShaderCache/data_3
+./chrome_profile_notebooklm/CookieReadinessList
+./chrome_profile_notebooklm/Default
+./chrome_profile_notebooklm/Default/PreferredApps
+./chrome_profile_notebooklm/Default/Web Applications
+./chrome_profile_notebooklm/Default/blob_storage
+./chrome_profile_notebooklm/Default/DawnGraphiteCache
+./chrome_profile_notebooklm/Default/Session Storage
+./chrome_profile_notebooklm/Default/Safe Browsing Cookies-journal
+./chrome_profile_notebooklm/Default/GPUCache
+./chrome_profile_notebooklm/Default/Reporting and NEL-journal
+./chrome_profile_notebooklm/Default/GCM Store
+./chrome_profile_notebooklm/Default/ServerCertificate-journal
+./chrome_profile_notebooklm/Default/heavy_ad_intervention_opt_out.db-journal
+./chrome_profile_notebooklm/Default/chrome_cart_db
+./chrome_profile_notebooklm/Default/Shortcuts-journal
+./chrome_profile_notebooklm/Default/SharedStorage-wal
+./chrome_profile_notebooklm/Default/WebStorage
+./chrome_profile_notebooklm/Default/Favicons
+./chrome_profile_notebooklm/Default/AutofillStrikeDatabase
+./chrome_profile_notebooklm/Default/DIPS
+./chrome_profile_notebooklm/Default/Site Characteristics Database
+./chrome_profile_notebooklm/Default/Cache
+./chrome_profile_notebooklm/Default/Web Data
+./chrome_profile_notebooklm/Default/heavy_ad_intervention_opt_out.db
+./chrome_profile_notebooklm/Default/Login Data
+./chrome_profile_notebooklm/Default/Favicons-journal
+./chrome_profile_notebooklm/Default/trusted_vault.pb
+./chrome_profile_notebooklm/Default/PersistentOriginTrials
+./chrome_profile_notebooklm/Default/Extension Scripts
+./chrome_profile_notebooklm/Default/Extension Rules
+./chrome_profile_notebooklm/Default/Reporting and NEL
+./chrome_profile_notebooklm/Default/Affiliation Database-journal
+./chrome_profile_notebooklm/Default/BrowsingTopicsSiteData-journal
+./chrome_profile_notebooklm/Default/Network Action Predictor-journal
+./chrome_profile_notebooklm/Default/ServerCertificate
+./chrome_profile_notebooklm/Default/Network Action Predictor
+./chrome_profile_notebooklm/Default/Safe Browsing Cookies
+./chrome_profile_notebooklm/Default/Account Web Data-journal
+./chrome_profile_notebooklm/Default/LOCK
+./chrome_profile_notebooklm/Default/History-journal
+./chrome_profile_notebooklm/Default/SharedStorage
+./chrome_profile_notebooklm/Default/DIPS-wal
+./chrome_profile_notebooklm/Default/discounts_db
+./chrome_profile_notebooklm/Default/Feature Engagement Tracker
+./chrome_profile_notebooklm/Default/README
+./chrome_profile_notebooklm/Default/Shared Dictionary
+./chrome_profile_notebooklm/Default/Extension State
+./chrome_profile_notebooklm/Default/Login Data For Account-journal
+./chrome_profile_notebooklm/Default/commerce_subscription_db
+./chrome_profile_notebooklm/Default/discount_infos_db
+./chrome_profile_notebooklm/Default/BudgetDatabase
+./chrome_profile_notebooklm/Default/BrowsingTopicsSiteData
+./chrome_profile_notebooklm/Default/Sessions
+./chrome_profile_notebooklm/Default/optimization_guide_hint_cache_store
+./chrome_profile_notebooklm/Default/Affiliation Database
+./chrome_profile_notebooklm/Default/Account Web Data
+./chrome_profile_notebooklm/Default/shared_proto_db
+./chrome_profile_notebooklm/Default/History
+./chrome_profile_notebooklm/Default/Shortcuts
+./chrome_profile_notebooklm/Default/Trust Tokens-journal
+./chrome_profile_notebooklm/Default/LOG
+./chrome_profile_notebooklm/Default/Login Data For Account
+./chrome_profile_notebooklm/Default/Trust Tokens
+./chrome_profile_notebooklm/Default/Sync Data
+./chrome_profile_notebooklm/Default/Web Data-journal
+./chrome_profile_notebooklm/Default/DawnWebGPUCache
+./chrome_profile_notebooklm/Default/AutofillAiModelCache
+./chrome_profile_notebooklm/Default/Top Sites-journal
+./chrome_profile_notebooklm/Default/Code Cache
+./chrome_profile_notebooklm/Default/LOG.old
+./chrome_profile_notebooklm/Default/ClientCertificates
+./chrome_profile_notebooklm/Default/Top Sites
+./chrome_profile_notebooklm/Default/Login Data-journal
+./chrome_profile_notebooklm/Default/Local Storage
+./chrome_profile_notebooklm/Default/Search Logos
+./chrome_profile_notebooklm/Default/Cookies
+./chrome_profile_notebooklm/Default/parcel_tracking_db
+./chrome_profile_notebooklm/Default/Segmentation Platform
+./chrome_profile_notebooklm/Default/BookmarkMergedSurfaceOrdering
+./chrome_profile_notebooklm/Default/Cookies-journal
+./chrome_profile_notebooklm/ZxcvbnData
+./chrome_profile_notebooklm/first_party_sets.db-journal
+./chrome_profile_notebooklm/SafetyTips
