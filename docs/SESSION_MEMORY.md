@@ -112,3 +112,56 @@ Implementar una estructura jerárquica para "Historias" y "Tareas" en el Backlog
 
 - **Sistema**: La funcionalidad de Scrum y Planeación (Gantt) está actualizada con la nueva lógica jerárquica y visualización de estados.
 - **Pendientes**: Continuar con el plan de trabajo establecido (posiblemente asignación de recursos o reportes avanzados).
+
+---
+
+## Sesión: 13 de Febrero, 2026 - Dashboard Scrum, Métricas y Reportes Avanzados
+
+### Objetivo Principal
+
+Implementar un Dashboard Scrum operativo con métricas en tiempo real (Velocidad, Salud del Sprint), refinar la visualización de datos (orientación de texto, umbrales de color), y agregar reportes avanzados (Curva S, Histograma de Recursos) y gestión de Contratistas.
+
+### Logros / Features Implementados
+
+1.  **Scrum Dashboard & Analytics**:
+    - **Backend**: Endpoint `GET /dashboard` con cálculo de Velocidad (promedio 3 sprints), Progreso de Sprint Activo y Salud del Sprint.
+    - **Frontend**: Nueva vista `Dashboard` con tarjetas KPI animadas y gráficos (`recharts`) para Velocidad histórica y Burndown.
+    - **Refinamiento**: Ajuste de lógica de "Salud del Sprint" (Score 80 = Healthy) y corrección de orientación de texto (horizontal).
+
+2.  **Gestión de Recursos (Contratistas)**:
+    - **Asignación**: Campo para asignar Contratistas en creación/edición de tareas.
+    - **Filtrado**: Filtros por Contratista en Backlog y Sprint Board (incluyendo herencia de Historia padre).
+    - **Visualización**: Badges de contratistas en tarjetas del Sprint Board.
+
+3.  **Reportes Avanzados**:
+    - **Curva S (EVM)**: Visualización de Valor Planeado (PV), Ganado (EV) y Costo Real (AC).
+    - **Histograma de Recursos**: Gráfico de barras apiladas para visualizar carga de trabajo por contratista.
+
+4.  **Testing**:
+    - Configuración inicial de **Playwright** para pruebas E2E.
+    - Pruebas de integración para Gantt Chart y filtros.
+
+### Bugs / Problemas Encontrados y Solucionados
+
+- **Lógica de Salud del Sprint**:
+  - _Síntoma_: Un puntaje de 80 se marcaba como "Riesgo" (Amarillo).
+  - _Solución_: Se ajustó la condición a `>= 80` en `ScrumKPIs.tsx` para considerarlo "Saludable" (Verde).
+- **Orientación de Texto en Gauge**:
+  - _Síntoma_: El texto "80" y "PUNTUACIÓN" aparecía rotado 90 grados.
+  - _Solución_: Se eliminó la clase `rotate-[90deg]` innecesaria en el componente.
+- **Push a Git Colgado**:
+  - _Síntoma_: El comando `git push` se quedaba esperando input de credenciales indefinidamente.
+  - _Solución_: Se interrumpió el proceso y se instruyó al usuario hacer el push manual.
+
+### Instrucciones Críticas (Preferencias del Usuario)
+
+- **Estética del Dashboard**:
+  - Textos en medidores/gauges deben ser HORIZONTALES para lectura natural.
+  - Umbrales de "Éxito/Salud" deben ser inclusivos (ej. 80 es bueno).
+- **Gestión de Versiones**:
+  - Si `git push` se cuelga, preferir la ejecución manual por parte del usuario.
+
+### Estado Final
+
+- **Sistema**: Dashboard Scrum completo y visualmente pulido. Reportes financieros y de recursos funcionales.
+- **Pendientes**: Profundizar en cobertura de pruebas E2E y despliegue a producción.
