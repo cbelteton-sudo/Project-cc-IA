@@ -39,7 +39,8 @@ COPY --from=dependencies /app/node_modules ./node_modules
 
 # Generate Prisma Client (needed for build)
 WORKDIR /app/apps/api
-RUN npx prisma generate
+# Use pnpm exec to ensure we use the pinned local version (5.22.0) instead of latest (7.x)
+RUN pnpm exec prisma generate
 
 # Build API
 WORKDIR /app
