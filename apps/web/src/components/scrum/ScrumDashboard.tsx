@@ -1,77 +1,98 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { LayoutList, Kanban, Calendar, PieChart, AlertTriangle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrumMetricsTab } from './ScrumMetricsTab';
 import { BacklogView } from './BacklogView';
-import { SprintPlanning } from './SprintPlanning';
 import { SprintBoard } from './SprintBoard';
-import { ImpedimentTracker } from './ImpedimentTracker';
-import { ScrumKPIs } from './ScrumKPIs';
+import { SprintPlanning } from './SprintPlanning';
+import { LayoutDashboard, ListTodo, KanbanSquare, CalendarClock, LayoutGrid } from 'lucide-react';
+import { EisenhowerMatrix } from '../eisenhower/EisenhowerMatrix';
 
-interface ScrumDashboardProps {
-    projectId: string;
-}
+export function ScrumDashboard({ projectId }: { projectId: string }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentTab = searchParams.get('tab') || 'dashboard';
 
-export const ScrumDashboard = ({ projectId }: ScrumDashboardProps) => {
-    const [searchParams, setSearchParams] = useSearchParams();
-    const initialTab = searchParams.get('tab') as any || 'backlog';
-    const [activeTab, setActiveTab] = useState<'backlog' | 'planning' | 'board' | 'impediments' | 'metrics'>(initialTab);
+  const handleTabChange = (value: string) => {
+    setSearchParams((prev) => {
+      prev.set('tab', value);
+      return prev;
+    });
+  };
 
-    // Sync state with URL
-    const handleTabChange = (tab: typeof activeTab) => {
-        setActiveTab(tab);
-        setSearchParams({ tab });
-    };
+  return (
+    <div className="h-[calc(100vh-10rem)] flex flex-col gap-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        {/* Tabs can go here or below title */}
+      </div>
 
-    return (
-        <div className="flex flex-col h-full bg-gray-50">
-            {/* Sub-Navigation */}
-            <div className="flex items-center gap-1 px-4 py-2 bg-white border-b border-gray-200">
-                <button
-                    onClick={() => handleTabChange('backlog')}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'backlog' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}
-                >
-                    <LayoutList size={16} />
-                    Backlog
-                </button>
-                <button
-                    onClick={() => handleTabChange('planning')}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'planning' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}
-                >
-                    <Calendar size={16} />
-                    Planificación
-                </button>
-                <button
-                    onClick={() => handleTabChange('board')}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'board' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}
-                >
-                    <Kanban size={16} />
-                    Sprint Board
-                </button>
-                <div className="h-4 w-px bg-gray-300 mx-2"></div>
-                <button
-                    onClick={() => handleTabChange('impediments')}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'impediments' ? 'bg-amber-50 text-amber-700' : 'text-gray-600 hover:bg-gray-100'}`}
-                >
-                    <AlertTriangle size={16} />
-                    Impedimentos
-                </button>
-                <button
-                    onClick={() => handleTabChange('metrics')}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'metrics' ? 'bg-purple-50 text-purple-700' : 'text-gray-600 hover:bg-gray-100'}`}
-                >
-                    <PieChart size={16} />
-                    Métricas
-                </button>
-            </div>
+      <Tabs
+        value={currentTab}
+        onValueChange={handleTabChange}
+        className="flex-1 flex flex-col overflow-hidden w-full"
+      >
+        <TabsList className="grid w-full grid-cols-5 lg:w-[750px] bg-white border border-gray-200 flex-shrink-0">
+          <TabsTrigger
+            value="dashboard"
+            className="data-[state=active]:bg-field-blue data-[state=active]:text-white data-[state=active]:shadow-sm"
+          >
+            <LayoutDashboard className="w-4 h-4 mr-2" />
+            Dashboard
+          </TabsTrigger>
+          <TabsTrigger
+            value="backlog"
+            className="data-[state=active]:bg-field-blue data-[state=active]:text-white data-[state=active]:shadow-sm"
+          >
+            <ListTodo className="w-4 h-4 mr-2" />
+            Backlog
+          </TabsTrigger>
+          <TabsTrigger
+            value="board"
+            className="data-[state=active]:bg-field-blue data-[state=active]:text-white data-[state=active]:shadow-sm"
+          >
+            <KanbanSquare className="w-4 h-4 mr-2" />
+            Tablero
+          </TabsTrigger>
+          <TabsTrigger
+            value="planning"
+            className="data-[state=active]:bg-field-blue data-[state=active]:text-white data-[state=active]:shadow-sm"
+          >
+            <CalendarClock className="w-4 h-4 mr-2" />
+            Planning
+          </TabsTrigger>
+          <TabsTrigger
+            value="eisenhower"
+            className="data-[state=active]:bg-field-blue data-[state=active]:text-white data-[state=active]:shadow-sm"
+          >
+            <LayoutGrid className="w-4 h-4 mr-2" />
+            Matriz
+          </TabsTrigger>
+        </TabsList>
 
-            {/* Content Area */}
-            <div className="flex-1 overflow-hidden p-4">
-                {activeTab === 'backlog' && <BacklogView projectId={projectId} />}
-                {activeTab === 'planning' && <SprintPlanning projectId={projectId} onSprintStarted={() => handleTabChange('board')} />}
-                {activeTab === 'board' && <SprintBoard projectId={projectId} />}
-                {activeTab === 'impediments' && <ImpedimentTracker projectId={projectId} />}
-                {activeTab === 'metrics' && <ScrumKPIs projectId={projectId} />}
-            </div>
+        <div className="flex-1 overflow-hidden mt-6">
+          <TabsContent value="dashboard" className="m-0 h-full focus-visible:outline-none">
+            <ScrumMetricsTab projectId={projectId} />
+          </TabsContent>
+
+          <TabsContent value="backlog" className="m-0 h-full focus-visible:outline-none">
+            <BacklogView projectId={projectId} />
+          </TabsContent>
+
+          <TabsContent value="board" className="m-0 h-full focus-visible:outline-none">
+            <SprintBoard projectId={projectId} />
+          </TabsContent>
+
+          <TabsContent value="planning" className="m-0 h-full focus-visible:outline-none">
+            <SprintPlanning
+              projectId={projectId}
+              onSprintStarted={() => handleTabChange('board')}
+            />
+          </TabsContent>
+
+          <TabsContent value="eisenhower" className="m-0 h-full focus-visible:outline-none">
+            <EisenhowerMatrix />
+          </TabsContent>
         </div>
-    );
-};
+      </Tabs>
+    </div>
+  );
+}

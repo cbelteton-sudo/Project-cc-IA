@@ -28,6 +28,8 @@ import { ContractorsModule } from './modules/contractors/contractors.module';
 import { ScrumModule } from './modules/scrum/scrum.module';
 import { TimesheetsModule } from './modules/timesheets/timesheets.module';
 
+import { HealthController } from './health.controller';
+
 @Module({
   imports: [
     TenantsModule,
@@ -55,9 +57,9 @@ import { TimesheetsModule } from './modules/timesheets/timesheets.module';
     PMDashboardModule,
     ContractorsModule,
     ScrumModule,
-    TimesheetsModule
+    TimesheetsModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

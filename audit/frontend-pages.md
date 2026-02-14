@@ -1,29 +1,20 @@
-# Auditoría Frontend: Páginas y Componentes Scrum
+# Auditoría Frontend: Vistas Módulo Scrum
 
-## Páginas Principales
+| Página / Componente  | Ruta (Router)       | Estado Carga  | Error Handling  | Conexión Backend | Notas                                              |
+| -------------------- | ------------------- | ------------- | --------------- | ---------------- | -------------------------------------------------- |
+| **ScrumProjects**    | `/scrum`            | ✓ (Skeleton)  | ✗ (Solo visual) | ✓ (Axios)        | Lista proyectos. **Falta botón "Crear Proyecto"**. |
+| **ScrumPage**        | `/scrum/:projectId` | N/A (Wrapper) | N/A             | N/A              | Wrapper para `ScrumDashboard`.                     |
+| **ScrumDashboard**   | (Componente)        | N/A           | N/A             | N/A              | Maneja tabs y estado de URL (`?tab=...`).          |
+| **BacklogView**      | (Tab)               | ✓ (Texto)     | ✗               | ✓                | Full CRUD items. Soporta jerarquía y filtros.      |
+| **SprintPlanning**   | (Tab)               | ?             | ?               | ?                | (No revisado a fondo, pero importado).             |
+| **SprintBoard**      | (Tab)               | N/A           | ✗               | ✓                | Drag & Drop funcional con `@dnd-kit`.              |
+| **DailyUpdateModal** | (Modal)             | ✓ (Mutation)  | ✓ (Toast)       | ✓                | Funcional para updates diarios.                    |
+| **SprintClosure**    | (Modal)             | ✓ (Mutation)  | ✓ (Toast)       | ✓                | Cierre de sprint implementado.                     |
 
-| Página                 | Ruta                | Archivo                       | Status | Notas                                                 |
-| :--------------------- | :------------------ | :---------------------------- | :----- | :---------------------------------------------------- |
-| **Lista de Proyectos** | `/scrum`            | `src/pages/ScrumProjects.tsx` | ✓ OK   | Entry point del módulo. Permite seleccionar proyecto. |
-| **Dashboard Scrum**    | `/scrum/:projectId` | `src/pages/ScrumPage.tsx`     | ✓ OK   | Layout principal que contiene el `ScrumDashboard`.    |
+**Hallazgos Clave:**
 
-## Componentes Clave (`src/components/scrum/`)
-
-| Componente            | Función Principal                                           | Estado Observado |
-| :-------------------- | :---------------------------------------------------------- | :--------------- |
-| `ScrumDashboard`      | Contenedor de Tabs (Backlog, Planning, Board, KPIs).        | ✓ Existe         |
-| `BacklogView`         | Gestión del Product Backlog y creación de historias/tareas. | ✓ Existe         |
-| `SprintPlanning`      | Gestión de Sprints (Crear, Iniciar, Mover items).           | ✓ Existe         |
-| `SprintBoard`         | Tablero Kanban para el Sprint Activo.                       | ✓ Existe         |
-| `ScrumKPIs`           | Visualización de métricas (Velocidad, Burndown).            | ✓ Existe         |
-| `DailyUpdateModal`    | Modal para registrar actualizaciones diarias.               | ✓ Existe         |
-| `DailyUpdateLogModal` | Visualización del historial de daily updates.               | ✓ Existe         |
-| `SprintClosureModal`  | Modal de cierre de sprint y retrospectiva.                  | ✓ Existe         |
-| `ImpedimentTracker`   | Gestión de bloqueos/impedimentos.                           | ✓ Existe         |
-
-## Hallazgos Generales
-
-1.  **Arquitectura**: La aplicación utiliza una estructura clara donde `ScrumPage` actúa como wrapper para obtener el contexto del proyecto y renderizar `ScrumDashboard`, el cual maneja la navegación interna por tabs.
-2.  **Routing**: Las rutas están correctamente definidas en `App.tsx` y protegidas por autenticación.
-3.  **Lazy Loading**: Ambas páginas principales usan `React.lazy`, lo cual es bueno para el performance inicial.
-4.  **Componentes**: Existe una cobertura completa de componentes para las ceremonias estándar de Scrum (Planning, Daily, Review/Retro via Closure).
+1.  **Rutas:** Las rutas principales `/scrum` y `/scrum/:projectId` están correctamente definidas en `App.tsx` y son "Lazy Loaded".
+2.  **Estructura:** El módulo usa un `ScrumDashboard` centralizado con navegación por pestañas, lo cual es buena práctica de UX.
+3.  **Faltantes Críticos:**
+    - No hay forma de **Crear un Proyecto Scrum** desde la UI (`ScrumProjects.tsx` solo lista).
+    - Manejo de errores visual (Empty States / Error Boundaries) es básico en algunos componentes.

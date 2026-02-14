@@ -3,23 +3,25 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class ReportsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async getDashboardStats(tenantId: string, period?: string) {
     const prisma = this.prisma as any;
 
     // 1. Projects Stats
     const totalProjects = await prisma.project.count({ where: { tenantId } });
-    const activeProjects = await prisma.project.count({ where: { tenantId, status: 'ACTIVE' } });
+    const activeProjects = await prisma.project.count({
+      where: { tenantId, status: 'ACTIVE' },
+    });
 
     // 2. Financials (Aggregated across all projects)
     const projects = await prisma.project.findMany({
       where: { tenantId },
       include: {
         budgets: {
-          include: { budgetLines: true }
-        }
-      }
+          include: { budgetLines: true },
+        },
+      },
     });
 
     let totalBudget = 0;
@@ -28,43 +30,64 @@ export class ReportsService {
     projects.forEach((p: any) => {
       p.budgets.forEach((b: any) => {
         b.budgetLines.forEach((l: any) => {
-          totalBudget += (l.budgetBase || 0) + (l.budgetCO || 0) + (l.budgetTransfer || 0) || l.amountParam || 0;
+          totalBudget +=
+            (l.budgetBase || 0) + (l.budgetCO || 0) + (l.budgetTransfer || 0) ||
+            l.amountParam ||
+            0;
           totalExecuted += l.amountExecuted || 0;
         });
       });
     });
 
     // 3. Pending Actions
-    const pendingPOs = await prisma.purchaseOrder.count({ where: { project: { tenantId }, status: 'DRAFT' } });
-    const pendingRequests = await prisma.materialRequest.count({ where: { project: { tenantId }, status: 'DRAFT' } });
-    const pendingInvoices = await prisma.invoice.count({ where: { project: { tenantId }, status: 'PENDING' } });
-    const openRFIs = await prisma.rFI.count({ where: { project: { tenantId }, status: 'OPEN' } });
+    const pendingPOs = await prisma.purchaseOrder.count({
+      where: { project: { tenantId }, status: 'DRAFT' },
+    });
+    const pendingRequests = await prisma.materialRequest.count({
+      where: { project: { tenantId }, status: 'DRAFT' },
+    });
+    const pendingInvoices = await prisma.invoice.count({
+      where: { project: { tenantId }, status: 'PENDING' },
+    });
+    const openRFIs = await prisma.rFI.count({
+      where: { project: { tenantId }, status: 'OPEN' },
+    });
 
     // 4. Chart Data (Based on Period)
-    const chartData = await this.getChartData(tenantId, prisma, period || '6m', totalBudget);
+    const chartData = await this.getChartData(
+      tenantId,
+      prisma,
+      period || '6m',
+      totalBudget,
+    );
 
     return {
       projects: {
         total: totalProjects,
-        active: activeProjects
+        active: activeProjects,
       },
       financials: {
         totalBudget,
         totalExecuted,
-        variance: totalBudget - totalExecuted
+        variance: totalBudget - totalExecuted,
       },
       pendingActions: {
         purchaseOrders: pendingPOs,
         materialRequests: pendingRequests,
         invoices: pendingInvoices,
-        rfis: openRFIs
+        rfis: openRFIs,
       },
-      chartData
+      chartData,
     };
   }
 
   // Helper for Chart Data
-  private async getChartData(tenantId: string, prisma: any, period: string, totalBudget: number) {
+  private async getChartData(
+    tenantId: string,
+    prisma: any,
+    period: string,
+    totalBudget: number,
+  ) {
     const dataPoints: { name: string; budget: number; actual: number }[] = [];
 
     // Determine range and labels
@@ -72,15 +95,23 @@ export class ReportsService {
       // Last 4 Weeks
       for (let i = 3; i >= 0; i--) {
         const d = new Date();
-        d.setDate(d.getDate() - (i * 7));
+        d.setDate(d.getDate() - i * 7);
         const label = `W${this.getWeekNumber(d)}`;
 
-        dataPoints.push({ name: label, budget: Math.round(totalBudget / 52), actual: 0 });
+        dataPoints.push({
+          name: label,
+          budget: Math.round(totalBudget / 52),
+          actual: 0,
+        });
       }
     } else if (period === 'q') {
       // Quarters (current year)
-      ['Q1', 'Q2', 'Q3', 'Q4'].forEach(q => {
-        dataPoints.push({ name: q, budget: Math.round(totalBudget / 4), actual: 0 });
+      ['Q1', 'Q2', 'Q3', 'Q4'].forEach((q) => {
+        dataPoints.push({
+          name: q,
+          budget: Math.round(totalBudget / 4),
+          actual: 0,
+        });
       });
     } else {
       // Default: Last 6 Months
@@ -88,23 +119,28 @@ export class ReportsService {
         const d = new Date();
         d.setMonth(d.getMonth() - i);
         const label = d.toLocaleString('default', { month: 'short' });
-        dataPoints.push({ name: label, budget: Math.round(totalBudget / 12), actual: 0 });
+        dataPoints.push({
+          name: label,
+          budget: Math.round(totalBudget / 12),
+          actual: 0,
+        });
       }
     }
 
     // Fetch Invoices to populate Actuals
     const startDate = new Date();
     if (period === '4w') startDate.setDate(startDate.getDate() - 30);
-    else if (period === 'q') startDate.setMonth(0, 1); // Jan 1st
+    else if (period === 'q')
+      startDate.setMonth(0, 1); // Jan 1st
     else startDate.setMonth(startDate.getMonth() - 6);
 
     const invoices = await prisma.invoice.findMany({
       where: {
         project: { tenantId },
         status: { in: ['APPROVED', 'PAID'] },
-        date: { gte: startDate }
+        date: { gte: startDate },
       },
-      select: { date: true, total: true }
+      select: { date: true, total: true },
     });
 
     // Bucketize
@@ -124,16 +160,16 @@ export class ReportsService {
         key = d.toLocaleString('default', { month: 'short' });
       }
 
-      const point = dataPoints.find(p => p.name === key);
+      const point = dataPoints.find((p) => p.name === key);
       if (point) {
         point.actual += inv.total;
       }
     });
 
-    return dataPoints.map(p => ({
+    return dataPoints.map((p) => ({
       name: p.name,
       Budget: p.budget,
-      Actual: p.actual
+      Actual: p.actual,
     }));
   }
 
@@ -142,7 +178,9 @@ export class ReportsService {
     const dayNum = date.getUTCDay() || 7;
     date.setUTCDate(date.getUTCDate() + 4 - dayNum);
     const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-    return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return Math.ceil(
+      ((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
+    );
   }
 
   async getProjectReport(projectId: string, tenantId: string) {
@@ -151,9 +189,9 @@ export class ReportsService {
       where: { id: projectId },
       include: {
         budgets: {
-          include: { budgetLines: true }
-        }
-      }
+          include: { budgetLines: true },
+        },
+      },
     });
 
     if (!project || project.tenantId !== tenantId) {
@@ -164,12 +202,14 @@ export class ReportsService {
     const ledgerEntries = await prisma.costLedger.groupBy({
       by: ['wbsActivityId', 'costType'],
       where: { projectId },
-      _sum: { amount: true }
+      _sum: { amount: true },
     });
 
     // Helper to find actuals
     const getActual = (wbsId: string | null, costType: string) => {
-      const entry = ledgerEntries.find((e: any) => e.wbsActivityId === wbsId && e.costType === costType);
+      const entry = ledgerEntries.find(
+        (e: any) => e.wbsActivityId === wbsId && e.costType === costType,
+      );
       return entry?._sum.amount || 0;
     };
 
@@ -186,9 +226,14 @@ export class ReportsService {
         const realExecuted = getActual(l.wbsActivityId, l.costType);
 
         // Use Budget Base + CO + Transfers. Fallback to amountParam only if legacy 0.
-        const budgetTotal = (l.budgetBase || 0) + (l.budgetCO || 0) + (l.budgetTransfer || 0) || l.amountParam || 0;
+        const budgetTotal =
+          (l.budgetBase || 0) + (l.budgetCO || 0) + (l.budgetTransfer || 0) ||
+          l.amountParam ||
+          0;
 
-        console.log(`[Report Debug] Line ${l.code}: Base=${l.budgetBase}, CO=${l.budgetCO}, Param=${l.amountParam} -> Total=${budgetTotal}`);
+        console.log(
+          `[Report Debug] Line ${l.code}: Base=${l.budgetBase}, CO=${l.budgetCO}, Param=${l.amountParam} -> Total=${budgetTotal}`,
+        );
 
         lines.push({
           code: l.code,
@@ -197,7 +242,7 @@ export class ReportsService {
           budget: budgetTotal,
           committed: l.amountCommitted,
           executed: realExecuted,
-          variance: budgetTotal - realExecuted // Variance vs Budget
+          variance: budgetTotal - realExecuted, // Variance vs Budget
         });
         totalBudget += budgetTotal;
         totalCommitted += l.amountCommitted;
@@ -212,9 +257,9 @@ export class ReportsService {
         totalBudget,
         totalCommitted,
         totalExecuted,
-        remainingBudget: totalBudget - totalExecuted // Remaining to Spend
+        remainingBudget: totalBudget - totalExecuted, // Remaining to Spend
       },
-      lines: lines.sort((a, b) => (a.code || '').localeCompare(b.code || ''))
+      lines: lines.sort((a, b) => (a.code || '').localeCompare(b.code || '')),
     };
   }
 
@@ -223,11 +268,17 @@ export class ReportsService {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
       include: {
-        activities: { include: { budgetLine: true, progressRecords: { orderBy: { weekStartDate: 'desc' }, take: 1 } } }
-      }
+        activities: {
+          include: {
+            budgetLine: true,
+            progressRecords: { orderBy: { weekStartDate: 'desc' }, take: 1 },
+          },
+        },
+      },
     });
 
-    if (!project || project.tenantId !== tenantId) throw new NotFoundException('Project not found');
+    if (!project || project.tenantId !== tenantId)
+      throw new NotFoundException('Project not found');
 
     // 1. Calculate Earned Value (Revenue Proxy)
     // Formula: Sum of (Activity Weight/Budget * % Complete)
@@ -238,25 +289,41 @@ export class ReportsService {
     // Let's use bottom-up sum if global is 0
     // If global budget is set, we can use it to prorate, or sum bottom-up budget
     // Let's use bottom-up sum if global is 0
-    const bottomUpBudget = project.activities.reduce((sum: number, act: any) => {
-      const line = act.budgetLine;
-      const lineBudget = line ? ((line.budgetBase || 0) + (line.budgetCO || 0) + (line.budgetTransfer || 0) || line.amountParam || 0) : 0;
-      return sum + lineBudget;
-    }, 0);
-    const baseForEV = totalProjectBudget > 0 ? totalProjectBudget : bottomUpBudget;
+    const bottomUpBudget = project.activities.reduce(
+      (sum: number, act: any) => {
+        const line = act.budgetLine;
+        const lineBudget = line
+          ? (line.budgetBase || 0) +
+              (line.budgetCO || 0) +
+              (line.budgetTransfer || 0) ||
+            line.amountParam ||
+            0
+          : 0;
+        return sum + lineBudget;
+      },
+      0,
+    );
+    const baseForEV =
+      totalProjectBudget > 0 ? totalProjectBudget : bottomUpBudget;
 
     // We need usage of weights if available, or straight budget %
     // Simplified EV: Sum(ActivityBudget * %Complete)
     project.activities.forEach((act: any) => {
       const percent = act.progressRecords[0]?.percent || 0;
       const line = act.budgetLine;
-      const lineBudget = line ? ((line.budgetBase || 0) + (line.budgetCO || 0) + (line.budgetTransfer || 0) || line.amountParam || 0) : 0;
+      const lineBudget = line
+        ? (line.budgetBase || 0) +
+            (line.budgetCO || 0) +
+            (line.budgetTransfer || 0) ||
+          line.amountParam ||
+          0
+        : 0;
 
-      earnedValue += (lineBudget * (percent / 100));
+      earnedValue += lineBudget * (percent / 100);
     });
 
     // If Global Budget exists (Price to Client) and is different from Base Budget (Cost),
-    // we should apply the margin factor. 
+    // we should apply the margin factor.
     // Margin Factor = Global / Base.
     // Revenue = EV * Margin Factor?
     // Or simply: Revenue = GlobalBudget * (Overall % Complete)
@@ -266,12 +333,14 @@ export class ReportsService {
       overallPercent = earnedValue / bottomUpBudget;
     }
 
-    const revenue = (totalProjectBudget > 0 ? totalProjectBudget : bottomUpBudget) * overallPercent;
+    const revenue =
+      (totalProjectBudget > 0 ? totalProjectBudget : bottomUpBudget) *
+      overallPercent;
 
     // 2. Calculate Actual Costs (Expenses)
     const ledgerSum = await prisma.costLedger.aggregate({
       where: { projectId },
-      _sum: { amount: true }
+      _sum: { amount: true },
     });
     const expenses = ledgerSum._sum.amount || 0;
 
@@ -285,7 +354,7 @@ export class ReportsService {
       margin,
       marginPercent,
       overallProgress: overallPercent * 100,
-      currency: project.currency || 'USD'
+      currency: project.currency || 'USD',
     };
   }
 
@@ -297,13 +366,14 @@ export class ReportsService {
       where: { id: projectId },
       include: {
         activities: {
-          include: { budgetLine: true, progressRecords: true }
+          include: { budgetLine: true, progressRecords: true },
         },
-        budgets: { include: { budgetLines: true } }
-      }
+        budgets: { include: { budgetLines: true } },
+      },
     });
 
-    if (!project || project.tenantId !== tenantId) throw new NotFoundException('Project not found');
+    if (!project || project.tenantId !== tenantId)
+      throw new NotFoundException('Project not found');
 
     // 2. Determine Timeline
     // Use Project Dates or Activity Dates
@@ -312,9 +382,13 @@ export class ReportsService {
 
     if (!project.startDate && project.activities.length > 0) {
       // Auto-detect from activities
-      const starts = project.activities.map((a: any) => new Date(a.startDate).getTime());
+      const starts = project.activities.map((a: any) =>
+        new Date(a.startDate).getTime(),
+      );
       start = new Date(Math.min(...starts));
-      const ends = project.activities.map((a: any) => new Date(a.endDate).getTime());
+      const ends = project.activities.map((a: any) =>
+        new Date(a.endDate).getTime(),
+      );
       end = new Date(Math.max(...ends));
     }
 
@@ -336,32 +410,37 @@ export class ReportsService {
       const duration = Math.max(1, (e - s) / (1000 * 60 * 60 * 24));
 
       const line = act.budgetLine;
-      const amount = line ? ((line.budgetBase || 0) + (line.budgetCO || 0) + (line.budgetTransfer || 0) || line.amountParam || 0) : 0;
-      const budget = amount || (act.plannedWeight * 1000); // Fallback to weight * 1000 if no budget
+      const amount = line
+        ? (line.budgetBase || 0) +
+            (line.budgetCO || 0) +
+            (line.budgetTransfer || 0) ||
+          line.amountParam ||
+          0
+        : 0;
+      const budget = amount || act.plannedWeight * 1000; // Fallback to weight * 1000 if no budget
 
       return {
         ...act,
         startMs: s,
         endMs: e,
         dailyPV: budget / duration,
-        totalBudget: budget
+        totalBudget: budget,
       };
     });
 
-    // Note: Actual Cost should effectively come from Invoices. 
+    // Note: Actual Cost should effectively come from Invoices.
     // For this MVP, we will simulate AC tracking close to EV or use InvoiceAllocations if available.
     // Let's check Invoice Allocations.
     const allocations = await prisma.invoiceAllocation.findMany({
       where: { invoice: { projectId } },
-      include: { invoice: true }
+      include: { invoice: true },
     });
-
 
     while (current <= end) {
       const currentMs = current.getTime();
       const dateKey = current.toISOString().split('T')[0];
 
-      // PV: Sum of value for all days up to 'current' logic? 
+      // PV: Sum of value for all days up to 'current' logic?
       // Simpler: Just recalculate total PV up to this date.
       // Iterate all activities, check how much overlap with [Start -> Current]
 
@@ -374,7 +453,8 @@ export class ReportsService {
           if (currentMs >= act.endMs) {
             pv += act.totalBudget;
           } else {
-            const daysPassed = (currentMs - act.startMs) / (1000 * 60 * 60 * 24);
+            const daysPassed =
+              (currentMs - act.startMs) / (1000 * 60 * 60 * 24);
             pv += daysPassed * act.dailyPV;
           }
         }
@@ -386,10 +466,18 @@ export class ReportsService {
         // Find closest progress record <= current date
         const record = act.progressRecords
           .filter((r: any) => new Date(r.weekStartDate) <= current)
-          .sort((a: any, b: any) => new Date(b.weekStartDate).getTime() - new Date(a.weekStartDate).getTime())[0];
+          .sort(
+            (a: any, b: any) =>
+              new Date(b.weekStartDate).getTime() -
+              new Date(a.weekStartDate).getTime(),
+          )[0];
 
-        const percent = record ? record.percent : (currentMs > new Date().getTime() ? 0 : 0);
-        // Logic gap: if no record but activity started? Assume 0. 
+        const percent = record
+          ? record.percent
+          : currentMs > new Date().getTime()
+            ? 0
+            : 0;
+        // Logic gap: if no record but activity started? Assume 0.
         // Logic gap: if current > today, we shouldn't predict EV. EV stops at Today.
 
         if (currentMs <= new Date().getTime()) {
@@ -406,8 +494,8 @@ export class ReportsService {
       timeline.push({
         date: dateKey,
         pv,
-        ev: currentMs > new Date().getTime() ? null as any : ev, // Null for future
-        ac: currentMs > new Date().getTime() ? null as any : ac
+        ev: currentMs > new Date().getTime() ? (null as any) : ev, // Null for future
+        ac: currentMs > new Date().getTime() ? (null as any) : ac,
       });
 
       current.setDate(current.getDate() + 7);
@@ -421,7 +509,7 @@ export class ReportsService {
     // Fetch activities with contractors
     const activities = await prisma.projectActivity.findMany({
       where: { projectId, tenantId, contractorId: { not: null } },
-      include: { contractor: true }
+      include: { contractor: true },
     });
 
     // Find range
@@ -434,7 +522,9 @@ export class ReportsService {
 
     const histogram: any[] = [];
 
-    const contractors = Array.from(new Set(activities.map((a: any) => a.contractor.name)));
+    const contractors = Array.from(
+      new Set(activities.map((a: any) => a.contractor.name)),
+    );
 
     while (current <= end) {
       const weekLabel = current.toISOString().split('T')[0];
@@ -446,10 +536,11 @@ export class ReportsService {
       contractors.forEach((cName: any) => {
         // Count active tasks for this contractor in this week
         // Overlap logic: Start <= WeekEnd AND End >= WeekStart
-        const count = activities.filter((a: any) =>
-          a.contractor.name === cName &&
-          new Date(a.startDate) <= weekEnd &&
-          new Date(a.endDate) >= current
+        const count = activities.filter(
+          (a: any) =>
+            a.contractor.name === cName &&
+            new Date(a.startDate) <= weekEnd &&
+            new Date(a.endDate) >= current,
         ).length;
 
         entry[cName as string] = count;
@@ -471,19 +562,22 @@ export class ReportsService {
 
   async getExecutiveReport(projectId: string, tenantId: string, query: any) {
     try {
-      console.log(`Generating Executive Report for Project: ${projectId}, Tenant: ${tenantId}`);
+      console.log(
+        `Generating Executive Report for Project: ${projectId}, Tenant: ${tenantId}`,
+      );
       const prisma = this.prisma as any;
       const { from, to, contractorId, activityId } = query;
 
       // 1. Validate Project & Feature Flag
       const project = await prisma.project.findUnique({
         where: { id: projectId },
-        include: { tenant: true }
+        include: { tenant: true },
       });
 
       console.log('Project found:', project ? project.name : 'NULL');
 
-      if (!project || project.tenantId !== tenantId) throw new NotFoundException('Project not found');
+      if (!project || project.tenantId !== tenantId)
+        throw new NotFoundException('Project not found');
       if (!project.enableReports) {
         console.warn(`Reports disabled for project ${projectId}`);
         throw new Error('Reports are disabled for this project');
@@ -495,11 +589,21 @@ export class ReportsService {
       if (!from) startDate.setDate(endDate.getDate() - 7); // Default 7 days
 
       // 3. Project Stats & Time Elapsed
-      const projectStart = project.startDate ? new Date(project.startDate) : new Date();
-      const projectEnd = project.endDate ? new Date(project.endDate) : new Date();
+      const projectStart = project.startDate
+        ? new Date(project.startDate)
+        : new Date();
+      const projectEnd = project.endDate
+        ? new Date(project.endDate)
+        : new Date();
       const totalDuration = projectEnd.getTime() - projectStart.getTime();
       const elapsed = new Date().getTime() - projectStart.getTime();
-      const timeElapsedPercent = totalDuration > 0 ? Math.min(100, Math.max(0, Math.round((elapsed / totalDuration) * 100))) : 0;
+      const timeElapsedPercent =
+        totalDuration > 0
+          ? Math.min(
+              100,
+              Math.max(0, Math.round((elapsed / totalDuration) * 100)),
+            )
+          : 0;
 
       // 4. KPIs
       // Stalled: Active activities with no update in 3 days
@@ -509,19 +613,19 @@ export class ReportsService {
       // Let's implement Blocked and Issues first as they are direct lookups.
 
       const blockedCount = await prisma.projectActivity.count({
-        where: { projectId, status: 'BLOCKED' }
+        where: { projectId, status: 'BLOCKED' },
       });
 
       const issuesOpen = await prisma.issue.count({
-        where: { projectId, status: { not: 'CLOSED' } }
+        where: { projectId, status: { not: 'CLOSED' } },
       });
 
       const issuesOverdue = await prisma.issue.count({
         where: {
           projectId,
           status: { not: 'CLOSED' },
-          dueDate: { lt: new Date() }
-        }
+          dueDate: { lt: new Date() },
+        },
       });
 
       // Stalled (Simplified): Activities IN_PROGRESS with no DailyEntry in last 3 days
@@ -530,8 +634,10 @@ export class ReportsService {
       //    where: { projectId, status: 'IN_PROGRESS', fieldDailyEntries: { none: { date: { gte: threeDaysAgo } } } }
       // });
       // This requires date comparison on the relation which is supported.
-      const threeDaysAgoStr = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      // Note: Schema uses 'date' as DateTime but stores YYYY-MM-DD usually in reports? No, FieldDailyEntry has simple date? 
+      const threeDaysAgoStr = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0];
+      // Note: Schema uses 'date' as DateTime but stores YYYY-MM-DD usually in reports? No, FieldDailyEntry has simple date?
       // FieldDailyEntry doesn't have a direct date field in the schema I read?
       // Let's check Schema... `FieldDailyEntry` -> `dailyReport` -> `date`.
       // Filter: Activities where NONE of their linked DailyEntries (via DailyReport) have date > 3 days ago.
@@ -547,10 +653,10 @@ export class ReportsService {
         dailyReport: {
           date: {
             gte: startDate,
-            lte: endDate
+            lte: endDate,
           },
-          projectId
-        }
+          projectId,
+        },
       };
 
       if (activityId) entryWhere.scheduleActivityId = activityId;
@@ -561,12 +667,18 @@ export class ReportsService {
       const evidence = await prisma.fieldDailyEntry.findMany({
         where: entryWhere,
         include: {
-          activity: { select: { name: true, code: true, contractor: { select: { name: true } } } },
+          activity: {
+            select: {
+              name: true,
+              code: true,
+              contractor: { select: { name: true } },
+            },
+          },
           photos: { select: { id: true, urlThumb: true, urlMain: true } },
-          dailyReport: { select: { date: true } } // needed for date
+          dailyReport: { select: { date: true } }, // needed for date
         },
         orderBy: { updatedAt: 'desc' },
-        take: 100 // Reasonable limit for PDF
+        take: 100, // Reasonable limit for PDF
       });
 
       // 6. Issues / Punch List
@@ -578,8 +690,8 @@ export class ReportsService {
         // Let's return ALL Open/Overdue + Closed in range.
         OR: [
           { status: { not: 'CLOSED' } },
-          { status: 'CLOSED', updatedAt: { gte: startDate, lte: endDate } }
-        ]
+          { status: 'CLOSED', updatedAt: { gte: startDate, lte: endDate } },
+        ],
       };
       if (contractorId) issueWhere.contractorId = contractorId;
 
@@ -587,9 +699,13 @@ export class ReportsService {
         where: issueWhere,
         include: {
           contractor: { select: { name: true } },
-          comments: { take: 1, orderBy: { createdAt: 'desc' }, select: { text: true } } // Last comment
+          comments: {
+            take: 1,
+            orderBy: { createdAt: 'desc' },
+            select: { text: true },
+          }, // Last comment
         },
-        orderBy: [{ severity: 'asc' }, { dueDate: 'asc' }] // High priority first? 'HIGH' > 'LOW' alpha? No. 
+        orderBy: [{ severity: 'asc' }, { dueDate: 'asc' }], // High priority first? 'HIGH' > 'LOW' alpha? No.
         // Severity is String. Custom sort needed in JS or efficient map.
       });
 
@@ -605,14 +721,14 @@ export class ReportsService {
           globalBudget: project.globalBudget,
           startDate: project.startDate,
           endDate: project.endDate,
-          timeElapsedPercent
+          timeElapsedPercent,
         },
         filters: { from: startDate, to: endDate, contractorId, activityId },
         kpis: {
           stalledCount,
           blockedCount,
           issuesOpen,
-          issuesOverdue
+          issuesOverdue,
         },
         narrative,
         evidence: evidence.map((e: any) => ({
@@ -624,7 +740,7 @@ export class ReportsService {
           note: e.note,
           status: e.status,
           photos: e.photos,
-          author: e.createdByName || 'Usuario' // Assuming field exists from previous phases
+          author: e.createdByName || 'Usuario', // Assuming field exists from previous phases
         })),
         issues: issues.map((i: any) => ({
           id: i.id,
@@ -633,8 +749,10 @@ export class ReportsService {
           status: i.status,
           dueDate: i.dueDate,
           contractorName: i.contractor?.name,
-          lastComment: i.comments[0]?.text
-        }))
+          lastComment: i.comments[0]?.text,
+        })),
+        financials: (await this.getProjectReport(projectId, tenantId)).summary,
+        sCurve: await this.getSCurve(projectId, tenantId),
       };
     } catch (error) {
       console.error('Executive Report Error:', error);
@@ -642,10 +760,20 @@ export class ReportsService {
     }
   }
 
-  // Placeholder CRUD methods 
-  create(createReportDto: any) { return 'This action adds a new report'; }
-  findAll() { return 'This action returns all reports'; }
-  findOne(id: number) { return `This action returns a #${id} report`; }
-  update(id: number, updateReportDto: any) { return `This action updates a #${id} report`; }
-  remove(id: number) { return `This action removes a #${id} report`; }
+  // Placeholder CRUD methods
+  create(createReportDto: any) {
+    return 'This action adds a new report';
+  }
+  findAll() {
+    return 'This action returns all reports';
+  }
+  findOne(id: number) {
+    return `This action returns a #${id} report`;
+  }
+  update(id: number, updateReportDto: any) {
+    return `This action updates a #${id} report`;
+  }
+  remove(id: number) {
+    return `This action removes a #${id} report`;
+  }
 }

@@ -35,12 +35,14 @@ export const SprintBoardColumn = ({
       ref={setNodeRef}
       className={`flex flex-col rounded-xl border ${column.color} h-full overflow-hidden`}
     >
-      <div className="p-3 border-b border-gray-200/50 bg-white/50 flex items-center justify-between backdrop-blur-sm">
+      <div
+        className={`p-3 border-b border-gray-200 flex items-center justify-between ${column.color.replace('bg-', 'bg-opacity-30 bg-')} border-t-4`}
+      >
         <div className="flex items-center gap-2 font-bold text-gray-700 text-sm">
           {column.icon}
           {column.label}
         </div>
-        <span className="bg-white px-2 py-0.5 rounded-full text-xs font-bold border border-gray-200 text-gray-500">
+        <span className="bg-white px-2 py-0.5 rounded-full text-xs font-bold border border-gray-200 text-gray-500 shadow-sm">
           {items.length}
         </span>
       </div>
@@ -61,8 +63,13 @@ export const SprintBoardColumn = ({
           ))}
         </SortableContext>
         {items.length === 0 && (
-          <div className="h-20 flex items-center justify-center text-gray-400 text-xs italic border-2 border-dashed border-gray-200 rounded-lg">
-            Arrastra items aquí
+          <div className="h-24 flex flex-col gap-2 items-center justify-center text-gray-400 text-xs italic border-2 border-dashed border-gray-200 rounded-lg bg-gray-50/50 hover:bg-gray-50 transition-colors">
+            <span>No hay items</span>
+            {column.id === 'TODO' && (
+              <span className="px-3 py-1 bg-white border border-gray-200 rounded-md shadow-sm text-gray-600 font-medium cursor-not-allowed opacity-70">
+                Arrastra desde Backlog
+              </span>
+            )}
           </div>
         )}
       </div>

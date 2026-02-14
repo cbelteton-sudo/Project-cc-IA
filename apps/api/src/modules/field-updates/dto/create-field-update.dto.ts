@@ -1,51 +1,65 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsArray, ValidateNested, IsNumber, IsBoolean, IsDateString } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsArray,
+  ValidateNested,
+  IsNumber,
+  IsBoolean,
+  IsDateString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateItemDto {
-    @IsNotEmpty()
-    @IsString()
-    activityId: string;
+  @IsNotEmpty()
+  @IsString()
+  activityId: string;
 
-    @IsOptional()
-    @IsNumber()
-    qtyDone?: number;
+  @IsOptional()
+  @IsNumber()
+  qtyDone?: number;
 
-    @IsOptional()
-    @IsString()
-    checklistState?: string; // JSON
+  @IsOptional()
+  @IsString()
+  checklistState?: string; // JSON
 
-    @IsOptional()
-    @IsString()
-    milestoneState?: string; // JSON
+  @IsOptional()
+  @IsString()
+  milestoneState?: string; // JSON
 
-    @IsOptional()
-    @IsNumber()
-    manualPercent?: number;
+  @IsOptional()
+  @IsNumber()
+  manualPercent?: number;
 
-    @IsOptional()
-    @IsString()
-    notes?: string;
+  @IsOptional()
+  @IsString()
+  status?: string; // GAP FIX: Allow status update from field
 
-    @IsOptional()
-    @IsBoolean()
-    isRisk?: boolean;
+  @IsOptional()
+  @IsString()
+  notes?: string;
 
-    @IsOptional()
-    @IsString()
-    overrideJustification?: string;
+  @IsOptional()
+  @IsBoolean()
+  isRisk?: boolean;
+
+  @IsOptional()
+  @IsString()
+  overrideJustification?: string;
 }
 
 export class CreateFieldUpdateDto {
-    @IsNotEmpty()
-    @IsString()
-    projectId: string;
+  @IsNotEmpty()
+  @IsString()
+  projectId: string;
 
-    @IsNotEmpty()
-    @IsDateString()
-    date: string;
+  @IsNotEmpty()
+  @IsDateString()
+  date: string;
 
-    @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => UpdateItemDto)
-    items: UpdateItemDto[];
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateItemDto)
+  items: UpdateItemDto[];
 }

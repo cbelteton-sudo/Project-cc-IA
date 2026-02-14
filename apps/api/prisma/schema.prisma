@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -44,6 +44,7 @@ model User {
 
   auditLogs          AuditLog[]
   assignedActivities ProjectActivity[]
+  ledActivities      ProjectActivity[] @relation("CrewLeader")
   notifications      Notification[]
 
   // Scrum Relations
@@ -527,6 +528,9 @@ model ProjectActivity {
   assignedUserId String?
   assignedUser   User?   @relation(fields: [assignedUserId], references: [id])
 
+  crewLeaderId String?
+  crewLeader   User?   @relation("CrewLeader", fields: [crewLeaderId], references: [id])
+
   budgetLineId String?
   budgetLine   BudgetLine? @relation("BudgetLineActivities", fields: [budgetLineId], references: [id])
 
@@ -742,6 +746,9 @@ model FieldUpdateItem {
   confidenceScore  Int? // 0-100
   deltaFromLast    Int?
   requiresReview   Boolean @default(false)
+
+  // Gap Remediation: Track status change
+  status String? // NOT_STARTED, IN_PROGRESS, BLOCKED, DONE
 }
 
 model Photo {
@@ -906,9 +913,11 @@ model BacklogItem {
   title       String
   description String?
 
-  status     String  @default("BACKLOG") // BACKLOG, READY, IN_SPRINT, DONE, BLOCKED
-  priority   Int     @default(3) // 1-5
-  discipline String?
+  status      String  @default("BACKLOG") // BACKLOG, READY, IN_SPRINT, DONE, BLOCKED
+  priority    Int     @default(3) // 1-5
+  isUrgent    Boolean @default(false)
+  isImportant Boolean @default(false)
+  discipline  String?
 
   assigneeUserId String?
   assigneeUser   User?   @relation(fields: [assigneeUserId], references: [id])

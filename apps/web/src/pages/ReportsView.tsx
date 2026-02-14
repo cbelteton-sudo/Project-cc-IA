@@ -361,7 +361,7 @@ export const ReportsView = () => {
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" tickFormatter={(val) => `$${val / 1000}k`} />
                   <YAxis dataKey="name" type="category" width={80} />
-                  <Tooltip formatter={(val: number) => currency(val, pnlData.currency)} />
+                  <Tooltip formatter={(val: any) => currency(val, pnlData.currency)} />
                   <Legend />
                   <Bar dataKey="value" name="Monto" radius={[0, 4, 4, 0]} />
                 </BarChart>
@@ -384,10 +384,7 @@ export const ReportsView = () => {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                 <YAxis tickFormatter={(val) => `$${val / 1000}k`} />
-                <Tooltip
-                  formatter={(val: number) => currency(val)}
-                  labelStyle={{ color: '#333' }}
-                />
+                <Tooltip formatter={(val: any) => currency(val)} labelStyle={{ color: '#333' }} />
                 <Legend />
                 <Area
                   type="monotone"

@@ -1,0 +1,52 @@
+# 1. Base Image
+FROM node:20-alpine AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+
+# 2. Dependencies (Cached Layer)
+FROM base AS dependencies
+WORKDIR /app
+COPY pnpm-lock.yaml ./
+COPY pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/package.json
+COPY packages ./packages
+
+# Check if packages exist to avoid copy error if empty in some environments
+# But assuming structure relies on it.
+RUN pnpm install --frozen-lockfile
+
+# 3. Build Stage
+FROM base AS build
+WORKDIR /app
+COPY . .
+COPY --from=dependencies /app/node_modules ./node_modules
+# Re-link workspace packages if needed, but pnpm install in step 2 should handle it
+# However, modifying source code invalidates this layer, so we install again or rely on copy
+# Best practice with pnpm workspaces:
+# We need the full source to build.
+# Dependencies layer is for node_modules.
+# Let's refine:
+# COPY --from=dependencies /app/node_modules ./node_modules
+# The previous step installed deps based on package.json content.
+# If we copy source now, we are good.
+
+RUN pnpm --filter api build
+# Generate Prisma Client
+WORKDIR /app/apps/api
+RUN npx prisma generate
+
+# 4. Production Image
+FROM base AS deploy
+WORKDIR /app
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=build /app/apps/api/dist ./dist
+COPY --from=build /app/apps/api/prisma ./prisma
+COPY --from=build /app/apps/api/package.json ./package.json
+
+EXPOSE 3000
+
+# Ensure uploads directory exists
+RUN mkdir -p /app/uploads
+
+CMD ["node", "dist/main"]

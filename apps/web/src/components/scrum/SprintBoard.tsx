@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { AlertCircle, CheckCircle, Clock, PlayCircle, Filter } from 'lucide-react';
+import { toast } from 'sonner';
 import { useState } from 'react';
 import {
   DndContext,
@@ -117,6 +118,7 @@ export const SprintBoard = ({ projectId }: { projectId: string }) => {
 
     if (activeItem && targetStatus && targetStatus !== activeItem.boardStatus) {
       updateStatusMutation.mutate({ itemId: activeId, status: targetStatus });
+      toast.success(`Item movido a ${targetStatus.replace('_', ' ')}`);
     }
 
     setActiveId(null);
@@ -162,25 +164,25 @@ export const SprintBoard = ({ projectId }: { projectId: string }) => {
       id: 'TODO',
       label: 'Por Hacer',
       icon: <Clock size={16} />,
-      color: 'bg-gray-100 border-gray-200',
+      color: 'bg-gray-50 border-gray-300',
     },
     {
       id: 'IN_PROGRESS',
       label: 'En Progreso',
       icon: <PlayCircle size={16} />,
-      color: 'bg-blue-50 border-blue-200',
+      color: 'bg-blue-50 border-blue-400',
     },
     {
       id: 'IN_REVIEW',
-      label: 'Revisión / Validar',
+      label: 'Revisión',
       icon: <AlertCircle size={16} />,
-      color: 'bg-yellow-50 border-yellow-200',
+      color: 'bg-yellow-50 border-yellow-400',
     },
     {
       id: 'DONE',
       label: 'Terminado',
       icon: <CheckCircle size={16} />,
-      color: 'bg-green-50 border-green-200',
+      color: 'bg-green-50 border-green-500',
     },
   ];
 

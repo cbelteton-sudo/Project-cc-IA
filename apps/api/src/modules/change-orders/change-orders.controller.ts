@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { ChangeOrdersService } from './change-orders.service';
 import { CreateChangeOrderDto } from './dto/create-change-order.dto';
 import { UpdateChangeOrderDto } from './dto/update-change-order.dto';
@@ -8,10 +17,13 @@ import { ActiveUser } from '../../common/decorators/active-user.decorator';
 @Controller('change-orders')
 @UseGuards(JwtAuthGuard)
 export class ChangeOrdersController {
-  constructor(private readonly changeOrdersService: ChangeOrdersService) { }
+  constructor(private readonly changeOrdersService: ChangeOrdersService) {}
 
   @Post()
-  create(@Body() createChangeOrderDto: CreateChangeOrderDto, @ActiveUser() user: any) {
+  create(
+    @Body() createChangeOrderDto: CreateChangeOrderDto,
+    @ActiveUser() user: any,
+  ) {
     return this.changeOrdersService.create(createChangeOrderDto, user.tenantId);
   }
 
@@ -26,8 +38,16 @@ export class ChangeOrdersController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateChangeOrderDto: UpdateChangeOrderDto, @ActiveUser() user: any) {
-    return this.changeOrdersService.update(id, updateChangeOrderDto, user.tenantId);
+  update(
+    @Param('id') id: string,
+    @Body() updateChangeOrderDto: UpdateChangeOrderDto,
+    @ActiveUser() user: any,
+  ) {
+    return this.changeOrdersService.update(
+      id,
+      updateChangeOrderDto,
+      user.tenantId,
+    );
   }
 
   @Delete(':id')
@@ -35,8 +55,14 @@ export class ChangeOrdersController {
     return this.changeOrdersService.remove(id, user.tenantId);
   }
 
+  @Post(':id/submit')
+  submit(@Param('id') id: string, @ActiveUser() user: any) {
+    return this.changeOrdersService.submit(id, user.tenantId);
+  }
+
   @Post(':id/approve')
   approve(@Param('id') id: string, @ActiveUser() user: any) {
-    return this.changeOrdersService.approve(id, user.tenantId, user.id);
+    // Pass full user object for Role Guard
+    return this.changeOrdersService.approve(id, user.tenantId, user);
   }
 }

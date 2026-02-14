@@ -9,8 +9,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ScrumService } from './scrum.service';
-// import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../modules/auth/jwt-auth.guard';
+import { ActiveUser } from '../../common/decorators/active-user.decorator';
 
+import { CreateScrumProjectDto } from './dto/create-scrum-project.dto';
 import { CreateBacklogItemDto } from './dto/create-backlog-item.dto';
 import { UpdateBacklogItemDto } from './dto/update-backlog-item.dto';
 import { CreateSprintDto } from './dto/create-sprint.dto';
@@ -24,12 +26,38 @@ import { AssignBacklogItemDto } from './dto/assign-backlog-item.dto';
 import { ConvertActivityDto } from './dto/convert-activity.dto';
 
 @Controller('scrum')
+@UseGuards(JwtAuthGuard)
 export class ScrumController {
   constructor(private readonly scrumService: ScrumService) {}
+
+  @Post('projects')
+  createProject(@Body() data: CreateScrumProjectDto, @ActiveUser() user: any) {
+    return this.scrumService.createProject({
+      ...data,
+      tenantId: user.tenantId,
+    });
+  }
 
   @Get('projects/:projectId/dashboard')
   getDashboardMetrics(@Param('projectId') projectId: string) {
     return this.scrumService.getDashboardMetrics(projectId);
+  }
+
+  @Get('projects/:projectId/eisenhower')
+  getEisenhowerMatrix(@Param('projectId') projectId: string) {
+    return this.scrumService.getEisenhowerMatrix(projectId);
+  }
+
+  @Patch('backlog/:id/eisenhower')
+  updateEisenhowerStatus(
+    @Param('id') id: string,
+    @Body() body: { isUrgent: boolean; isImportant: boolean },
+  ) {
+    return this.scrumService.updateEisenhowerStatus(
+      id,
+      body.isUrgent,
+      body.isImportant,
+    );
   }
 
   @Post('backlog')

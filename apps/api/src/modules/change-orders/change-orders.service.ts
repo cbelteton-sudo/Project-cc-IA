@@ -1,11 +1,15 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { CreateChangeOrderDto } from './dto/create-change-order.dto';
 import { UpdateChangeOrderDto } from './dto/update-change-order.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class ChangeOrdersService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async create(createChangeOrderDto: CreateChangeOrderDto, tenantId: string) {
     // Validate project
@@ -18,7 +22,10 @@ export class ChangeOrdersService {
     }
 
     // Calculate total amount from items
-    const totalAmount = createChangeOrderDto.items.reduce((sum, item) => sum + item.amount, 0);
+    const totalAmount = createChangeOrderDto.items.reduce(
+      (sum, item) => sum + item.amount,
+      0,
+    );
 
     return this.prisma.changeOrder.create({
       data: {
@@ -28,16 +35,16 @@ export class ChangeOrdersService {
         amount: totalAmount,
         status: 'DRAFT',
         items: {
-          create: createChangeOrderDto.items.map(item => ({
+          create: createChangeOrderDto.items.map((item) => ({
             budgetLineId: item.budgetLineId,
             description: item.description,
-            amount: item.amount
-          }))
-        }
+            amount: item.amount,
+          })),
+        },
       },
       include: {
         items: true,
-      }
+      },
     });
   }
 
@@ -54,7 +61,7 @@ export class ChangeOrdersService {
       },
       orderBy: {
         createdAt: 'desc',
-      }
+      },
     });
   }
 
@@ -65,9 +72,9 @@ export class ChangeOrdersService {
         project: true,
         items: {
           include: {
-            budgetLine: true
-          }
-        }
+            budgetLine: true,
+          },
+        },
       },
     });
 
@@ -78,24 +85,28 @@ export class ChangeOrdersService {
     return co;
   }
 
-  async update(id: string, updateChangeOrderDto: UpdateChangeOrderDto, tenantId: string) {
+  async update(
+    id: string,
+    updateChangeOrderDto: UpdateChangeOrderDto,
+    tenantId: string,
+  ) {
     const co = await this.findOne(id, tenantId);
 
     if (co.status === 'APPROVED') {
       throw new BadRequestException('Cannot update an approved Change Order');
     }
 
-    // For simplicity, we won't allow full item updates in this basic version, 
+    // For simplicity, we won't allow full item updates in this basic version,
     // just title/desc updates. Re-implementing full item sync is complex for this iteration.
     // If items are passed, we'd need to delete existing and recreate.
 
-    // Simplification: Block item updates for now if complex logic is needed, 
+    // Simplification: Block item updates for now if complex logic is needed,
     // or just update header fields.
     // Let's assume frontend sends full object.
 
     const { items, ...headerData } = updateChangeOrderDto;
 
-    // Recalculate amount if items are present? 
+    // Recalculate amount if items are present?
     // For this MVP, let's stick to header updates or require deleting/recreating for complex item changes.
     // But to be user friendly, let's just update the header info.
 
@@ -115,11 +126,42 @@ export class ChangeOrdersService {
     });
   }
 
-  async approve(id: string, tenantId: string, userId: string) {
+  async submit(id: string, tenantId: string) {
     const co = await this.findOne(id, tenantId);
 
     if (co.status !== 'DRAFT') {
-      throw new BadRequestException('Change Order is not in DRAFT status');
+      throw new BadRequestException(
+        'Only DRAFT Change Orders can be submitted',
+      );
+    }
+
+    return this.prisma.changeOrder.update({
+      where: { id },
+      data: {
+        status: 'SUBMITTED',
+      },
+    });
+  }
+
+  async approve(id: string, tenantId: string, user: any) {
+    const co = await this.findOne(id, tenantId);
+
+    // GAP FIX: Role Guard
+    if (
+      user.role !== 'ADMIN' &&
+      user.role !== 'PROJECT_MANAGER' &&
+      user.role !== 'PM'
+    ) {
+      throw new BadRequestException(
+        'Insufficient Permissions: Only Admins or PMs can approve Change Orders',
+      );
+    }
+
+    // GAP FIX: Strict Transition
+    if (co.status !== 'SUBMITTED') {
+      throw new BadRequestException(
+        'Change Order must be SUBMITTED before approval',
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -128,9 +170,9 @@ export class ChangeOrdersService {
         where: { id },
         data: {
           status: 'APPROVED',
-          approverId: userId,
+          approverId: user.id,
           approvedAt: new Date(),
-        }
+        },
       });
 
       // 2. Update Budget Lines
@@ -139,9 +181,9 @@ export class ChangeOrdersService {
           where: { id: item.budgetLineId },
           data: {
             budgetCO: {
-              increment: item.amount
-            }
-          }
+              increment: item.amount,
+            },
+          },
         });
       }
 

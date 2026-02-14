@@ -1,4 +1,5 @@
-import { Camera, FileText, User } from 'lucide-react';
+import { Camera, FileText, User, BookOpen, CheckSquare, Bug, Mountain } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useState } from 'react';
 import { SortableItem } from './SortableItem';
 
@@ -42,25 +43,82 @@ export const SprintBoardCardInner = ({
   const prevStatus = getPrevStatus(columnId);
 
   return (
-    <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all group h-full cursor-grab active:cursor-grabbing">
-      <div className="flex justify-between items-start mb-2">
-        <span className="text-xs font-bold text-gray-400">{item.backlogItem.type}</span>
-        {item.backlogItem.priority >= 4 && (
-          <span className="text-[10px] text-red-600 font-bold bg-red-50 px-1.5 py-0.5 rounded">
-            Alta
+    <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all group h-full cursor-grab active:cursor-grabbing flex flex-col gap-2 relative">
+      <div className="flex justify-between items-start">
+        <div className="flex items-center gap-1.5">
+          {(() => {
+            const type = item.backlogItem.type;
+            if (type === 'STORY')
+              return (
+                <span title="Story" className="bg-green-100 p-1 rounded-md text-green-700">
+                  <BookOpen size={14} />
+                </span>
+              );
+            if (type === 'TASK')
+              return (
+                <span title="Task" className="bg-blue-100 p-1 rounded-md text-blue-700">
+                  <CheckSquare size={14} />
+                </span>
+              );
+            if (type === 'BUG')
+              return (
+                <span title="Bug" className="bg-red-100 p-1 rounded-md text-red-700">
+                  <Bug size={14} />
+                </span>
+              );
+            if (type === 'EPIC')
+              return (
+                <span title="Epic" className="bg-purple-100 p-1 rounded-md text-purple-700">
+                  <Mountain size={14} />
+                </span>
+              );
+            return <BookOpen size={14} className="text-gray-500" />;
+          })()}
+          <span className="text-xs font-medium text-gray-500 line-through decoration-transparent">
+            {item.backlogItem.id.slice(0, 4).toUpperCase()}
           </span>
-        )}
+        </div>
+
+        <div className="flex gap-1">
+          {item.backlogItem.storyPoints && (
+            <div
+              className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xs font-bold border border-gray-200"
+              title="Story Points"
+            >
+              {item.backlogItem.storyPoints}
+            </div>
+          )}
+          {item.backlogItem.priority >= 4 ? (
+            <span className="text-[10px] text-red-600 font-bold bg-red-50 px-2 py-1 rounded-full border border-red-100">
+              CRITICAL
+            </span>
+          ) : item.backlogItem.priority === 3 ? (
+            <span className="text-[10px] text-orange-600 font-bold bg-orange-50 px-2 py-1 rounded-full border border-orange-100">
+              HIGH
+            </span>
+          ) : item.backlogItem.priority === 2 ? (
+            <span className="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
+              MEDIUM
+            </span>
+          ) : (
+            <span className="text-[10px] text-gray-500 font-bold bg-gray-50 px-2 py-1 rounded-full border border-gray-100">
+              LOW
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Parent Story Badge */}
       {item.backlogItem.parent && (
-        <div className="text-[10px] text-gray-500 mb-1.5 flex items-center gap-1 bg-indigo-50/50 px-1.5 py-0.5 rounded border border-indigo-100/50 w-fit max-w-full">
+        <div className="text-[10px] text-gray-500 flex items-center gap-1 bg-indigo-50/50 px-1.5 py-0.5 rounded border border-indigo-100/50 w-fit max-w-full">
           <span className="font-semibold text-indigo-400">↳</span>
           <span className="truncate">{item.backlogItem.parent.title}</span>
         </div>
       )}
 
-      <p className="font-medium text-sm text-gray-800 mb-2">{item.backlogItem.title}</p>
+      <p className="font-medium text-sm text-gray-800 leading-tight line-clamp-2">
+        {item.backlogItem.title}
+      </p>
 
       {/* Contractor Display Logic */}
       {(() => {
@@ -72,45 +130,58 @@ export const SprintBoardCardInner = ({
         if (!contractor) return null;
 
         return (
-          <div className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+          <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
             <span>🏗️</span> <span className="font-semibold">{contractor.name}</span>
           </div>
         );
       })()}
 
-      {/* Assignee */}
-      <div className="mb-3 flex justify-end">
-        <div className="relative group/assignee" onPointerDown={(e) => e.stopPropagation()}>
-          {/* Stop propagation to allow clicking assignee without dragging */}
-          {item.backlogItem.assigneeUserId ? (
-            <div
-              className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold border border-blue-200 cursor-pointer"
-              title="Cambiar responsable"
-              onClick={(e) => {
-                e.preventDefault();
-                setIsAssigning(!isAssigning);
-              }}
-            >
-              {users
-                ?.find((u: any) => u.id === item.backlogItem.assigneeUserId)
-                ?.name?.charAt(0) || <User size={12} />}
-            </div>
-          ) : (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                setIsAssigning(!isAssigning);
-              }}
-              className="w-6 h-6 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center hover:bg-gray-200 border border-gray-200 border-dashed transition-colors"
-              title="Asignar responsable"
-            >
-              <User size={12} />
-            </button>
+      <div className="mt-auto pt-2 flex items-center justify-between border-t border-gray-50">
+        {/* Action Buttons for Progress/Log */}
+        <div className="flex gap-1">
+          {(columnId === 'IN_PROGRESS' || columnId === 'IN_REVIEW') && (
+            <>
+              <button
+                onClick={() => onReport(item)}
+                className="p-1.5 hover:bg-gray-100 text-gray-500 hover:text-gray-700 rounded transition-colors"
+                title="Reportar Avance"
+              >
+                <Camera size={14} />
+              </button>
+              <button
+                onClick={() => onViewLog(item)}
+                className="p-1.5 hover:bg-gray-100 text-gray-500 hover:text-gray-700 rounded transition-colors"
+                title="Ver Bitácora"
+              >
+                <FileText size={14} />
+              </button>
+            </>
           )}
+        </div>
 
-          {/* Dropdown for Assignment */}
-          {isAssigning && (
-            <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 p-1">
+        <div className="relative group/assignee" onPointerDown={(e) => e.stopPropagation()}>
+          <Popover open={isAssigning} onOpenChange={setIsAssigning}>
+            <PopoverTrigger asChild>
+              {/* Assignee Avatar */}
+              {item.backlogItem.assigneeUserId ? (
+                <div
+                  className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold ring-2 ring-white border border-blue-200 cursor-pointer shadow-sm"
+                  title="Cambiar responsable"
+                >
+                  {users
+                    ?.find((u: any) => u.id === item.backlogItem.assigneeUserId)
+                    ?.name?.charAt(0) || <User size={12} />}
+                </div>
+              ) : (
+                <button
+                  className="w-7 h-7 rounded-full bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-gray-100 border border-gray-200 border-dashed transition-colors"
+                  title="Asignar responsable"
+                >
+                  <User size={14} />
+                </button>
+              )}
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-1" align="end">
               <div className="text-xs font-semibold text-gray-500 px-2 py-1 mb-1 border-b border-gray-100">
                 Asignar a...
               </div>
@@ -118,8 +189,7 @@ export const SprintBoardCardInner = ({
                 {users?.map((u: any) => (
                   <div
                     key={u.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    onClick={() => {
                       onAssign(u.id);
                       setIsAssigning(false);
                     }}
@@ -132,67 +202,8 @@ export const SprintBoardCardInner = ({
                   </div>
                 ))}
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsAssigning(false);
-                }}
-                className="w-full text-center text-[10px] text-gray-400 hover:text-gray-600 mt-1 py-1"
-              >
-                Cancelar
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Action Area */}
-      <div
-        className="pt-2 border-t border-gray-50 flex items-center justify-between"
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        {/* Report Buttons */}
-        {columnId === 'IN_PROGRESS' || columnId === 'IN_REVIEW' ? (
-          <div className="flex gap-1">
-            <button
-              onClick={() => onReport(item)}
-              className="px-2 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded text-xs font-medium transition-colors border border-gray-200 border-dashed hover:border-solid hover:border-gray-300 flex items-center gap-1"
-              title="Reportar Avance"
-            >
-              <Camera size={12} />
-            </button>
-            <button
-              onClick={() => onViewLog(item)}
-              className="px-2 py-1 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded text-xs transition-colors border border-gray-200 hover:border-gray-300"
-              title="Ver Bitácora"
-            >
-              <FileText size={12} />
-            </button>
-          </div>
-        ) : (
-          <div />
-        )}
-
-        {/* Manual Move Buttons (Fallback) */}
-        <div className="flex gap-1">
-          {prevStatus && (
-            <button
-              onClick={() => onMoveUpdated(item.id, prevStatus)}
-              className="text-gray-400 hover:text-gray-600 px-1"
-              title="Mover atrás"
-            >
-              ←
-            </button>
-          )}
-          {nextStatus && (
-            <button
-              onClick={() => onMoveUpdated(item.id, nextStatus)}
-              className="text-blue-600 hover:text-blue-800 text-xs font-bold px-1"
-              title="Mover siguiente"
-            >
-              →
-            </button>
-          )}
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
     </div>

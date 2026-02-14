@@ -10,7 +10,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.setGlobalPrefix('api');
   app.enableCors({
-    origin: true,
+    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
@@ -24,6 +24,9 @@ async function bootstrap() {
   const httpAdapter = app.get(HttpAdapterHost);
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-  await app.listen(process.env.PORT ?? 4180);
+
+  const port = process.env.PORT || 4180;
+  await app.listen(port, '0.0.0.0');
+  console.log(`Application is running on: ${await app.getUrl()}`);
 }
 bootstrap();

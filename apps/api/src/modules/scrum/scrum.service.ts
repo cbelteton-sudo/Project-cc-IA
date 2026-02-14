@@ -7,6 +7,33 @@ import { DashboardMetricsDto } from './dto/dashboard-metrics.dto';
 export class ScrumService {
   constructor(private prisma: PrismaService) {}
 
+  // --- PROJECTS ---
+
+  async createProject(data: {
+    name: string;
+    description?: string;
+    startDate?: string;
+    endDate?: string;
+    estimatedBudget?: number;
+    tenantId: string;
+  }) {
+    return this.prisma.project.create({
+      data: {
+        name: data.name,
+        // code: 'GENERATE-CODE', // Optional: Generate a code based on name?
+        status: 'ACTIVE',
+        currency: 'USD', // Default
+        tenantId: data.tenantId,
+        startDate: data.startDate ? new Date(data.startDate) : undefined,
+        endDate: data.endDate ? new Date(data.endDate) : undefined,
+        managerName: 'Admin User', // TODO: Get from context
+        enableScrum: true,
+        enableReports: true,
+        globalBudget: data.estimatedBudget,
+      },
+    });
+  }
+
   // --- BACKLOG ---
 
   async createBacklogItem(
@@ -509,7 +536,7 @@ export class ScrumService {
   // --- ANALYTICS ---
 
   async getDashboardMetrics(projectId: string): Promise<DashboardMetricsDto> {
-    // 1. Active Sprint Progress
+    // 1. Active Sprint Progress & Health
     const activeSprint = await this.prisma.sprint.findFirst({
       where: {
         projectId,
@@ -527,20 +554,19 @@ export class ScrumService {
       },
     });
 
+    let activeSprintName = 'Sin Sprint Activo';
     let activeSprintProgress = 0;
-    let sprintHealth = 100;
+    let sprintHealth: 'on_track' | 'ahead' | 'behind' = 'on_track';
 
     if (activeSprint) {
+      activeSprintName = activeSprint.name;
       const totalPoints = activeSprint.items.reduce(
-        (acc: number, item) => acc + (item.backlogItem.storyPoints || 0),
+        (acc, item) => acc + (item.backlogItem.storyPoints || 0),
         0,
       );
       const completedPoints = activeSprint.items
         .filter((item) => item.boardStatus === 'DONE')
-        .reduce(
-          (acc: number, item) => acc + (item.backlogItem.storyPoints || 0),
-          0,
-        );
+        .reduce((acc, item) => acc + (item.backlogItem.storyPoints || 0), 0);
 
       if (totalPoints > 0) {
         activeSprintProgress = Math.round(
@@ -548,11 +574,7 @@ export class ScrumService {
         );
       }
 
-      // Simple Health Heuristic
-      // -10 per open impediment
-      // -20 if progress < 50% and time elapsed > 70%
-      sprintHealth -= activeSprint.impediments.length * 10;
-
+      // Health Logic
       const startDate = new Date(activeSprint.startDate).getTime();
       const endDate = new Date(activeSprint.endDate).getTime();
       const now = new Date().getTime();
@@ -561,14 +583,18 @@ export class ScrumService {
 
       if (totalDuration > 0 && elapsed > 0) {
         const timeProgress = (elapsed / totalDuration) * 100;
-        if (timeProgress > 70 && activeSprintProgress < 50) {
-          sprintHealth -= 20;
+        // If time passed > progress by 20%, it's behind
+        if (timeProgress > activeSprintProgress + 20) {
+          sprintHealth = 'behind';
+        } else if (activeSprintProgress > timeProgress + 10) {
+          sprintHealth = 'ahead';
         }
       }
-      activeSprintProgress = Math.min(Math.max(activeSprintProgress, 0), 100);
-      sprintHealth = Math.min(Math.max(sprintHealth, 0), 100);
-    } else {
-      sprintHealth = 0; // No active sprint
+
+      // Impediments influence
+      if (activeSprint.impediments.length > 2) {
+        sprintHealth = 'behind';
+      }
     }
 
     // 2. Velocity (Last 3 CLOSED sprints)
@@ -590,35 +616,56 @@ export class ScrumService {
     const velocity =
       recentClosedSprints.length > 0
         ? recentClosedSprints.reduce(
-            (acc: number, sprint) =>
+            (acc, sprint) =>
               acc +
               sprint.items.reduce(
-                (sum: number, item) =>
-                  sum + (item.backlogItem.storyPoints || 0),
+                (sum, item) => sum + (item.backlogItem.storyPoints || 0),
                 0,
               ),
             0,
           ) / recentClosedSprints.length
-        : 0;
+        : 0; // Default to 0 or maybe estimate if no closed sprints?
 
-    // 3. Stats
+    // 3. Stats & Items by Status
     const totalBacklogItems = await this.prisma.backlogItem.count({
-      where: { projectId, status: { not: 'DONE' } },
+      where: { projectId },
+    });
+
+    const itemsByStatusRaw = await this.prisma.backlogItem.groupBy({
+      by: ['status'],
+      where: { projectId },
+      _count: true,
+    });
+
+    // Map DB status to simplified view
+    const itemsByStatus = {
+      todo: 0,
+      inProgress: 0,
+      review: 0,
+      done: 0,
+    };
+
+    itemsByStatusRaw.forEach((group) => {
+      if (['BACKLOG', 'TODO', 'READY'].includes(group.status))
+        itemsByStatus.todo += group._count;
+      if (['IN_PROGRESS', 'IN_SPRINT'].includes(group.status))
+        itemsByStatus.inProgress += group._count;
+      if (['REVIEW', 'IN_REVIEW'].includes(group.status))
+        itemsByStatus.review += group._count;
+      if (['DONE', 'COMPLETED', 'CLOSED'].includes(group.status))
+        itemsByStatus.done += group._count;
     });
 
     const openImpediments = await this.prisma.impediment.count({
       where: { projectId, status: 'OPEN' },
     });
 
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-
-    const itemsCompletedThisMonth = await this.prisma.backlogItem.count({
+    // Team Size (Assigned Users)
+    const teamSize = await this.prisma.user.count({
       where: {
-        projectId,
-        status: 'DONE',
-        updatedAt: { gte: startOfMonth },
+        assignedBacklogItems: {
+          some: { projectId },
+        },
       },
     });
 
@@ -636,28 +683,109 @@ export class ScrumService {
 
     const recentSprints = lastSprints.reverse().map((sprint) => {
       const total = sprint.items.reduce(
-        (acc: number, i) => acc + (i.backlogItem.storyPoints || 0),
+        (acc, i) => acc + (i.backlogItem.storyPoints || 0),
         0,
       );
       const completed = sprint.items
         .filter((i) => i.boardStatus === 'DONE')
-        .reduce((acc: number, i) => acc + (i.backlogItem.storyPoints || 0), 0);
+        .reduce((acc, i) => acc + (i.backlogItem.storyPoints || 0), 0);
 
       return {
         name: sprint.name,
         planned: total,
         completed: completed,
+        startDate: sprint.startDate.toISOString(),
+        endDate: sprint.endDate.toISOString(),
       };
     });
 
     return {
+      activeSprintName,
       activeSprintProgress,
       velocity: parseFloat(velocity.toFixed(1)),
       totalBacklogItems,
-      itemsCompletedThisMonth,
+      itemsByStatus,
       openImpediments,
       sprintHealth,
       recentSprints,
+      teamSize,
     };
+  }
+
+  // --- EISENHOWER MATRIX ---
+
+  async getEisenhowerMatrix(projectId: string) {
+    const items = await this.prisma.backlogItem.findMany({
+      where: {
+        projectId,
+        status: { notIn: ['DONE', 'COMPLETED', 'CLOSED'] }, // Only active items
+      },
+      include: {
+        assigneeUser: true,
+        contractor: true,
+      },
+      orderBy: { priority: 'asc' },
+    });
+
+    const matrix = {
+      do: [] as any[],
+      schedule: [] as any[],
+      delegate: [] as any[],
+      eliminate: [] as any[],
+      unclassified: [] as any[],
+    };
+
+    const stats = {
+      do: 0,
+      schedule: 0,
+      delegate: 0,
+      eliminate: 0,
+      unclassified: 0,
+      total: items.length,
+      overdue: 0,
+    };
+
+    items.forEach((item) => {
+      // Logic for Unclassified: If defaults are used (false/false) AND maybe we want explicit classification?
+      // Actually false/false IS "Eliminate" (Not Urgent, Not Important).
+      // But maybe we consider "Unclassified" if they haven't been touched?
+      // For now, strict quadrant logic:
+
+      // Q1: Urgent + Important
+      if (item.isUrgent && item.isImportant) {
+        matrix.do.push(item);
+        stats.do++;
+        if (item.dueDate && new Date(item.dueDate) < new Date())
+          stats.overdue++;
+      }
+      // Q2: Not Urgent + Important
+      else if (!item.isUrgent && item.isImportant) {
+        matrix.schedule.push(item);
+        stats.schedule++;
+      }
+      // Q3: Urgent + Not Important
+      else if (item.isUrgent && !item.isImportant) {
+        matrix.delegate.push(item);
+        stats.delegate++;
+      }
+      // Q4: Not Urgent + Not Important -> Unclassified (Backlog)
+      else {
+        matrix.unclassified.push(item);
+        stats.unclassified++;
+      }
+    });
+
+    return { matrix, stats };
+  }
+
+  async updateEisenhowerStatus(
+    itemId: string,
+    isUrgent: boolean,
+    isImportant: boolean,
+  ) {
+    return this.prisma.backlogItem.update({
+      where: { id: itemId },
+      data: { isUrgent, isImportant },
+    });
   }
 }
