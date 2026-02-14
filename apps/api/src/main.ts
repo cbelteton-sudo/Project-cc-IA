@@ -26,6 +26,12 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   const port = process.env.PORT || 4180;
+
+  // Add a root route for health checks (bypassing global prefix) to satisfy Railway defaults
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.get('/', (_req: any, res: any) => res.send('OK'));
+  expressApp.get('/health', (_req: any, res: any) => res.send('OK'));
+
   await app.listen(port, '0.0.0.0');
   console.log(`Application is running on: ${await app.getUrl()}`);
 }
