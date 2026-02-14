@@ -55,3 +55,4 @@ EXPOSE 3000
 RUN mkdir -p /app/uploads
 
 CMD ["node", "dist/main"]
+# trigger build
