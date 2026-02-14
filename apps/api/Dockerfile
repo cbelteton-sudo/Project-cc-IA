@@ -20,6 +20,7 @@ COPY packages ./packages
 # But assuming structure relies on it.
 # Using --no-frozen-lockfile to bypass strict lockfile checks in CI environment
 # This resolved persistent "ERR_PNPM_OUTDATED_LOCKFILE" errors on Railway
+# Trigger Railway rebuild to pick up --no-frozen-lockfile change
 RUN pnpm install --no-frozen-lockfile
 
 # 3. Build Stage
