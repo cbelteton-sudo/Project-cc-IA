@@ -59,5 +59,5 @@ EXPOSE 3000
 # Ensure uploads directory exists
 RUN mkdir -p /app/uploads
 
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main"]
 # trigger build
