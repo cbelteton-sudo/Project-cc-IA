@@ -31,10 +31,13 @@ COPY --from=dependencies /app/node_modules ./node_modules
 # The previous step installed deps based on package.json content.
 # If we copy source now, we are good.
 
-RUN pnpm --filter api build
-# Generate Prisma Client
+# Generate Prisma Client (needed for build)
 WORKDIR /app/apps/api
 RUN npx prisma generate
+
+# Build API
+WORKDIR /app
+RUN pnpm --filter api build
 
 # 4. Production Image
 FROM base AS deploy
