@@ -11,6 +11,7 @@ ENV NODE_ENV=development
 WORKDIR /app
 COPY pnpm-lock.yaml ./
 COPY pnpm-workspace.yaml ./
+COPY package.json ./
 COPY apps/api/package.json ./apps/api/package.json
 COPY packages ./packages
 
