@@ -6,6 +6,8 @@ RUN corepack enable
 
 # 2. Dependencies (Cached Layer)
 FROM base AS dependencies
+# Force development environment to ensure devDependencies (like @nestjs/cli) are installed
+ENV NODE_ENV=development
 WORKDIR /app
 COPY pnpm-lock.yaml ./
 COPY pnpm-workspace.yaml ./
