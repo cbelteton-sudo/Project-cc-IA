@@ -48,9 +48,12 @@ WORKDIR /app
 RUN pnpm --filter api build
 
 # 4. Production Image
+# 4. Production Image
 FROM base AS deploy
 WORKDIR /app
-COPY --from=dependencies /app/node_modules ./node_modules
+# FIX: Copy node_modules from 'build' stage because that's where 'prisma generate' ran!
+# Copying from 'dependencies' meant we lost the generated client.
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/apps/api/dist ./dist
 COPY --from=build /app/apps/api/prisma ./prisma
 COPY --from=build /app/apps/api/package.json ./package.json
@@ -60,5 +63,6 @@ EXPOSE 3000
 # Ensure uploads directory exists
 RUN mkdir -p /app/uploads
 
-CMD ["node", "dist/src/main"]
+# Debug: List files to verify structure, then start app
+CMD ["sh", "-c", "echo 'Current directory:' && pwd && echo 'Listing /app/dist:' && ls -F /app/dist && echo 'Listing /app/dist/src:' && ls -F /app/dist/src && node dist/src/main"]
 # trigger build
