@@ -134,8 +134,9 @@ export const GanttProvider = ({
     // Add padding
     // Reduced start padding from -7 to -1 (or 0) to avoid showing previous month unnecessarily
     // Keep end padding for adding new tasks
+    // FIX: strict start date to avoid showing Jan 25 when project starts Jan 31
     return {
-      startDate: startOfWeek(min), // Was addDays(min, -7)
+      startDate: min,
       endDate: endOfWeek(addDays(max, 14)),
     };
   }, [activities, milestones]);
