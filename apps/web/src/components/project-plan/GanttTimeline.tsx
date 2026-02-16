@@ -31,47 +31,22 @@ export const GanttTimeline = () => {
     const top: any[] = [];
     const bottom: any[] = [];
 
+    // --- Bottom Headers (Days/Weeks) ---
     if (viewMode === 'Week' || viewMode === 'Month') {
-      // Week/Month View: Group by Weeks
-      let currentWeekStart = startDate;
-      let i = 0;
-
-      // Align start date to Monday for nicer week grids?
-      // Or just iterate from project start.
-
-      while (differenceInDays(currentWeekStart, endDate) <= 0) {
-        const weekEnd = addDays(currentWeekStart, 6);
-        const label = `Sem ${format(currentWeekStart, 'w')}`;
-
-        // If Month View, maybe just Month chunks?
-        // User specifically asked about "Week Filter" (Week View).
-
-        if (viewMode === 'Week') {
-          // Bottom Header: Weeks
-          bottom.push({
-            label: `Sem ${format(currentWeekStart, 'w')}`,
-            width: columnWidth * 7,
-            left: getX(currentWeekStart.toISOString()),
-            isWeekend: false, // Week block isn't a weekend
-            date: currentWeekStart,
-          });
-        }
-
-        // Top Header: Months
-        // Only add if new month
-        if (i === 0 || currentWeekStart.getDate() <= 7) {
-          // Imperfect month logic but sufficient forMVP
-          top.push({
-            label: format(currentWeekStart, 'MMMM yyyy', { locale: es }),
-            left: getX(currentWeekStart.toISOString()),
-          });
-        }
-
-        currentWeekStart = addDays(currentWeekStart, 7);
-        i++;
+      let current = startDate;
+      // Iterate by week
+      while (differenceInDays(endDate, current) >= 0) {
+        bottom.push({
+          label: `Sem ${format(current, 'w')}`,
+          width: columnWidth * 7,
+          left: getX(current.toISOString()),
+          isWeekend: false,
+          date: current,
+        });
+        current = addDays(current, 7);
       }
     } else {
-      // Day View (Existing Logic)
+      // Day View
       for (let i = 0; i < totalDays; i++) {
         const date = addDays(startDate, i);
         bottom.push({
@@ -81,16 +56,37 @@ export const GanttTimeline = () => {
           isWeekend: isWeekend(date),
           date,
         });
-        if (i === 0 || date.getDate() === 1) {
-          top.push({
-            label: format(date, 'MMMM yyyy', { locale: es }),
-            left: i * columnWidth,
-          });
-        }
       }
     }
+
+    // --- Top Headers (Months) - Range Based ---
+    let currentMonthStart = startDate;
+    let currentMonthLabel = format(startDate, 'MMMM yyyy', { locale: es });
+
+    // Iterate day by day to find month boundaries
+    // We go up to totalDays to capture the last closing block
+    for (let i = 0; i <= totalDays; i++) {
+      const date = addDays(startDate, i);
+      const label = format(date, 'MMMM yyyy', { locale: es });
+
+      if (label !== currentMonthLabel || i === totalDays) {
+        // Close previous block
+        const widthDays = differenceInDays(date, currentMonthStart);
+        if (widthDays > 0) {
+          top.push({
+            label: currentMonthLabel,
+            left: getX(currentMonthStart.toISOString()),
+            width: widthDays * columnWidth,
+          });
+        }
+        // Start new block
+        currentMonthLabel = label;
+        currentMonthStart = date;
+      }
+    }
+
     return { top, bottom };
-  }, [startDate, totalDays, columnWidth, viewMode]);
+  }, [startDate, totalDays, columnWidth, viewMode, endDate]); // Added endDate dependency
 
   const getWidth = (startStr: string, endStr: string) => {
     const diff = differenceInDays(new Date(endStr), new Date(startStr));
@@ -115,10 +111,11 @@ export const GanttTimeline = () => {
             {headers.top.map((h, i) => (
               <div
                 key={i}
-                className="absolute top-0 h-full flex items-center px-2 text-xs font-bold text-gray-500 border-l border-gray-100 whitespace-nowrap capitalize"
-                style={{ left: h.left }}
+                className="absolute top-0 h-full flex items-center px-2 text-xs font-bold text-gray-500 border-l border-gray-100 whitespace-nowrap capitalize overflow-hidden"
+                style={{ left: h.left, width: h.width }}
+                title={h.label}
               >
-                {h.label}
+                <span className="truncate w-full">{h.label}</span>
               </div>
             ))}
           </div>
