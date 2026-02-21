@@ -1,20 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
-import {
-  Plus,
-  Folder,
-  ArrowRight,
-  AlertTriangle,
-  LayoutGrid,
-  List as ListIcon,
-  MoreVertical,
-  Calendar,
-  TrendingUp,
-  Building2,
-  Search,
-} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, Folder, Search, Building2, Briefcase, FileText, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,21 +10,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 // Types
-interface Project {
-  id: string;
-  name: string;
-  code: string;
-  status: string;
-  globalBudget?: number;
-  currency?: string;
-  startDate?: string;
-  endDate?: string;
-  _count?: {
-    budgets: number;
-  };
-  thumbnail?: string; // Mock for now
-  managerName?: string;
-}
+import { projectsService, type Project, type CreateProjectDTO } from '../services/projects';
 
 // Zod Schema
 const createProjectSchema = z.object({
@@ -56,10 +29,59 @@ const createProjectSchema = z.object({
 
 type CreateProjectForm = z.infer<typeof createProjectSchema>;
 
+const FilterPill = ({
+  label,
+  active,
+  hasDropdown,
+}: {
+  label: string;
+  active?: boolean;
+  hasDropdown?: boolean;
+}) => (
+  <button
+    className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors flex items-center gap-1.5
+      ${
+        active
+          ? 'bg-gray-100 border-gray-200 text-gray-900'
+          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+      }`}
+  >
+    {label}
+    {hasDropdown && <ChevronDown size={14} className="text-gray-400" />}
+  </button>
+);
+
+const TabOption = ({
+  label,
+  count,
+  active,
+  color,
+}: {
+  label: string;
+  count: number;
+  active?: boolean;
+  color?: string;
+}) => (
+  <button
+    className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors flex items-center gap-2
+      ${
+        active
+          ? 'border-gray-900 text-gray-900'
+          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+      }`}
+  >
+    {label}
+    <span
+      className={`px-2 py-0.5 rounded-full text-xs font-bold ${color || 'bg-gray-100 text-gray-700'}`}
+    >
+      {count}
+    </span>
+  </button>
+);
+
 export const Projects = () => {
   const { token } = useAuth();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const { t } = useTranslation();
@@ -83,30 +105,22 @@ export const Projects = () => {
   });
 
   // Fetch Projects
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
   const { data: projects, isLoading } = useQuery({
     queryKey: ['projects'],
-    queryFn: async () => {
-      const res = await axios.get(`${API_URL}/projects`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return res.data;
-    },
+    queryFn: projectsService.getAll,
     enabled: !!token,
   });
 
   // Create Project Mutation
   const createMutation = useMutation({
     mutationFn: async (data: CreateProjectForm) => {
-      const payload = {
+      const payload: CreateProjectDTO = {
         ...data,
         currency: 'USD',
         startDate: data.startDate ? new Date(data.startDate).toISOString() : undefined,
         endDate: data.endDate ? new Date(data.endDate).toISOString() : undefined,
       };
-      return axios.post(`${API_URL}/projects`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      return projectsService.create(payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -160,6 +174,24 @@ export const Projects = () => {
       p.code.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
+  // Derive counts for tabs based on status
+  const allCount = projects?.length || 0;
+  const activeCount =
+    projects?.filter((p: Project) => {
+      const status = getProjectStatus(p);
+      return status.label === 'En Tiempo' || status.label === 'En Riesgo';
+    }).length || 0;
+  const atRiskCount =
+    projects?.filter((p: Project) => {
+      const status = getProjectStatus(p);
+      return status.label === 'En Riesgo' || status.label === 'Atrasado';
+    }).length || 0;
+  const doneCount =
+    projects?.filter((p: Project) => {
+      const status = getProjectStatus(p);
+      return status.label === 'Terminado';
+    }).length || 0;
+
   if (isLoading)
     return (
       <div className="container mx-auto max-w-7xl p-6">
@@ -176,21 +208,21 @@ export const Projects = () => {
     );
 
   return (
-    <div className="container mx-auto max-w-7xl p-6 min-h-screen">
-      {/* Header Area */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">{t('projects.title')}</h2>
-          <p className="text-gray-500 mt-1">Gestiona tus proyectos, presupuestos y avances.</p>
+    <div className="container mx-auto max-w-7xl p-6 min-h-screen bg-gray-50/30">
+      {/* Action Center Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 mt-2">
+        <div className="flex items-center gap-3">
+          <Briefcase className="text-gray-700" size={28} />
+          <h2 className="text-2xl font-bold text-gray-800 tracking-tight">{t('projects.title')}</h2>
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <div className="relative flex-1 md:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               type="text"
-              placeholder="Buscar por nombre o código..."
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-field-blue outline-none transition-all shadow-sm"
+              placeholder="Buscar proyectos..."
+              className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-full text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -201,18 +233,49 @@ export const Projects = () => {
               reset();
               setIsModalOpen(true);
             }}
-            className="bg-field-orange text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-orange-700 transition shadow-md shadow-orange-200 font-bold whitespace-nowrap active:scale-95"
+            className="bg-gray-900 text-white px-4 py-2 rounded-full flex items-center gap-2 hover:bg-gray-800 transition shadow-sm font-medium text-sm whitespace-nowrap active:scale-95"
           >
-            <Plus size={20} />
-            <span className="hidden sm:inline">{t('projects.newProject')}</span>
+            <Plus size={16} />
+            <span className="hidden sm:inline">Nuevo Proyecto</span>
           </button>
         </div>
       </div>
 
-      {/* Content */}
-      {/* Projects Table List View */}
+      {/* Pill Filters */}
+      <div className="flex flex-wrap items-center gap-2 mb-8">
+        <FilterPill label="Mis proyectos" active />
+        <FilterPill label="Responsable" hasDropdown />
+        <FilterPill label="Estado" hasDropdown />
+        <FilterPill label="Facturados" />
+        <FilterPill label="Atrasados" />
+      </div>
+
+      {/* Tabs */}
+      <div className="flex items-center gap-6 border-b border-gray-200 mb-6">
+        <TabOption label="Todos" count={allCount} active />
+        <TabOption
+          label="Activos"
+          count={activeCount}
+          active={false}
+          color="bg-blue-100 text-blue-700"
+        />
+        <TabOption
+          label="En Riesgo"
+          count={atRiskCount}
+          active={false}
+          color="bg-orange-100 text-orange-700"
+        />
+        <TabOption
+          label="Terminados"
+          count={doneCount}
+          active={false}
+          color="bg-green-100 text-green-700"
+        />
+      </div>
+
+      {/* Data Table */}
       {filteredProjects?.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+        <div className="text-center py-20 bg-white rounded-xl border border-gray-200 shadow-sm">
           <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
             <Folder size={32} className="text-gray-400" />
           </div>
@@ -220,97 +283,81 @@ export const Projects = () => {
           <p className="text-gray-500 mb-6">Prueba con otra búsqueda o crea uno nuevo.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-lg border-0 overflow-hidden ring-1 ring-black/5">
+        <div className="bg-white rounded-xl shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] border border-gray-200 overflow-hidden">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-field-blue text-white shadow-md z-10 relative">
+            <thead className="bg-gray-50/80 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-white/80">
-                  Proyecto
-                </th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-white/80">
-                  Construye
-                </th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-center text-white/80">
-                  Estado
-                </th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-white/80">
-                  Presupuesto
-                </th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-white/80">
-                  Entrega
-                </th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-center text-white/80">
-                  Acciones
-                </th>
+                <th className="px-6 py-3 text-sm font-bold text-gray-700 w-1/3">Proyecto</th>
+                <th className="px-6 py-3 text-sm font-bold text-gray-700">Responsable</th>
+                <th className="px-6 py-3 text-sm font-bold text-gray-700">Entrega</th>
+                <th className="px-6 py-3 text-sm font-bold text-gray-700">Estado</th>
+                <th className="px-6 py-3 text-right"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredProjects?.map((project: Project) => {
                 const status = getProjectStatus(project);
+                const isLate = status.label === 'Atrasado';
+
+                // Map status label to dot color (Action Center style)
+                let dotColor = 'bg-gray-400';
+                if (status.label === 'Terminado') dotColor = 'bg-green-500';
+                else if (status.label === 'En Tiempo') dotColor = 'bg-blue-400';
+                else if (status.label === 'En Riesgo') dotColor = 'bg-orange-400';
+                else if (isLate) dotColor = 'bg-red-500';
+
                 return (
-                  <tr key={project.id} className="hover:bg-field-gray/50 transition-colors group">
+                  <tr key={project.id} className="hover:bg-gray-50 transition-colors group">
                     <td className="px-6 py-4">
-                      <div className="font-bold text-gray-900 group-hover:text-field-blue transition-colors text-base py-2">
-                        {project.name}
+                      <div className="flex items-center gap-3">
+                        <FileText size={16} className="text-gray-400 shrink-0" />
+                        <span className="text-sm font-medium text-gray-800">
+                          {project.code} - {project.name}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-600">
-                        {/* Mocking Client/Manager for now if not available, or use managerName if added to interface */}
+                        {/* Mocking Manager for now if not available */}
                         {(project as any).managerName || (
-                          <span className="text-gray-400 italic">No asignado</span>
+                          <span className="text-gray-400 italic">Sin asignar</span>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${status.color}`}
+                    <td className="px-6 py-4">
+                      <div
+                        className={`text-sm ${isLate ? 'text-red-500 font-medium' : 'text-gray-600'}`}
                       >
-                        {status.label}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-gray-900">
-                          {project.globalBudget ? (
-                            new Intl.NumberFormat('es-GT', {
-                              style: 'currency',
-                              currency: project.currency || 'USD',
-                            }).format(project.globalBudget)
-                          ) : (
-                            <span className="text-gray-400 italic">---</span>
-                          )}
-                        </span>
-                        <span className="text-[10px] text-gray-400 uppercase">Global</span>
+                        {project.endDate ? (
+                          new Date(project.endDate).toLocaleDateString('es-GT', {
+                            month: '2-digit',
+                            day: '2-digit',
+                            year: '2-digit',
+                          })
+                        ) : (
+                          <span className="text-gray-400 italic">No definida</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar size={14} className="text-gray-400" />
-                        {project.endDate ? (
-                          new Date(project.endDate).toLocaleDateString()
-                        ) : (
-                          <span className="text-gray-400 italic">---</span>
-                        )}
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${dotColor}`}></span>
+                        <span className="text-sm text-gray-700">{status.label}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Link
                           to={`/projects/${project.id}/plan`}
-                          className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-field-orange bg-orange-50 hover:bg-orange-100 rounded-md transition-colors border border-orange-100/50"
-                          title="Actividades"
+                          className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 rounded-md transition-colors"
                         >
-                          <ListIcon size={16} />
-                          <span>Plan</span>
+                          Plan
                         </Link>
                         <Link
                           to={`/projects/${project.id}`}
-                          className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-field-blue bg-blue-50 hover:bg-blue-100 rounded-md transition-colors border border-blue-100/50"
-                          title="Ver Detalles"
+                          className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors border border-blue-100"
                         >
-                          <span>Detalles</span>
-                          <ArrowRight size={16} />
+                          Detalle
                         </Link>
                       </div>
                     </td>
