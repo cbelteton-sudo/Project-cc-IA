@@ -3,11 +3,14 @@ import {
   ExecutionContext,
   Injectable,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class ProjectAuthGuard implements CanActivate {
+  private readonly logger = new Logger(ProjectAuthGuard.name);
+
   constructor(private prisma: PrismaService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -41,19 +44,17 @@ export class ProjectAuthGuard implements CanActivate {
     });
 
     if (!membership || membership.status !== 'ACTIVE') {
-      import('@nestjs/common').then(({ Logger }) => {
-        new Logger('ProjectAuthGuard').warn(
-          JSON.stringify({
-            event: 'access_denied',
-            reason: !membership ? 'not_a_member' : 'inactive_member',
-            userId: user.id || user.userId,
-            tenantId: user.tenantId,
-            projectId,
-            endpoint: request.url,
-            timestamp: new Date().toISOString(),
-          }),
-        );
-      });
+      this.logger.warn(
+        JSON.stringify({
+          event: 'access_denied',
+          reason: !membership ? 'not_a_member' : 'inactive_member',
+          userId: user.id || user.userId,
+          tenantId: user.tenantId,
+          projectId,
+          endpoint: request.url,
+          timestamp: new Date().toISOString(),
+        }),
+      );
       throw new ForbiddenException('Access to this project is denied');
     }
 

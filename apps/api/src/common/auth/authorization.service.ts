@@ -1,54 +1,74 @@
-import { Injectable } from '@nestjs/common';
-import { roleHierarchy, AccessScope } from './permissions.matrix';
-import { Permission, ROLE_PERMISSIONS } from '../constants/permissions';
+import { Injectable, Logger } from '@nestjs/common';
+import { PermissionRepository } from './repositories/permission.repository';
+import { AccessScope } from './permissions.matrix';
 
 export interface ResourceContext {
   tenantId: string;
   projectId?: string;
   portfolioId?: string;
-  contractorId?: string;
+  [key: string]: any;
 }
 
 @Injectable()
 export class AuthorizationService {
-  /**
-   * Obtiene todos los permisos de un rol, incluyendo los heredados.
-   */
-  getEffectivePermissions(role: string): Permission[] {
-    const basePerms =
-      ROLE_PERMISSIONS[role as keyof typeof ROLE_PERMISSIONS] || [];
-    const inheritedRoles = roleHierarchy[role] || [];
+  private readonly logger = new Logger(AuthorizationService.name);
 
-    // Resolvemos recursivamente los permisos de los roles heredados
-    const inheritedPerms = inheritedRoles.flatMap((r) =>
-      this.getEffectivePermissions(r),
-    );
-
-    return Array.from(new Set([...basePerms, ...inheritedPerms]));
-  }
+  constructor(private readonly permissionRepository: PermissionRepository) {}
 
   /**
-   * Valida si un usuario tiene un permiso bajo un contexto específico (RBAC + Scope)
+   * Valida asíncronamente (Feature Flag aware) si el usuario tiene permiso explícito y un Scope válido.
    */
-  can(user: any, permission: Permission, context: ResourceContext): boolean {
+  async can(
+    user: any,
+    permission: string,
+    context: ResourceContext,
+  ): Promise<boolean> {
     const userRole = user.projectRole || user.role || 'VIEWER';
-    const permissions = this.getEffectivePermissions(userRole);
 
-    // 1. Verificar si tiene el permiso explícito
-    if (!permissions.includes(permission)) return false;
+    // 1. Obtener Permisos Híbridos (DB o Legacy)
+    const permissions =
+      await this.permissionRepository.getEffectivePermissionsForRole(userRole);
 
-    // 2. Verificar el "Scope" o Alcance
-    const scope = this.resolveScope(user, context);
-    return this.validateScope(scope, context);
+    // 2. Verificar si tiene el permiso explícito
+    if (!permissions.includes(permission)) {
+      return false;
+    }
+
+    // 3. Verificar el "Scope" o Alcance
+    const scope = this.resolveScope(user);
+    const scopeValid = this.validateScope(scope, context);
+
+    if (!scopeValid) {
+      this.logger.warn(
+        JSON.stringify({
+          event: 'scope_mismatch',
+          reason: 'outside_allowed_scope',
+          userId: user.id || user.userId || 'system',
+          tenantId: context.tenantId,
+          projectId: context.projectId,
+          portfolioId: context.portfolioId,
+          role: userRole,
+          permission,
+          scope,
+          timestamp: new Date().toISOString(),
+        }),
+      );
+    }
+
+    return scopeValid;
   }
 
-  private resolveScope(user: any, context: ResourceContext): AccessScope {
-    if (user.role === 'PLATFORM_ADMIN' || user.isSystemAdmin)
+  private resolveScope(user: any): AccessScope {
+    if (user.role === 'PLATFORM_ADMIN' || user.isSystemAdmin) {
       return AccessScope.TENANT_WIDE;
-    if (user.role === 'DIRECTOR_PMO') return AccessScope.PORTFOLIO_PROJECTS;
-
+    }
+    if (user.role === 'DIRECTOR_PMO') {
+      return AccessScope.PORTFOLIO_PROJECTS;
+    }
     // Si la request trae información del projectMember
-    if (user.projectRole) return AccessScope.ASSIGNED_PROJECTS;
+    if (user.projectRole) {
+      return AccessScope.ASSIGNED_PROJECTS;
+    }
 
     return AccessScope.OWN_PROJECTS;
   }

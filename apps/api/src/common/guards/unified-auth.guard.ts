@@ -42,7 +42,12 @@ export class UnifiedAuthGuard implements CanActivate {
     };
 
     for (const permission of requiredPermissions) {
-      if (!this.authzService.can(user, permission, requestContext)) {
+      const isAuthorized = await this.authzService.can(
+        user,
+        permission,
+        requestContext,
+      );
+      if (!isAuthorized) {
         throw new ForbiddenException(
           `Missing required scope or permission: ${permission}`,
         );

@@ -1213,3 +1213,28 @@ model ProjectMember {
 
   @@unique([projectId, userId])
 }
+
+// --- PHASE 0: SYSTEM RBAC (DB-ONLY) ---
+
+model SystemRole {
+  id          String           @id @default(uuid())
+  name        String           @unique // e.g., "PROJECT_MANAGER"
+  description String?
+  permissions RolePermission[]
+}
+
+model SystemPermission {
+  id          String           @id @default(uuid())
+  action      String           @unique // e.g., "task.create"
+  description String?
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  role         SystemRole       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   SystemPermission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}

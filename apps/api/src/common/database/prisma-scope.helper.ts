@@ -29,7 +29,15 @@ export function enforceScopeWhere<T extends object>(
   for (const key of sensitiveKeys) {
     if (key in sanitizedExtraWhere) {
       console.warn(
-        `[SECURITY WARNING] Intento de inyección de llave sensible '${key}' detectado en extraWhere por el usuario ${currentUser.id} (tenant: ${currentUser.tenantId})`,
+        JSON.stringify({
+          event: 'suspicious_extraWhere_keys',
+          reason: 'attempted_override',
+          userId: currentUser.id,
+          tenantId: currentUser.tenantId,
+          projectId,
+          key,
+          timestamp: new Date().toISOString(),
+        }),
       );
       delete sanitizedExtraWhere[key];
     }

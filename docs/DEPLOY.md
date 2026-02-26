@@ -1,19 +1,40 @@
-# Deployment Guide (API)
+# Despliegue de Autorización RBAC
 
-Este documento contiene las prácticas recomendadas y pasos pre-despliegue para el módulo de Backend / API y despliegues incrementales.
+## Estrategia de Release (Feature Flag)
 
-## Estrategia Zero Downtime
+El pase a producción está protegido por el Feature Flag estricto `RBAC_DB_ONLY`.
 
-Dado que las actualizaciones del modelo RBAC (Role-Based Access Control) multi-tenant pueden bloquear a los usuarios si se despliega el código antes que las mitigaciones en Base de Datos:
+### Preparación (Pre-Despliegue)
 
-1. **Migraciones primero**: Ejecutar integraciones de base de datos (`npx prisma migrate deploy`) antes que iniciar el nuevo container/servicio web.
-2. **Backward Compatibility**: Los Guards como `ProjectAuthGuard` ignorarán `projectId` si las rutas no lo requieren. Evitar re-escribir rutas antiguas en la misma etapa.
+1. Desplegar el código actualizado.
+2. Ejecutar las migraciones de Prisma:
+   ```bash
+   pnpm prisma migrate deploy
+   ```
+3. Ejecutar el Seed de Seguridad para popular la DB productiva:
+   ```bash
+   npx ts-node prisma/scripts/seed-rbac.ts
+   ```
 
-## Pasos de Deploy (Producción)
+### Go-Live
 
-1. Verificar que el Checklist Go/No-Go esté completamente en Verde.
-2. Verificar que los tests E2E y Unit Tests del CI han pasado exitosamente. (El pipeline bloquea merges en rojo automáticamente).
-3. Construir la imagen de Docker / artefactos de NestJS.
-4. Desplegar los artefactos.
-5. Vigilar los logs (Datadog/Cloudwatch) durante los primeros 15 minutos en busca de alertas `"event":"access_denied"` no esperadas, indicando algún error de configuración en `PermissionsGuard` o falta de propagación del JWT.
-6. Notificar al Project Manager y Equipos pertinentes una vez estabilizado.
+Fijar la variable en el entorno de producción (Vercel / AWS / Docker):
+
+```env
+RBAC_DB_ONLY=true
+```
+
+Reiniciar o redesplegar el servicio para que tome la variable.
+El servicio evaluará `SystemRole` en el hook `onModuleInit`. Si fallara, el contenedor no levantará y alertará tempranamente.
+
+### Drill de Rollback (Incident Recovery)
+
+Si tras el despliegue los usuarios reportan que _nadie_ puede ver sus proyectos (Incapacidad Sistemática):
+
+**Objetivo (RTO < 2 minutos):**
+
+1. Abrir config del entorno.
+2. Cambiar a: `RBAC_DB_ONLY=false`
+3. Reiniciar el servicio.
+   **Resultado:** La app ignorará la tabla de Base de Datos temporalmente y caerá en modo `Fallback` donde usará las constantes antiguas en el servidor hasta que se parchee en caliente el issue de base de datos.
+   El Recovery Time Objective real evidenciado en Staging fue de **20 a 45 segundos** (tiempo de auto-scale de los pods/workers).

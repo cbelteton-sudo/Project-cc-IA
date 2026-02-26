@@ -1,42 +1,29 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthorizationService, ResourceContext } from './authorization.service';
+import { PermissionRepository } from './repositories/permission.repository';
 import { Permission } from '../constants/permissions';
 import { ProjectRole } from '../constants/roles';
-import { AccessScope } from './permissions.matrix';
 
 describe('AuthorizationService', () => {
   let service: AuthorizationService;
+  let mockPermissionRepo: any;
 
   beforeEach(async () => {
+    mockPermissionRepo = {
+      getEffectivePermissionsForRole: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AuthorizationService],
+      providers: [
+        AuthorizationService,
+        {
+          provide: PermissionRepository,
+          useValue: mockPermissionRepo,
+        },
+      ],
     }).compile();
 
     service = module.get<AuthorizationService>(AuthorizationService);
-  });
-
-  describe('getEffectivePermissions', () => {
-    it('should return all permissions for PLATFORM_ADMIN', () => {
-      // It inherits from PROJECT_ADMIN and DIRECTOR
-      const perms = service.getEffectivePermissions('PLATFORM_ADMIN');
-      expect(perms).toContain(Permission.PROJECT_VIEW);
-      expect(perms).toContain(Permission.TASK_CREATE);
-      expect(perms).toContain(Permission.MEMBER_INVITE);
-    });
-
-    it('should return combined permissions based on roleHierarchy', () => {
-      const perms = service.getEffectivePermissions(
-        ProjectRole.CONTRACTOR_LEAD,
-      );
-      expect(perms).toContain(Permission.TASK_CREATE); // Base
-      expect(perms).toContain(Permission.PROJECT_VIEW); // Base/Inherited from VIEWER via FIELD_OPERATOR
-      expect(perms).toContain(Permission.TASK_MARK_DONE); // Inherited from FIELD_OPERATOR
-    });
-
-    it('should return empty permissions for unknown role', () => {
-      const perms = service.getEffectivePermissions('UNKNOWN_ROLE');
-      expect(perms).toEqual([]);
-    });
   });
 
   describe('can (RBAC + Scope validation)', () => {
@@ -50,88 +37,135 @@ describe('AuthorizationService', () => {
       portfolioId: 'port-1',
     };
 
-    it('a) PLATFORM_ADMIN => acceso TENANT_WIDE completo', () => {
+    it('a) PLATFORM_ADMIN => acceso TENANT_WIDE completo', async () => {
       const user = { role: 'PLATFORM_ADMIN' };
+      mockPermissionRepo.getEffectivePermissionsForRole.mockResolvedValue([
+        Permission.PROJECT_VIEW,
+        Permission.TASK_DELETE,
+      ]);
+
       // Even without projectId, it should be allowed because scope is TENANT_WIDE
-      expect(service.can(user, Permission.PROJECT_VIEW, tenantCtx)).toBe(true);
-      expect(service.can(user, Permission.TASK_DELETE, projectCtx)).toBe(true);
+      expect(await service.can(user, Permission.PROJECT_VIEW, tenantCtx)).toBe(
+        true,
+      );
+      expect(await service.can(user, Permission.TASK_DELETE, projectCtx)).toBe(
+        true,
+      );
     });
 
-    it('b) DIRECTOR_PMO => acceso PORTFOLIO_PROJECTS', () => {
+    it('b) DIRECTOR_PMO => acceso PORTFOLIO_PROJECTS', async () => {
       const user = { role: 'DIRECTOR_PMO' };
+      mockPermissionRepo.getEffectivePermissionsForRole.mockResolvedValue([
+        Permission.PROJECT_VIEW,
+      ]);
+
       // Allowed if portfolioId or projectId is present
-      expect(service.can(user, Permission.PROJECT_VIEW, portfolioCtx)).toBe(
+      expect(
+        await service.can(user, Permission.PROJECT_VIEW, portfolioCtx),
+      ).toBe(true);
+      expect(await service.can(user, Permission.PROJECT_VIEW, projectCtx)).toBe(
         true,
       );
-      expect(service.can(user, Permission.PROJECT_VIEW, projectCtx)).toBe(true);
       // Denied if no context
-      expect(service.can(user, Permission.PROJECT_VIEW, tenantCtx)).toBe(false);
+      expect(await service.can(user, Permission.PROJECT_VIEW, tenantCtx)).toBe(
+        false,
+      );
     });
 
-    it('c) PROJECT_MANAGER => acceso ASSIGNED_PROJECTS (multi-proyecto asignado)', () => {
+    it('c) PROJECT_MANAGER => acceso ASSIGNED_PROJECTS', async () => {
       const user = { projectRole: ProjectRole.PM };
-      // Assigned projects scope requires projectId in context
-      expect(service.can(user, Permission.PROJECT_EDIT, projectCtx)).toBe(true);
-      // Fails if trying to access without a specific project context (like tenant level)
-      expect(service.can(user, Permission.PROJECT_EDIT, tenantCtx)).toBe(false);
-    });
+      mockPermissionRepo.getEffectivePermissionsForRole.mockResolvedValue([
+        Permission.PROJECT_EDIT,
+      ]);
 
-    it('d) SUPERVISOR/RESIDENTE (FIELD_OPERATOR) => acceso limitado a proyecto asignado', () => {
-      const user = { projectRole: ProjectRole.FIELD_OPERATOR };
-      // Has TASK_MARK_DONE, requires projectId
-      expect(service.can(user, Permission.TASK_MARK_DONE, projectCtx)).toBe(
+      // Assigned projects scope requires projectId in context
+      expect(await service.can(user, Permission.PROJECT_EDIT, projectCtx)).toBe(
         true,
       );
-      // Does not have TASK_DELETE
-      expect(service.can(user, Permission.TASK_DELETE, projectCtx)).toBe(false);
+      // Fails if trying to access without a specific project context (like tenant level)
+      expect(await service.can(user, Permission.PROJECT_EDIT, tenantCtx)).toBe(
+        false,
+      );
     });
 
-    it('e) CONTRACTOR_LEAD => acceso solo al alcance de su paquete', () => {
+    it('d) SUPERVISOR/RESIDENTE (FIELD_OPERATOR) => acceso limitado a proyecto asignado', async () => {
+      const user = { projectRole: ProjectRole.FIELD_OPERATOR };
+      // Tiene MARK_DONE pero no TASK_DELETE
+      mockPermissionRepo.getEffectivePermissionsForRole.mockResolvedValue([
+        Permission.TASK_MARK_DONE,
+      ]);
+
+      expect(
+        await service.can(user, Permission.TASK_MARK_DONE, projectCtx),
+      ).toBe(true);
+      expect(await service.can(user, Permission.TASK_DELETE, projectCtx)).toBe(
+        false,
+      );
+    });
+
+    it('e) CONTRACTOR_LEAD => acceso solo al alcance de su paquete', async () => {
       const user = { projectRole: ProjectRole.CONTRACTOR_LEAD };
-      expect(service.can(user, Permission.TASK_CREATE, projectCtx)).toBe(true);
-      expect(service.can(user, Permission.TASK_APPROVE, projectCtx)).toBe(
+      mockPermissionRepo.getEffectivePermissionsForRole.mockResolvedValue([
+        Permission.TASK_CREATE,
+      ]);
+
+      expect(await service.can(user, Permission.TASK_CREATE, projectCtx)).toBe(
+        true,
+      );
+      expect(await service.can(user, Permission.TASK_APPROVE, projectCtx)).toBe(
         false,
       );
     });
 
-    it('f) CLIENT_VIEWER (VIEWER) => lectura restringida', () => {
+    it('f) CLIENT_VIEWER (VIEWER) => lectura restringida', async () => {
       const user = { projectRole: ProjectRole.VIEWER };
-      expect(service.can(user, Permission.PROJECT_VIEW, projectCtx)).toBe(true);
-      expect(service.can(user, Permission.TASK_CREATE, projectCtx)).toBe(false);
-    });
+      mockPermissionRepo.getEffectivePermissionsForRole.mockResolvedValue([
+        Permission.PROJECT_VIEW,
+      ]);
 
-    it('g) FINANZAS (FINANCIERO) => acceso financiero donde corresponde', () => {
-      const user = { projectRole: ProjectRole.FINANCIERO };
-      expect(service.can(user, Permission.BUDGET_VIEW, projectCtx)).toBe(true);
-      expect(service.can(user, Permission.TASK_CREATE, projectCtx)).toBe(false);
-    });
-
-    it('h) rol deshabilitado/inactivo => denegado', () => {
-      // A user with an unknown role gets an empty permissions list.
-      const user = { role: 'UNKNOWN' };
-      expect(service.can(user, Permission.PROJECT_VIEW, projectCtx)).toBe(
+      expect(await service.can(user, Permission.PROJECT_VIEW, projectCtx)).toBe(
+        true,
+      );
+      expect(await service.can(user, Permission.TASK_CREATE, projectCtx)).toBe(
         false,
       );
-      expect(service.can(user, Permission.TASK_CREATE, projectCtx)).toBe(false);
     });
 
-    it('data isolation -> Own projects requires project context', () => {
-      const user = { role: 'SOME_DEFAULT_ROLE_WITHOUT_PROJECT_MEMBERSHIP' };
-      // Without project role, scope falls back to OWN_PROJECTS
-      expect(service.can(user, Permission.PROJECT_VIEW, tenantCtx)).toBe(false); // Fails lacking project context
-      expect(service.can(user, Permission.PROJECT_VIEW, projectCtx)).toBe(
+    it('g) FINANZAS (FINANCIERO) => acceso financiero donde corresponde', async () => {
+      const user = { projectRole: ProjectRole.FINANCIERO };
+      mockPermissionRepo.getEffectivePermissionsForRole.mockResolvedValue([
+        Permission.BUDGET_VIEW,
+      ]);
+
+      expect(await service.can(user, Permission.BUDGET_VIEW, projectCtx)).toBe(
+        true,
+      );
+      expect(await service.can(user, Permission.TASK_CREATE, projectCtx)).toBe(
         false,
-      ); // Fails because unknown role has 0 permissions.
+      );
     });
-  });
 
-  describe('resolveScope (Private method validation through testing "can")', () => {
-    it('Returns correct scope based on role implicitly', () => {
-      // Just an extra check to make coverage 100% on the default switch statement case
-      const user = { role: 'SOME_ROLE', projectRole: null };
-      const ctx: ResourceContext = { tenantId: 'tenant-1' };
-      // Fallback is OWN_PROJECTS which returns false missing projectId
-      expect(service.can(user, Permission.PROJECT_VIEW, ctx)).toBe(false);
+    it('h) rol deshabilitado/inactivo => denegado', async () => {
+      const user = { role: 'UNKNOWN' };
+      mockPermissionRepo.getEffectivePermissionsForRole.mockResolvedValue([]);
+      expect(await service.can(user, Permission.PROJECT_VIEW, projectCtx)).toBe(
+        false,
+      );
+    });
+
+    it('data isolation -> Own projects requires project context', async () => {
+      const user = { role: 'SOME_DEFAULT_ROLE_WITHOUT_PROJECT_MEMBERSHIP' };
+      mockPermissionRepo.getEffectivePermissionsForRole.mockResolvedValue([
+        Permission.PROJECT_VIEW,
+      ]);
+      // Without project role, scope falls back to OWN_PROJECTS WHICH requires project context
+      expect(await service.can(user, Permission.PROJECT_VIEW, tenantCtx)).toBe(
+        false,
+      ); // Fails lacking project context
+      // Si tiene contexto sí falla porque tiene el permiso
+      expect(await service.can(user, Permission.PROJECT_VIEW, projectCtx)).toBe(
+        true,
+      );
     });
   });
 });

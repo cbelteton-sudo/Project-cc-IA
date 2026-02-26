@@ -6,6 +6,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { AuthzModule } from './common/auth/authz.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { BudgetsModule } from './modules/budgets/budgets.module';
 import { ChangeOrdersModule } from './modules/change-orders/change-orders.module';
@@ -44,6 +45,7 @@ import { HealthController } from './health.controller';
     TenantsModule,
     UsersModule,
     AuthModule,
+    AuthzModule,
     ProjectsModule,
     BudgetsModule,
     ChangeOrdersModule,

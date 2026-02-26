@@ -1,34 +1,24 @@
-# Security Policy & RBAC Architecture
+# Security Triage & SAST Baseline
 
-Este documento define la política estándar de manejo de accesos, aislamiento de datos (Data Isolation) y auditoría para CConstructions.
+## Semgrep en el Pipeline de CI/CD
 
-## 1. Normalización de Respuestas de Acceso Denegado
+Hemos instrumentado `semgrep ci` en Github Actions de manera persistente (PRs, y Scheduled Semanal) usando las reglas oficiales `p/default`, `p/security-audit` y `p/typescript`.
 
-Todos los controladores y guards deben adherirse a la siguiente política de respuestas HTTP para garantizar seguridad predictiva y ocultar información sensible cuando sea requerido:
+### Políticas
 
-- **`403 Forbidden`**: Se devuelve cuando el usuario está autenticado, el recurso existe, pero el rol/membresía del usuario no tiene los permisos suficientes (`Insufficient Permissions`) o no pertenece al proyecto (`Access to this project is denied`).
-- **`404 Not Found`**: (Opcional pero Recomendado) Se devuelve en lugar de un 403 cuando la mera existencia del recurso es información sensible que un atacante no debe conocer. Actualmente, `ProjectsService.findOne` implementa esto verificando si `project.tenantId !== tenantId` y lanzando un 404 estructurado.
+1. **High / Critical Findings**: Rompen la carga del build pipeline (Gate Fails). El Merge queda bloqueado.
+2. **Medium / Low Findings**: Generan un warning. El ingeniero de DevOps / SecOps debe revisarlos durante el ciclo de Code Review.
 
-## 2. Aislamiento de Datos (Data Isolation) - enforceScopeWhere
+### Cómo Triagear Falsos Positivos (Ruido)
 
-Todas las consultas en Prisma que manejen información Multi-Tenant o Multi-Proyecto deben obligatoriamente pasar por el helper `enforceScopeWhere`.
+Dado que Semgrep es agresivo con código asíncrono y variables ANY, los falsos positivos deben ser excluidos del baseline para evitar fatiga de alertas.
 
-### Anti-Bypass (Prevención de Inyección)
+Uso del comentario `// nosemgrep`:
+Si un ingeniero detecta que una estructura (como un objeto inyectado o evaluado de `request.user`) dispara alertas de "Type Unsafety" pero se sabe que es controlado por Middleware, deberá ignorar la línea:
 
-Se ha implementado hardening en la extracción de filtros para evitar ataques vía payloads JSON donde un usuario malicioso envíe llaves restrictivas.
+```typescript
+// nosemgrep: typescript.react.security.audit.react-props-injection
+const role = user.projectRole || user.role;
+```
 
-- **Llaves Bloqueadas en el Payload (`extraWhere`)**: `tenantId`, `projectId`, `portfolioId`, `userId`.
-- Si se detectan, el helper las purgará automáticamente y emitirá un log de `[SECURITY WARNING]` a nivel sistema apuntando al intent. El filtro final SIEMPRE sobreescribirá `tenantId` con el contexto criptográfico validado del token (`req.user.tenantId`).
-
-## 3. Auditoría y Observabilidad
-
-El sistema emite _logs estructurados_ en formato JSON cada vez que un control de acceso falla.
-Los campos estándar en estos logs incluyen:
-
-- `event`: Tipo de evento (ej. `access_denied`).
-- `reason`: Causa (`insufficient_permissions`, `not_a_member`, `inactive_member`).
-- `userId`, `tenantId`, `projectId`, `role`, `requiredPermissions`.
-- `endpoint`: Ruta solicitada.
-- `timestamp`: Marca de tiempo ISO.
-
-Los administradores de la infraestructura (ej. AWS CloudWatch, Datadog) deben configurar alertas semanales filtrando por la cadena `"event":"access_denied"` y vigilar anomalías.
+O si aplica a un bloque completo y se aprueba como riesgoso/aceptado, agregar al archivo `.semgrepignore` el patrón o carpeta. No uses `.semgrepignore` para relajar la seguridad sistemáticamente, consúltalo con el tech lead.
