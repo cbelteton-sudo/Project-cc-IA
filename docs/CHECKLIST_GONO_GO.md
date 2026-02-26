@@ -13,7 +13,7 @@ Antes de cualquier liberación (Release) a Producción que involucre el control 
 - [ ] Pruebas unitarias de `AuthorizationService` >= 90%.
 - [ ] Pruebas unitarias de `PermissionsGuard` y `ProjectAuthGuard` >= 85%.
 - [ ] Helper anti-bypass `prisma-scope.helper` cobertura >= 90%.
-- [ ] Pipeline CI es mandatorio y bloquea exitosamente los merges que fallen tests de integración.
+- [x] Pipeline CI es mandatorio y bloquea exitosamente los merges que fallen tests de integración. (CI Gate Validation = PASS)
 
 ## 3. Observabilidad y Auditoría (🟩 VERDE / 🟥 ROJO)
 

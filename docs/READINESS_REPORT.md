@@ -23,4 +23,15 @@ El sistema ha alcanzado el nivel de madurez necesario para despliegue en entorno
 | **Falsos 403s por fallos de red/sync** | Latencias en el refresco del token JWT desde Auth0 u otro IDP que remueven claims. **Mitigación**: Runbooks detallan este escenario diagnosticando la tabla `Sessions` y tokens.                                                                                                                   |
 | **Rutas Legacy No Refactorizadas**     | La Fase 3 enumera la _limpieza de código legado_. Algunos fragmentos viejos en otros módulos podrían cruzar queries. **Mitigación**: Aislar y auditar las migraciones; se continuará en el "Backlog" de Cleanup.                                                                                   |
 
+## 4. CI Gating Validation (Evidencia)
+
+**Estado:** PASS ✅
+
+Durante la Fase de Validación de CI Gating, se confirmó la capacidad de bloqueo y recuperación del pipeline de GitHub Actions (`ci-rbac-min`).
+
+- **Prueba Negativa (Run FAILED):** Se introdujo una falla lógica intencional en `permissions.guard.spec.ts`. El pipeline bloqueó el merge exitosamente. [Ver ejecución FAILED (Commit 553a599)](https://github.com/cbelteton-sudo/Project-cc-IA/actions/runs/22423285440/job/64925756321).
+- **Reversión (Run SUCCESS):** Se revirtió la falla intencional devolviendo el test a su estado correcto y se ajustaron las versiones de entorno (PNPM v10, eliminación de import dinámico ESM). El pipeline pasó exitosamente garantizando el desbloqueo. [Ver ejecución SUCCESS (Commit 3b3e5b6)](https://github.com/cbelteton-sudo/Project-cc-IA/actions/runs/22423505426/job/64926453372).
+
+**Conclusión:** El gate de CI evalúa agresivamente la cobertura y tests de RBAC, impidiendo integraciones de código que vulneren las reglas de aislamiento o de seguridad.
+
 **Evaluación Final**: El estado del módulo se rige formalmente como SEGURO para operar bajo carga controlada en Staging. Se aconseja proceder con las UAT (Test Strategy).
