@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   Injectable,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Permission, ROLE_PERMISSIONS } from '../constants/permissions';
@@ -46,21 +47,20 @@ export class PermissionsGuard implements CanActivate {
     );
 
     if (!hasPermission) {
-      import('@nestjs/common').then(({ Logger }) => {
-        new Logger('PermissionsGuard').warn(
-          JSON.stringify({
-            event: 'access_denied',
-            reason: 'insufficient_permissions',
-            userId: request.user?.id || request.user?.userId,
-            tenantId: request.user?.tenantId,
-            projectId: membership.projectId,
-            role: userRole,
-            requiredPermissions,
-            endpoint: request.url,
-            timestamp: new Date().toISOString(),
-          }),
-        );
-      });
+      const logger = new Logger('PermissionsGuard');
+      logger.warn(
+        JSON.stringify({
+          event: 'access_denied',
+          reason: 'insufficient_permissions',
+          userId: request.user?.id || request.user?.userId,
+          tenantId: request.user?.tenantId,
+          projectId: membership.projectId,
+          role: userRole,
+          requiredPermissions,
+          endpoint: request.url,
+          timestamp: new Date().toISOString(),
+        }),
+      );
       throw new ForbiddenException(
         `Insufficient Permissions: Required ${requiredPermissions.join(', ')}`,
       );
