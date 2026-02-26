@@ -1,13 +1,13 @@
 name: ci-rbac-min
 
 on:
-push:
-pull_request:
-workflow_dispatch:
+  push:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
-smoke:
-runs-on: ubuntu-latest
-steps:
-- uses: actions/checkout@v4
-- run: echo "CI YAML OK"
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "CI YAML OK"
