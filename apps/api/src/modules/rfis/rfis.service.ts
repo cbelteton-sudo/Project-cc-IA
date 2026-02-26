@@ -2,16 +2,18 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateRfiDto } from './dto/create-rfi.dto';
 import { UpdateRfiDto } from './dto/update-rfi.dto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceScopeWhere } from '../../common/database/prisma-scope.helper';
 
 @Injectable()
 export class RfisService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
-  async create(createDto: CreateRfiDto, tenantId: string) {
-    const project = await this.prisma.project.findUnique({
-      where: { id: createDto.projectId }
+  async create(createDto: CreateRfiDto, user: any, projectId?: string) {
+    const project = await this.prisma.project.findFirst({
+      where: enforceScopeWhere(user, { id: createDto.projectId }, projectId),
     });
-    if (!project || project.tenantId !== tenantId) throw new NotFoundException('Project not found');
+    if (!project)
+      throw new NotFoundException('Project not found or access denied');
 
     return (this.prisma as any).rFI.create({
       data: {
@@ -25,33 +27,38 @@ export class RfisService {
     });
   }
 
-  async findAll(tenantId: string) {
+  async findAll(user: any) {
     return (this.prisma as any).rFI.findMany({
-      where: { project: { tenantId } },
+      where: enforceScopeWhere(user),
       include: { project: true },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string, tenantId: string) {
-    const rfi = await (this.prisma as any).rFI.findUnique({
-      where: { id },
+  async findOne(id: string, user: any, projectId?: string) {
+    const rfi = await (this.prisma as any).rFI.findFirst({
+      where: enforceScopeWhere(user, { id }, projectId),
       include: { project: true },
     });
-    if (!rfi || rfi.project.tenantId !== tenantId) throw new NotFoundException('RFI not found');
+    if (!rfi) throw new NotFoundException('RFI not found or access denied');
     return rfi;
   }
 
-  async update(id: string, updateDto: UpdateRfiDto, tenantId: string) {
-    await this.findOne(id, tenantId);
+  async update(
+    id: string,
+    updateDto: UpdateRfiDto,
+    user: any,
+    projectId?: string,
+  ) {
+    await this.findOne(id, user, projectId);
     return (this.prisma as any).rFI.update({
       where: { id },
       data: updateDto,
     });
   }
 
-  async remove(id: string, tenantId: string) {
-    await this.findOne(id, tenantId);
+  async remove(id: string, user: any, projectId?: string) {
+    await this.findOne(id, user, projectId);
     return (this.prisma as any).rFI.delete({ where: { id } });
   }
 }

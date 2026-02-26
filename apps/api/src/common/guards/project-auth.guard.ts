@@ -22,7 +22,10 @@ export class ProjectAuthGuard implements CanActivate {
     }
 
     const projectId =
-      request.params.id || request.params.projectId || request.query.projectId;
+      request.params.id ||
+      request.params.projectId ||
+      request.query.projectId ||
+      request.body?.projectId;
 
     if (!projectId) {
       // If not found in params/query, try body? Or just fail if guard is applied.

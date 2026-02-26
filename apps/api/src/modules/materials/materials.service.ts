@@ -5,7 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class MaterialsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async create(createMaterialDto: CreateMaterialDto, tenantId: string) {
     return this.prisma.material.create({
@@ -35,7 +35,11 @@ export class MaterialsService {
     return material;
   }
 
-  async update(id: string, updateMaterialDto: UpdateMaterialDto, tenantId: string) {
+  async update(
+    id: string,
+    updateMaterialDto: UpdateMaterialDto,
+    tenantId: string,
+  ) {
     await this.findOne(id, tenantId); // validate ownership
 
     return this.prisma.material.update({

@@ -6,6 +6,6 @@ import { ContractorPortalController } from './contractor-portal.controller';
 
 @Module({
   controllers: [ContractorsController, ContractorPortalController],
-  providers: [ContractorsService]
+  providers: [ContractorsService],
 })
-export class ContractorsModule { }
+export class ContractorsModule {}

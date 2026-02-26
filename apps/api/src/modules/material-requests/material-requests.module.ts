@@ -9,4 +9,4 @@ import { PrismaModule } from '../../prisma/prisma.module';
   controllers: [MaterialRequestsController, WhatsappController],
   providers: [MaterialRequestsService],
 })
-export class MaterialRequestsModule { }
+export class MaterialRequestsModule {}

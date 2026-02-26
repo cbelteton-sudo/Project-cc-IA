@@ -2,6 +2,11 @@ import { getDB } from './db';
 import { compressImage } from '../utils/imageCompression';
 import { api } from '../lib/api';
 import { toast } from 'sonner';
+import {
+  isFieldRecordsV1Enabled,
+  fieldRecordsService,
+  mapOfflinePayloadToV1,
+} from './field-records';
 
 export interface QuickCapturePayload {
   projectId: string;
@@ -109,12 +114,13 @@ class OfflineManagerService {
           // On success, remove from queue
           await db.delete('offline_queue', item.localId);
           // Notify UI of progress?
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error(`[OfflineManager] Failed item ${item.localId}`, error);
 
           // Update error state
           item.retries += 1;
-          item.lastError = error.message || 'Unknown error';
+          const e = error as Error;
+          item.lastError = e?.message || 'Unknown error';
           await db.put('offline_queue', item);
 
           // If 4xx (Client Error), maybe stop to prevent loop?
@@ -143,42 +149,72 @@ class OfflineManagerService {
    * Sync a single item: Upsert Entry -> Upload Photos
    */
   private async syncItem(item: QueueItem) {
-    // Rely on axios global defaults
-    // const token = localStorage.getItem('token');
-    // if (!token) throw new Error('No authentication token');
+    if (isFieldRecordsV1Enabled()) {
+      console.log(`[OfflineManager] Syncing item ${item.localId} via Canonical V1 endpoint...`);
+      // 1. Submit Entry (Canonical V1)
+      const payload = mapOfflinePayloadToV1(item.payload, item.projectId);
 
-    // 1. Submit Entry (Create or Update)
-    const entryData = {
-      projectId: item.projectId,
-      scheduleActivityId: item.payload.activityId,
-      activityName: item.payload.activityName,
-      status: item.payload.status,
-      note: item.payload.note,
-      dateString: item.payload.date,
-      // We let backend handle 'dailyReportId', 'createdBy' from token
-    };
+      const recordEnvelope = await fieldRecordsService.createRecord(payload);
 
-    const entryRes = await api.post('/field/reports/entries', entryData);
-    const entry = entryRes.data; // Should contain .id
+      // Ensure we extract the canonical record safely (handles envelope vs flat response)
+      const record = recordEnvelope.data || recordEnvelope;
 
-    if (!entry || !entry.id) {
-      throw new Error('Server returned invalid entry response');
-    }
-
-    // 2. Upload Photos
-    if (item.photos && item.photos.length > 0) {
-      for (const photo of item.photos) {
-        const formData = new FormData();
-        formData.append('file', photo.blob, `photo-${photo.id}.jpg`);
-        formData.append('projectId', item.projectId);
-        formData.append('activityId', item.payload.activityId);
-        formData.append('fieldUpdateId', entry.id); // Valid Entry ID
-
-        await api.post('/photos/upload', formData);
+      if (!record || !record.id) {
+        throw new Error('Server returned invalid canonical entry response');
       }
-    }
 
-    console.log(`[OfflineManager] Synced item ${item.localId} successfully.`);
+      // 2. Upload Photos
+      if (item.photos && item.photos.length > 0) {
+        for (const photo of item.photos) {
+          const formData = new FormData();
+          formData.append('file', photo.blob, `photo-${photo.id}.jpg`);
+          formData.append('projectId', item.projectId);
+          formData.append('recordId', record.id); // Canonical ID linking
+
+          // Fallbacks for current legacy backend fields so old interceptors don't break
+          formData.append('fieldUpdateId', record.id);
+          formData.append('activityId', item.payload.activityId || '');
+
+          await api.post('/photos/upload', formData);
+        }
+      }
+
+      console.log(`[OfflineManager] Synced item ${item.localId} successfully (V1 Contract).`);
+    } else {
+      console.log(`[OfflineManager] Syncing item ${item.localId} via Legacy endpoint...`);
+      // 1. Submit Entry (Create or Update)
+      const entryData = {
+        projectId: item.projectId,
+        scheduleActivityId: item.payload.activityId,
+        activityName: item.payload.activityName,
+        status: item.payload.status,
+        note: item.payload.note,
+        dateString: item.payload.date,
+        // We let backend handle 'dailyReportId', 'createdBy' from token
+      };
+
+      const entryRes = await api.post('/field/reports/entries', entryData);
+      const entry = entryRes.data; // Should contain .id
+
+      if (!entry || !entry.id) {
+        throw new Error('Server returned invalid entry response');
+      }
+
+      // 2. Upload Photos
+      if (item.photos && item.photos.length > 0) {
+        for (const photo of item.photos) {
+          const formData = new FormData();
+          formData.append('file', photo.blob, `photo-${photo.id}.jpg`);
+          formData.append('projectId', item.projectId);
+          formData.append('activityId', item.payload.activityId);
+          formData.append('fieldUpdateId', entry.id); // Valid Entry ID
+
+          await api.post('/photos/upload', formData);
+        }
+      }
+
+      console.log(`[OfflineManager] Synced item ${item.localId} successfully (Legacy).`);
+    }
   }
 
   /**

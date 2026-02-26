@@ -46,7 +46,7 @@ describe('ProjectAuthGuard', () => {
     });
 
     it('Extrae projectId de params.id', async () => {
-      prisma.projectMember.findUnique.mockResolvedValue({
+      (prisma.projectMember.findUnique as jest.Mock).mockResolvedValue({
         status: 'ACTIVE',
       } as any);
       const context = createMockContext({
@@ -65,7 +65,7 @@ describe('ProjectAuthGuard', () => {
     });
 
     it('Extrae projectId de params.projectId', async () => {
-      prisma.projectMember.findUnique.mockResolvedValue({
+      (prisma.projectMember.findUnique as jest.Mock).mockResolvedValue({
         status: 'ACTIVE',
       } as any);
       const context = createMockContext({
@@ -87,7 +87,7 @@ describe('ProjectAuthGuard', () => {
     });
 
     it('Extrae projectId de query.projectId', async () => {
-      prisma.projectMember.findUnique.mockResolvedValue({
+      (prisma.projectMember.findUnique as jest.Mock).mockResolvedValue({
         status: 'ACTIVE',
       } as any);
       const context = createMockContext({
@@ -109,7 +109,9 @@ describe('ProjectAuthGuard', () => {
   describe('Validación de Membresía', () => {
     it('MEMBRESÍA ACTIVE => permite y adjunta request.projectMember', async () => {
       const mockMember = { id: 'mem-1', status: 'ACTIVE', role: 'PM' };
-      prisma.projectMember.findUnique.mockResolvedValue(mockMember as any);
+      (prisma.projectMember.findUnique as jest.Mock).mockResolvedValue(
+        mockMember as any,
+      );
 
       const request = {
         user: { id: 'user-1' },
@@ -126,7 +128,7 @@ describe('ProjectAuthGuard', () => {
     });
 
     it('MEMBRESÍA INEXISTENTE => 403 Forbidden', async () => {
-      prisma.projectMember.findUnique.mockResolvedValue(null);
+      (prisma.projectMember.findUnique as jest.Mock).mockResolvedValue(null);
 
       const context = createMockContext({
         user: { id: 'user-1' },
@@ -143,7 +145,7 @@ describe('ProjectAuthGuard', () => {
     });
 
     it('MEMBRESÍA DISABLED o NO ACTIVE => 403 Forbidden', async () => {
-      prisma.projectMember.findUnique.mockResolvedValue({
+      (prisma.projectMember.findUnique as jest.Mock).mockResolvedValue({
         status: 'INACTIVE',
       } as any);
 

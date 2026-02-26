@@ -2,16 +2,22 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
 import { UpdateInspectionDto } from './dto/update-inspection.dto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceScopeWhere } from '../../common/database/prisma-scope.helper';
 
 @Injectable()
 export class InspectionsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
-  async create(createDto: CreateInspectionDto, tenantId: string) {
+  async create(createDto: CreateInspectionDto, user: any) {
     const project = await this.prisma.project.findUnique({
-      where: { id: createDto.projectId }
+      where: enforceScopeWhere(
+        user,
+        { id: createDto.projectId },
+        createDto.projectId,
+      ),
     });
-    if (!project || project.tenantId !== tenantId) throw new NotFoundException('Project not found');
+    if (!project)
+      throw new NotFoundException('Project not found or access denied');
 
     return (this.prisma as any).inspection.create({
       data: {
@@ -24,25 +30,31 @@ export class InspectionsService {
     });
   }
 
-  async findAll(tenantId: string) {
+  async findAll(user: any) {
     return (this.prisma as any).inspection.findMany({
-      where: { project: { tenantId } },
+      where: enforceScopeWhere(user),
       include: { project: true },
       orderBy: { date: 'desc' },
     });
   }
 
-  async findOne(id: string, tenantId: string) {
+  async findOne(id: string, user: any, projectId?: string) {
     const inspection = await (this.prisma as any).inspection.findUnique({
-      where: { id },
+      where: enforceScopeWhere(user, { id }, projectId),
       include: { project: true },
     });
-    if (!inspection || inspection.project.tenantId !== tenantId) throw new NotFoundException('Inspection not found');
+    if (!inspection)
+      throw new NotFoundException('Inspection not found or access denied');
     return inspection;
   }
 
-  async update(id: string, updateDto: UpdateInspectionDto, tenantId: string) {
-    await this.findOne(id, tenantId);
+  async update(
+    id: string,
+    updateDto: UpdateInspectionDto,
+    user: any,
+    projectId?: string,
+  ) {
+    await this.findOne(id, user, projectId);
 
     const data: any = { ...updateDto };
     if (updateDto.date) data.date = new Date(updateDto.date);
@@ -53,8 +65,8 @@ export class InspectionsService {
     });
   }
 
-  async remove(id: string, tenantId: string) {
-    await this.findOne(id, tenantId);
+  async remove(id: string, user: any, projectId?: string) {
+    await this.findOne(id, user, projectId);
     return (this.prisma as any).inspection.delete({ where: { id } });
   }
 }

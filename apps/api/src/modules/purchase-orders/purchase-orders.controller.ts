@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { PurchaseOrdersService } from './purchase-orders.service';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { UpdatePurchaseOrderDto } from './dto/update-purchase-order.dto';
@@ -8,11 +18,17 @@ import { ActiveUser } from '../../common/decorators/active-user.decorator';
 @Controller('purchase-orders')
 @UseGuards(JwtAuthGuard)
 export class PurchaseOrdersController {
-  constructor(private readonly purchaseOrdersService: PurchaseOrdersService) { }
+  constructor(private readonly purchaseOrdersService: PurchaseOrdersService) {}
 
   @Post()
-  create(@Body() createPurchaseOrderDto: CreatePurchaseOrderDto, @ActiveUser() user: any) {
-    return this.purchaseOrdersService.create(createPurchaseOrderDto, user.tenantId);
+  create(
+    @Body() createPurchaseOrderDto: CreatePurchaseOrderDto,
+    @ActiveUser() user: any,
+  ) {
+    return this.purchaseOrdersService.create(
+      createPurchaseOrderDto,
+      user.tenantId,
+    );
   }
 
   @Get()
@@ -26,8 +42,16 @@ export class PurchaseOrdersController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePurchaseOrderDto: UpdatePurchaseOrderDto, @ActiveUser() user: any) {
-    return this.purchaseOrdersService.update(id, updatePurchaseOrderDto, user.tenantId);
+  update(
+    @Param('id') id: string,
+    @Body() updatePurchaseOrderDto: UpdatePurchaseOrderDto,
+    @ActiveUser() user: any,
+  ) {
+    return this.purchaseOrdersService.update(
+      id,
+      updatePurchaseOrderDto,
+      user.tenantId,
+    );
   }
 
   @Delete(':id')

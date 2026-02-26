@@ -82,8 +82,8 @@ export class AuthController {
       // Set Refresh Token in HttpOnly Cookie
       res.cookie('fieldclose_sess_v6', refresh_token, {
         httpOnly: true,
-        secure: false, // FORCE FALSE for localhost/http debugging
-        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         path: '/api', // RESTRICT to API
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
@@ -131,7 +131,7 @@ export class AuthController {
     res.cookie('fieldclose_sess_v6', refresh_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       path: '/api',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -184,8 +184,8 @@ export class AuthController {
       // Rotate Refresh Token Cookie
       res.cookie('fieldclose_sess_v6', refresh_token, {
         httpOnly: true,
-        secure: false, // FORCE FALSE for localhost/http debugging
-        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         path: '/api',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });

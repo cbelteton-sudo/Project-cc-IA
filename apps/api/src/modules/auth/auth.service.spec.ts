@@ -102,7 +102,7 @@ describe('AuthService', () => {
       const token = 'jwt_token';
       mockJwtService.sign.mockReturnValue(token);
 
-      const result = await service.login(user);
+      const result = await service.login(user, '127.0.0.1', 'jest-agent');
       expect(result).toEqual({
         access_token: token,
         refresh_token: token,

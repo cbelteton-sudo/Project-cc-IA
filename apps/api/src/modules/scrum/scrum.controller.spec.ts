@@ -48,8 +48,8 @@ describe('ScrumController', () => {
       const dto = {
         name: 'Sprint 1',
         projectId: 'p1',
-        startDate: new Date(),
-        endDate: new Date(),
+        startDate: new Date().toISOString(),
+        endDate: new Date().toISOString(),
       };
       const user = { id: 'u1', email: 'test@example.com' };
       await controller.createSprint(dto, user as any);

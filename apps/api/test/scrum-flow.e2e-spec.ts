@@ -8,7 +8,7 @@ describe('Scrum Flow (e2e)', () => {
   let app: INestApplication;
   let prismaService: PrismaService;
 
-  const mockPrismaService = {
+  const mockPrismaService: any = {
     sprint: {
       create: jest.fn(),
       update: jest.fn(),
@@ -25,7 +25,7 @@ describe('Scrum Flow (e2e)', () => {
     projectActivity: {
       update: jest.fn(),
     },
-    $transaction: jest.fn((ops) => {
+    $transaction: jest.fn((ops: any) => {
       if (Array.isArray(ops)) return Promise.all(ops);
       // If it's a function (interactive transaction), call it with this mockPrismaService
       if (typeof ops === 'function') return ops(mockPrismaService);
@@ -82,7 +82,7 @@ describe('Scrum Flow (e2e)', () => {
 
     mockPrismaService.sprintItem.upsert.mockResolvedValue({});
     mockPrismaService.backlogItem.updateMany.mockResolvedValue({ count: 2 });
-    mockPrismaService.$transaction.mockImplementation(async (ops) => {
+    mockPrismaService.$transaction.mockImplementation(async (ops: any) => {
       return Promise.all(ops);
     });
 

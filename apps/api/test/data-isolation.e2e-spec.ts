@@ -13,7 +13,7 @@ describe('Data Isolation & RBAC (e2e)', () => {
   let tenantA: any, tenantB: any;
   let pmA: any, pmB: any, directorA: any, contractorUserA: any;
   let projectA1: any, projectA2: any, projectB1: any;
-  let tokens: Record<string, string> = {};
+  const tokens: Record<string, string> = {};
 
   const testSessionId = Date.now().toString().slice(-6);
 

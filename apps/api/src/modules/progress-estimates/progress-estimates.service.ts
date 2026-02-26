@@ -2,18 +2,25 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateProgressEstimateDto } from './dto/create-progress-estimate.dto';
 import { UpdateProgressEstimateDto } from './dto/update-progress-estimate.dto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceScopeWhere } from '../../common/database/prisma-scope.helper';
 
 @Injectable()
 export class ProgressEstimatesService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
-  async create(createDto: CreateProgressEstimateDto, tenantId: string) {
-    const subcontract = await (this.prisma as any).subcontract.findUnique({
-      where: { id: createDto.subcontractId },
-      include: { project: true },
+  async create(
+    createDto: CreateProgressEstimateDto,
+    user: any,
+    projectId: string,
+  ) {
+    const subcontract = await (this.prisma as any).subcontract.findFirst({
+      where: {
+        id: createDto.subcontractId,
+        project: enforceScopeWhere(user, {}, projectId),
+      },
     });
-    if (!subcontract || subcontract.project.tenantId !== tenantId) {
-      throw new NotFoundException('Subcontract not found');
+    if (!subcontract) {
+      throw new NotFoundException('Subcontract not found or access denied');
     }
 
     return (this.prisma as any).progressEstimate.create({
@@ -27,36 +34,48 @@ export class ProgressEstimatesService {
     });
   }
 
-  async findAll(tenantId: string) {
+  async findAll(user: any) {
     return (this.prisma as any).progressEstimate.findMany({
       where: {
         subcontract: {
-          project: { tenantId }
-        }
+          project: enforceScopeWhere(user),
+        },
       },
       include: { subcontract: true },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string, tenantId: string) {
-    const est = await (this.prisma as any).progressEstimate.findUnique({
-      where: { id },
+  async findOne(id: string, user: any, projectId?: string) {
+    const est = await (this.prisma as any).progressEstimate.findFirst({
+      where: {
+        id,
+        subcontract: {
+          project: enforceScopeWhere(user, {}, projectId),
+        },
+      },
       include: {
         subcontract: {
-          include: { project: true }
-        }
+          include: { project: true },
+        },
       },
     });
-    if (!est || est.subcontract.project.tenantId !== tenantId) throw new NotFoundException('Estimate not found');
+    if (!est)
+      throw new NotFoundException('Estimate not found or access denied');
     return est;
   }
 
-  async update(id: string, updateDto: UpdateProgressEstimateDto, tenantId: string) {
-    await this.findOne(id, tenantId);
+  async update(
+    id: string,
+    updateDto: UpdateProgressEstimateDto,
+    user: any,
+    projectId?: string,
+  ) {
+    await this.findOne(id, user, projectId);
 
     const data: any = { ...updateDto };
-    if (updateDto.periodStart) data.periodStart = new Date(updateDto.periodStart);
+    if (updateDto.periodStart)
+      data.periodStart = new Date(updateDto.periodStart);
     if (updateDto.periodEnd) data.periodEnd = new Date(updateDto.periodEnd);
 
     return (this.prisma as any).progressEstimate.update({
@@ -65,8 +84,8 @@ export class ProgressEstimatesService {
     });
   }
 
-  async remove(id: string, tenantId: string) {
-    await this.findOne(id, tenantId);
+  async remove(id: string, user: any, projectId?: string) {
+    await this.findOne(id, user, projectId);
     return (this.prisma as any).progressEstimate.delete({ where: { id } });
   }
 }

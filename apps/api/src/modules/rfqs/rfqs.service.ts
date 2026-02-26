@@ -5,13 +5,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class RfqsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async create(createDto: CreateRfqDto, tenantId: string) {
     const project = await this.prisma.project.findUnique({
-      where: { id: createDto.projectId }
+      where: { id: createDto.projectId },
     });
-    if (!project || project.tenantId !== tenantId) throw new NotFoundException('Project not found');
+    if (!project || project.tenantId !== tenantId)
+      throw new NotFoundException('Project not found');
 
     return (this.prisma as any).rfq.create({
       data: {
@@ -34,7 +35,8 @@ export class RfqsService {
       where: { id },
       include: { project: true, bids: true },
     });
-    if (!rfq || rfq.project.tenantId !== tenantId) throw new NotFoundException('RFQ not found');
+    if (!rfq || rfq.project.tenantId !== tenantId)
+      throw new NotFoundException('RFQ not found');
     return rfq;
   }
 

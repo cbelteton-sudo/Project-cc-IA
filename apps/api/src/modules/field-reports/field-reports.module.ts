@@ -4,7 +4,7 @@ import { FieldReportsController } from './field-reports.controller';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Module({
-    controllers: [FieldReportsController],
-    providers: [FieldReportsService, PrismaService],
+  controllers: [FieldReportsController],
+  providers: [FieldReportsService, PrismaService],
 })
-export class FieldReportsModule { }
+export class FieldReportsModule {}

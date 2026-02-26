@@ -5,9 +5,9 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { BudgetsModule } from '../budgets/budgets.module';
 
 @Module({
-    imports: [PrismaModule, BudgetsModule],
-    controllers: [TimesheetsController],
-    providers: [TimesheetsService],
-    exports: [TimesheetsService],
+  imports: [PrismaModule, BudgetsModule],
+  controllers: [TimesheetsController],
+  providers: [TimesheetsService],
+  exports: [TimesheetsService],
 })
-export class TimesheetsModule { }
+export class TimesheetsModule {}

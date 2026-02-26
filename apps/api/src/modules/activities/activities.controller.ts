@@ -1,6 +1,21 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { ActivitiesService } from './activities.service';
-import { CreateActivityDto, UpdateActivityDto, AddDependencyDto, CloseActivityDto } from './dto/create-activity.dto';
+import {
+  CreateActivityDto,
+  UpdateActivityDto,
+  AddDependencyDto,
+  CloseActivityDto,
+} from './dto/create-activity.dto';
 import { ReorderActivitiesDto } from './dto/reorder-activities.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ActiveUser } from '../../common/decorators/active-user.decorator';
@@ -8,45 +23,76 @@ import { ActiveUser } from '../../common/decorators/active-user.decorator';
 @Controller('activities')
 @UseGuards(JwtAuthGuard)
 export class ActivitiesController {
-    constructor(private readonly activitiesService: ActivitiesService) { }
+  constructor(private readonly activitiesService: ActivitiesService) {}
 
-    @Post()
-    create(@ActiveUser('tenantId') tenantId: string, @Body() createActivityDto: CreateActivityDto) {
-        return this.activitiesService.create(tenantId, createActivityDto);
-    }
+  @Post()
+  create(
+    @ActiveUser('tenantId') tenantId: string,
+    @Body() createActivityDto: CreateActivityDto,
+  ) {
+    return this.activitiesService.create(tenantId, createActivityDto);
+  }
 
-    @Get('project/:projectId')
-    findAllByProject(@ActiveUser('tenantId') tenantId: string, @Param('projectId') projectId: string) {
-        return this.activitiesService.findAllByProject(tenantId, projectId);
-    }
+  @Get('project/:projectId')
+  findAllByProject(
+    @ActiveUser('tenantId') tenantId: string,
+    @Param('projectId') projectId: string,
+  ) {
+    return this.activitiesService.findAllByProject(tenantId, projectId);
+  }
 
-    @Get(':id')
-    findOne(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string) {
-        return this.activitiesService.findOne(tenantId, id);
-    }
+  @Get(':id')
+  findOne(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string) {
+    return this.activitiesService.findOne(tenantId, id);
+  }
 
-    @Patch(':id')
-    update(@ActiveUser('tenantId') tenantId: string, @ActiveUser('id') userId: string, @Param('id') id: string, @Body() updateActivityDto: UpdateActivityDto) {
-        return this.activitiesService.update(tenantId, id, updateActivityDto, userId);
-    }
+  @Patch(':id')
+  update(
+    @ActiveUser('tenantId') tenantId: string,
+    @ActiveUser('id') userId: string,
+    @Param('id') id: string,
+    @Body() updateActivityDto: UpdateActivityDto,
+  ) {
+    return this.activitiesService.update(
+      tenantId,
+      id,
+      updateActivityDto,
+      userId,
+    );
+  }
 
-    @Post(':id/dependencies')
-    addDependency(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string, @Body() dto: AddDependencyDto) {
-        return this.activitiesService.addDependency(tenantId, id, dto);
-    }
+  @Post(':id/dependencies')
+  addDependency(
+    @ActiveUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: AddDependencyDto,
+  ) {
+    return this.activitiesService.addDependency(tenantId, id, dto);
+  }
 
-    @Delete(':id/dependencies/:dependencyId')
-    removeDependency(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string, @Param('dependencyId') dependencyId: string) {
-        return this.activitiesService.removeDependency(tenantId, id, dependencyId);
-    }
+  @Delete(':id/dependencies/:dependencyId')
+  removeDependency(
+    @ActiveUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Param('dependencyId') dependencyId: string,
+  ) {
+    return this.activitiesService.removeDependency(tenantId, id, dependencyId);
+  }
 
-    @Post(':id/close')
-    close(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string, @Body() dto: CloseActivityDto) {
-        return this.activitiesService.closeActivity(tenantId, id, dto);
-    }
+  @Post(':id/close')
+  close(
+    @ActiveUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: CloseActivityDto,
+  ) {
+    return this.activitiesService.closeActivity(tenantId, id, dto);
+  }
 
-    @Post('reorder')
-    reorder(@ActiveUser('tenantId') tenantId: string, @Body() dto: ReorderActivitiesDto) {
-        return this.activitiesService.reorder(tenantId, dto);
-    }
+  @Post('reorder')
+  reorder(
+    @ActiveUser('tenantId') tenantId: string,
+    @Body() dto: ReorderActivitiesDto,
+  ) {
+    return this.activitiesService.reorder(tenantId, dto);
+  }
 }

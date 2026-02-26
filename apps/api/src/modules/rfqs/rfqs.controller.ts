@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { RfqsService } from './rfqs.service';
 import { CreateRfqDto } from './dto/create-rfq.dto';
 import { UpdateRfqDto } from './dto/update-rfq.dto';
@@ -8,7 +17,7 @@ import { ActiveUser } from '../../common/decorators/active-user.decorator';
 @Controller('rfqs')
 @UseGuards(JwtAuthGuard)
 export class RfqsController {
-  constructor(private readonly rfqsService: RfqsService) { }
+  constructor(private readonly rfqsService: RfqsService) {}
 
   @Post()
   create(@Body() createRfqDto: CreateRfqDto, @ActiveUser() user: any) {
@@ -26,7 +35,11 @@ export class RfqsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateRfqDto: UpdateRfqDto, @ActiveUser() user: any) {
+  update(
+    @Param('id') id: string,
+    @Body() updateRfqDto: UpdateRfqDto,
+    @ActiveUser() user: any,
+  ) {
     return this.rfqsService.update(id, updateRfqDto, user.tenantId);
   }
 

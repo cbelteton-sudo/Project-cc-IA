@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Camera, Save, AlertTriangle, FileText, X, Check, Clock } from 'lucide-react';
+import { ArrowLeft, Camera, Save, FileText, X } from 'lucide-react';
 import { useNetwork } from '../../context/NetworkContext';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
@@ -10,10 +10,21 @@ import { api } from '../../lib/api';
 import { format } from 'date-fns';
 import { ActivityLogTimeline } from './ActivityLogTimeline';
 import { PhotoLightbox } from './PhotoLightbox';
+import { isFieldRecordsV1Enabled } from '../../services/field-records';
 
 // API_URL removed, handled by api instance. For getImageUrl needing base URL, we can use import.meta.env
-// API_URL removed, handled by api instance. For getImageUrl needing base URL, we can use import.meta.env
 // const BASE_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
+
+export interface LogItem {
+  id: string;
+  date: string;
+  status: string;
+  note: string;
+  createdAt: string;
+  author?: string;
+  photos: { id: string; urlThumb: string; urlMain: string }[];
+  isPending?: boolean;
+}
 
 interface ActivityDetail {
   id: string;
@@ -55,7 +66,7 @@ export const FieldEntryDetail: React.FC = () => {
   const [tempPhotos, setTempPhotos] = useState<{ id: string; blob: File }[]>([]);
 
   // Log History
-  const [logItems, setLogItems] = useState<any[]>([]);
+  const [logItems, setLogItems] = useState<LogItem[]>([]);
 
   // Lightbox
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -87,14 +98,18 @@ export const FieldEntryDetail: React.FC = () => {
                 try {
                   const pRes = await api.get(`/activities/${act.parentId}`);
                   act.parentName = pRes.data.name;
-                } catch (e) {}
+                } catch (err) {
+                  console.error('Failed to fetch parent activity', err);
+                }
               }
               if (state?.projectId) {
                 try {
                   const projRes = await api.get(`/projects/${state.projectId}`);
                   act.projectName = projRes.data.name;
                   act.projectId = state.projectId; // Ensure ID is set
-                } catch (e) {}
+                } catch (err) {
+                  console.error('Failed to fetch project detail', err);
+                }
               }
             }
           } catch (e) {
@@ -118,24 +133,45 @@ export const FieldEntryDetail: React.FC = () => {
         }
 
         // 2. Load Log (History)
-        let apiItems: any[] = [];
+        let apiItems: LogItem[] = [];
         try {
-          const res = await api.get(`/field/reports/activities/${id}/log`);
-          apiItems = res.data; // Now returns { ...entry, author: { name } }
+          if (isFieldRecordsV1Enabled()) {
+            const currentProjectId = state?.projectId || act?.projectId || '';
+            const res = await api.get(
+              `/field-records?projectId=${currentProjectId}&type=DAILY_ENTRY_LOG&activityId=${id}`,
+            );
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            apiItems = res.data.map((r: any) => ({
+              id: r.id,
+              date: r.content.date,
+              status: r.content.status,
+              note: r.content.note,
+              createdAt: r.createdAt,
+              authorName: r.content.authorName,
+              photos: r.content.photos || [],
+            }));
+          } else {
+            const res = await api.get(`/field/reports/activities/${id}/log`);
+            apiItems = res.data;
+          }
         } catch (e) {
           console.error('Log fetch error', e);
         }
 
         const db = await getDB();
         const allEntries = await db.getAll('field_daily_entries');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const localEntries = allEntries.filter((e: any) => e.scheduleActivityId === id);
 
         const localItems = await Promise.all(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           localEntries.map(async (e: any) => {
             // Try to recover photos from IDB
             // This is tricky without an index, checking 'photos' store by fieldUpdateId
             const allPhotos = await db.getAll('photos');
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const related = allPhotos.filter((p: any) => p.fieldUpdateId === e.id);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const photos = related.map((p: any) => ({
               id: p.id,
               urlThumb: URL.createObjectURL(p.blob),
@@ -156,8 +192,11 @@ export const FieldEntryDetail: React.FC = () => {
 
         // 3. Load Offline Queue for this Activity
         const queue = await db.getAll('offline_queue');
+
         const pendingItems = queue
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .filter((q: any) => q.payload.activityId === id)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .map((q: any) => ({
             id: q.localId,
             date: q.payload.date || new Date().toISOString(),
@@ -166,6 +205,7 @@ export const FieldEntryDetail: React.FC = () => {
             createdAt: new Date(q.createdAt).toISOString(),
             author: user?.name,
             isPending: true,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             photos: q.photos.map((p: any) => ({
               id: p.id,
               urlThumb: URL.createObjectURL(p.blob),
@@ -178,11 +218,11 @@ export const FieldEntryDetail: React.FC = () => {
           if (path.startsWith('http')) return path;
 
           const cleanPath = path.startsWith('/') ? path : `/${path}`;
-          // const cleanApiUrl = BASE_API_URL.endsWith('/') ? BASE_API_URL.slice(0, -1) : BASE_API_URL;
           const baseUrl = (api.defaults.baseURL || '').replace('/api', '');
           return `${baseUrl}${cleanPath}`;
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const formattedApiItems = apiItems.map((e: any) => ({
           id: e.id,
           date: e.date ? new Date(e.date).toISOString() : new Date(e.createdAt).toISOString(),
@@ -190,6 +230,7 @@ export const FieldEntryDetail: React.FC = () => {
           author: e.authorName || e.author?.name || 'Usuario',
           note: e.note,
           createdAt: e.createdAt ? new Date(e.createdAt).toISOString() : new Date().toISOString(),
+
           photos:
             e.photos?.map((p: any) => ({
               id: p.id,
@@ -211,7 +252,7 @@ export const FieldEntryDetail: React.FC = () => {
       }
     };
     loadData();
-  }, [id, isOnline, state]);
+  }, [id, isOnline, state, user?.userId, user?.name]);
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -240,6 +281,7 @@ export const FieldEntryDetail: React.FC = () => {
       const projectId = activity.projectId || state?.projectId || 'UNKNOWN';
 
       // 1. Daily Report
+
       let report = await db.getFromIndex('field_daily_reports', 'by-project-date', [
         projectId,
         dateStr,
@@ -361,32 +403,39 @@ export const FieldEntryDetail: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-gray-50">
       {/* Header */}
-      <div className="bg-white px-4 py-3 sticky top-0 z-20 shadow-sm border-b border-gray-100 flex-none">
-        <div className="flex items-center gap-3">
+      <div className="bg-white px-5 py-4 sticky top-0 z-20 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border-b border-gray-100 flex-none">
+        <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
-            className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors shrink-0"
+            className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors shrink-0 group"
           >
-            <ArrowLeft size={20} className="text-gray-600" />
+            <ArrowLeft
+              size={22}
+              className="text-gray-500 group-hover:text-black transition-colors"
+            />
           </button>
 
           <div className="flex-1 min-w-0">
             {/* Breadcrumbs */}
-            <div className="flex items-center gap-1 text-[10px] text-gray-400 uppercase tracking-wider truncate font-semibold mb-0.5">
-              <span>{activity.projectName || 'PROYECTO'}</span>
+            <div className="flex items-center gap-1.5 text-[11px] text-gray-400 uppercase tracking-widest font-bold mb-1">
+              <span className="truncate max-w-[100px] sm:max-w-xs">
+                {activity.projectName || 'PROYECTO'}
+              </span>
               {activity.parentName && (
                 <>
-                  <span>/</span>
-                  <span>{activity.parentName}</span>
+                  <span className="text-gray-300">/</span>
+                  <span className="truncate">{activity.parentName}</span>
                 </>
               )}
             </div>
 
             {/* Title Row with Badge */}
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-gray-900 truncate">{activity.name}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 truncate tracking-tight">
+                {activity.name}
+              </h1>
               <div
-                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 ring-inset shrink-0 ${schedule.color}`}
+                className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider shrink-0 ${schedule.color}`}
               >
                 {schedule.text}
               </div>
@@ -394,37 +443,35 @@ export const FieldEntryDetail: React.FC = () => {
           </div>
 
           {/* Date Info (Right aligned) */}
-          <div className="text-right shrink-0 pl-2 border-l border-gray-100 hidden sm:block">
-            <div className="text-[10px] uppercase tracking-wider font-bold text-gray-400">
+          <div className="text-right shrink-0 pl-4 border-l border-gray-100 hidden sm:block">
+            <div className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-0.5">
               Fecha Fin
             </div>
-            <div className="text-sm font-semibold text-gray-700">
-              {format(new Date(activity.endDate), 'dd MMM')}
+            <div className="text-sm font-bold text-gray-900">
+              {format(new Date(activity.endDate), 'dd MMM yyyy')}
             </div>
           </div>
         </div>
-
-        {/* Mobile Date Line (if needed for very small screens, or keep it simple) */}
       </div>
 
       {/* Tabs */}
-      <div className="bg-white px-4 border-b border-gray-100 flex gap-8 z-10 flex-none">
+      <div className="bg-white px-5 border-b border-gray-200 flex gap-8 z-10 flex-none">
         <button
           onClick={() => setActiveTab('REPORT')}
-          className={`pb-3 pt-2 text-sm font-bold transition-colors relative ${activeTab === 'REPORT' ? 'text-black' : 'text-gray-400'}`}
+          className={`pb-3 pt-4 text-sm font-bold transition-all relative ${activeTab === 'REPORT' ? 'text-black' : 'text-gray-400 hover:text-gray-700'}`}
         >
-          Reporte
+          Reporte Diario
           {activeTab === 'REPORT' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black rounded-t-full" />
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black rounded-t-full shadow-[0_-2px_4px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-1 fade-in duration-300" />
           )}
         </button>
         <button
           onClick={() => setActiveTab('HISTORY')}
-          className={`pb-3 pt-2 text-sm font-bold transition-colors relative ${activeTab === 'HISTORY' ? 'text-black' : 'text-gray-400'}`}
+          className={`pb-3 pt-4 text-sm font-bold transition-colors relative ${activeTab === 'HISTORY' ? 'text-black' : 'text-gray-400 hover:text-gray-700'}`}
         >
-          Historial
+          Historial Logs
           {activeTab === 'HISTORY' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black rounded-t-full" />
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black rounded-t-full shadow-[0_-2px_4px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-1 fade-in duration-300" />
           )}
         </button>
       </div>
@@ -480,7 +527,10 @@ export const FieldEntryDetail: React.FC = () => {
                   step="5"
                   value={progress}
                   onChange={(e) => setProgress(Number(e.target.value))}
-                  className="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  style={{
+                    background: `linear-gradient(to right, #2563eb ${progress}%, #e5e7eb ${progress}%)`,
+                  }}
+                  className="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-blue-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md transition-all shadow-inner"
                 />
                 <div className="flex justify-between text-xs text-gray-400 font-medium mt-2">
                   <span>0%</span>
@@ -537,12 +587,12 @@ export const FieldEntryDetail: React.FC = () => {
                   </div>
                 ))}
 
-                <label className="aspect-[4/3] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 hover:border-blue-300 transition-all text-gray-400 bg-gray-50/50 group">
+                <label className="aspect-[4/3] flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-blue-50/50 hover:border-blue-400 hover:scale-[1.01] active:scale-[0.98] transition-all text-gray-400 bg-gray-50/50 group">
                   <Camera
                     size={32}
                     className="mb-2 opacity-50 group-hover:text-blue-500 group-hover:opacity-100 transition-all"
                   />
-                  <span className="text-xs font-bold uppercase tracking-wider group-hover:text-blue-600">
+                  <span className="text-xs font-bold uppercase tracking-wider group-hover:text-blue-600 transition-colors">
                     Agregar Foto
                   </span>
                   <input
@@ -558,7 +608,7 @@ export const FieldEntryDetail: React.FC = () => {
           </div>
         ) : (
           // History View
-          <div className="space-y-4 max-w-3xl mx-auto">
+          <div className="space-y-4 max-w-3xl mx-auto pb-24">
             <ActivityLogTimeline
               items={logItems}
               onPhotoClick={openLightbox}
@@ -573,19 +623,19 @@ export const FieldEntryDetail: React.FC = () => {
 
       {/* Footer - Sibling, not Fixed */}
       {activeTab === 'REPORT' && (
-        <div className="p-4 bg-white border-t border-gray-200 flex-none z-30">
+        <div className="p-5 bg-white border-t border-gray-200 flex-none z-30 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
           <div className="max-w-3xl mx-auto">
             <button
               onClick={handleSave}
               disabled={saving}
-              className="w-full bg-black text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-gray-200 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70"
+              className="w-full bg-black text-white py-4 rounded-xl font-bold text-base shadow-xl shadow-gray-300 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:scale-100 hover:bg-gray-800"
             >
               {saving ? (
-                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <Save size={20} />
-                  Guardar Reporte
+                  <Save size={18} />
+                  Guardar Reporte Diario
                 </>
               )}
             </button>

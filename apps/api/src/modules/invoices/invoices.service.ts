@@ -9,14 +9,15 @@ export class InvoicesService {
   constructor(
     private prisma: PrismaService,
     private ledger: LedgerService,
-  ) { }
+  ) {}
 
   async create(createDto: CreateInvoiceDto, tenantId: string) {
     // ... existing create logic ...
     const project = await this.prisma.project.findUnique({
-      where: { id: createDto.projectId }
+      where: { id: createDto.projectId },
     });
-    if (!project || project.tenantId !== tenantId) throw new NotFoundException('Project not found');
+    if (!project || project.tenantId !== tenantId)
+      throw new NotFoundException('Project not found');
 
     let ocrData = null;
     if (createDto.fileUrl) {
@@ -26,8 +27,8 @@ export class InvoicesService {
         confidence: 0.98,
         items: [
           { description: 'Service Item 1', amount: createDto.total * 0.4 },
-          { description: 'Service Item 2', amount: createDto.total * 0.6 }
-        ]
+          { description: 'Service Item 2', amount: createDto.total * 0.6 },
+        ],
       });
     }
 
@@ -46,7 +47,7 @@ export class InvoicesService {
     });
   }
 
-  // ... findAll, findOne ... 
+  // ... findAll, findOne ...
 
   async findAll(tenantId: string, projectId?: string) {
     const where: any = { project: { tenantId } };
@@ -62,9 +63,13 @@ export class InvoicesService {
   async findOne(id: string, tenantId: string) {
     const inv = await this.prisma.invoice.findUnique({
       where: { id },
-      include: { project: true, allocations: { include: { budgetLine: true } } }, // Include budgetLine for ledger
+      include: {
+        project: true,
+        allocations: { include: { budgetLine: true } },
+      }, // Include budgetLine for ledger
     });
-    if (!inv || inv.project.tenantId !== tenantId) throw new NotFoundException('Invoice not found');
+    if (!inv || inv.project.tenantId !== tenantId)
+      throw new NotFoundException('Invoice not found');
     return inv;
   }
 
@@ -75,11 +80,16 @@ export class InvoicesService {
     if (updateDto.date) data.date = new Date(updateDto.date);
 
     // Ledger Logic: If status changes to POSTED (or APPROVED)
-    if (data.status && (data.status === 'POSTED' || data.status === 'APPROVED') && existing.status !== 'POSTED' && existing.status !== 'APPROVED') {
+    if (
+      data.status &&
+      (data.status === 'POSTED' || data.status === 'APPROVED') &&
+      existing.status !== 'POSTED' &&
+      existing.status !== 'APPROVED'
+    ) {
       const invoice = await this.prisma.invoice.update({
         where: { id },
         data,
-        include: { allocations: { include: { budgetLine: true } } }
+        include: { allocations: { include: { budgetLine: true } } },
       });
 
       // 1. Post Actuals
@@ -100,11 +110,14 @@ export class InvoicesService {
 
       // 2. Release PO Commitment if linked
       if (invoice.purchaseOrderId) {
-        // How much to release? 
+        // How much to release?
         // If allocations cover the full amount, release sum of allocations.
         // If allocations are missing, maybe release total?
         // Let's rely on allocations sum.
-        const totalAllocated = invoice.allocations.reduce((sum, a) => sum + a.amount, 0);
+        const totalAllocated = invoice.allocations.reduce(
+          (sum, a) => sum + a.amount,
+          0,
+        );
 
         // We need to know which BudgetLines were committed in the PO.
         // But we can just use the Allocation BudgetLines, assuming they match the PO Lines.

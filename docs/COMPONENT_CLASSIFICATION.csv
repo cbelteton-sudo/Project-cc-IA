@@ -1,0 +1,9 @@
+Component,Type,Classification,Justification
+FieldUpdate Module (Backend),API,REFACTOR,Core logic works but overlaps with field-reports. Needs consolidation to a single 'Daily Update' concept.
+FieldReports Module (Backend),API,REFACTOR,PDF generation and PM dashboard metrics are valuable but should consume consolidated data.
+Issues Module (Punch List),API,REUSE,Well-integrated with the general issue tracker logic and RBAC.
+SyncManagerPage (Frontend),UI,REUSE,Solid implementation using IndexedDB for offline queueing. Vital for field operators.
+ActivityUpdate (Frontend),UI,REFACTOR,Needs to ensure it calls the final SUBMIT endpoints, not just draft.
+FieldToday/FieldDashboard (Frontend),UI,REUSE,Good user experience for listing daily tasks.
+Database Models (FieldUpdate vs FieldDailyReport),Schema,REFACTOR,Merge `FieldUpdateItem` and `FieldDailyEntry` concepts into a unified `DailyLog` model in the future.
+ActivityWeeklyProgress (Backend),Schema,REPLACE,Redundant with granular daily updates. Progress should be derived or stored in a single table.

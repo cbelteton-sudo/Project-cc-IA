@@ -1,19 +1,24 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { CreateMaterialRequestDto } from './dto/create-material-request.dto';
 import { UpdateMaterialRequestDto } from './dto/update-material-request.dto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceScopeWhere } from '../../common/database/prisma-scope.helper';
 
 @Injectable()
 export class MaterialRequestsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
-  async create(createDto: CreateMaterialRequestDto, tenantId: string) {
-    const project = await this.prisma.project.findUnique({
-      where: { id: createDto.projectId },
+  async create(createDto: CreateMaterialRequestDto, user: any) {
+    const project = await this.prisma.project.findFirst({
+      where: enforceScopeWhere(user, { id: createDto.projectId }),
     });
 
-    if (!project || project.tenantId !== tenantId) {
-      throw new BadRequestException('Invalid Project');
+    if (!project) {
+      throw new BadRequestException('Invalid Project or access denied');
     }
 
     return this.prisma.materialRequest.create({
@@ -26,13 +31,19 @@ export class MaterialRequestsService {
     });
   }
 
-  async findAll(tenantId: string) {
+  async findAll(projectId: string, user: any) {
+    if (projectId) {
+      const project = await this.prisma.project.findFirst({
+        where: enforceScopeWhere(user, { id: projectId }),
+      });
+      if (!project)
+        throw new NotFoundException('Project not found or access denied');
+    }
+
     return this.prisma.materialRequest.findMany({
-      where: {
-        project: {
-          tenantId,
-        },
-      },
+      where: projectId
+        ? { projectId }
+        : { project: enforceScopeWhere(user, {}) },
       include: {
         project: true,
       },
@@ -40,15 +51,35 @@ export class MaterialRequestsService {
     });
   }
 
-  async findOne(id: string, tenantId: string) {
+  async findOne(id: string, projectId: string, user: any) {
+    if (projectId) {
+      const project = await this.prisma.project.findFirst({
+        where: enforceScopeWhere(user, { id: projectId }),
+      });
+      if (!project)
+        throw new NotFoundException('Project not found or access denied');
+    }
+
     const req = await this.prisma.materialRequest.findUnique({
       where: { id },
       include: { project: true },
     });
 
-    if (!req || req.project.tenantId !== tenantId) {
+    if (
+      !req ||
+      req.project.tenantId !== user.tenantId ||
+      (projectId && req.projectId !== projectId)
+    ) {
       throw new NotFoundException('Material Request not found');
     }
+
+    const projectAccess = await this.prisma.project.findFirst({
+      where: enforceScopeWhere(user, { id: req.projectId }),
+    });
+    if (!projectAccess)
+      throw new NotFoundException(
+        'Material Request not found or access denied',
+      );
 
     return {
       ...req,
@@ -56,13 +87,19 @@ export class MaterialRequestsService {
     };
   }
 
-  async update(id: string, updateDto: UpdateMaterialRequestDto, tenantId: string) {
-    await this.findOne(id, tenantId);
+  async update(
+    id: string,
+    updateDto: UpdateMaterialRequestDto,
+    projectId: string,
+    user: any,
+  ) {
+    await this.findOne(id, projectId, user);
 
     // Logic: Only update if not closed? For MVP, allow edits.
     const data: any = { ...updateDto };
-    if (updateDto.items) { // fixed typo from 'items' check
-      // We know updateDto is Partial<CreateMaterialRequestDto> essentially, 
+    if (updateDto.items) {
+      // fixed typo from 'items' check
+      // We know updateDto is Partial<CreateMaterialRequestDto> essentially,
       // but mapped types in Nest don't always carry over custom types well without DTO refinement.
       // Assuming updateDto has 'items' property if provided.
       // Actually, UpdateMaterialRequestDto extends PartialType(CreateMaterialRequestDto)
@@ -76,8 +113,8 @@ export class MaterialRequestsService {
     });
   }
 
-  async remove(id: string, tenantId: string) {
-    await this.findOne(id, tenantId);
+  async remove(id: string, projectId: string, user: any) {
+    await this.findOne(id, projectId, user);
     return this.prisma.materialRequest.delete({
       where: { id },
     });

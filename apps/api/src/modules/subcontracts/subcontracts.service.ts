@@ -5,13 +5,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class SubcontractsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async create(createDto: CreateSubcontractDto, tenantId: string) {
     const project = await this.prisma.project.findUnique({
-      where: { id: createDto.projectId }
+      where: { id: createDto.projectId },
     });
-    if (!project || project.tenantId !== tenantId) throw new NotFoundException('Project not found');
+    if (!project || project.tenantId !== tenantId)
+      throw new NotFoundException('Project not found');
 
     return (this.prisma as any).subcontract.create({
       data: {
@@ -19,7 +20,9 @@ export class SubcontractsService {
         vendor: createDto.vendor,
         title: createDto.title,
         totalAmount: createDto.totalAmount,
-        startDate: createDto.startDate ? new Date(createDto.startDate) : undefined,
+        startDate: createDto.startDate
+          ? new Date(createDto.startDate)
+          : undefined,
         endDate: createDto.endDate ? new Date(createDto.endDate) : undefined,
         status: 'DRAFT',
       },
@@ -39,7 +42,8 @@ export class SubcontractsService {
       where: { id },
       include: { project: true, estimates: true },
     });
-    if (!sub || sub.project.tenantId !== tenantId) throw new NotFoundException('Subcontract not found');
+    if (!sub || sub.project.tenantId !== tenantId)
+      throw new NotFoundException('Subcontract not found');
     return sub;
   }
 

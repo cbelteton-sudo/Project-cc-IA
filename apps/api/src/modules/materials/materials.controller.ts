@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { MaterialsService } from './materials.service';
 import { CreateMaterialDto } from './dto/create-material.dto';
 import { UpdateMaterialDto } from './dto/update-material.dto';
@@ -8,10 +17,13 @@ import { ActiveUser } from '../../common/decorators/active-user.decorator';
 @Controller('materials')
 @UseGuards(JwtAuthGuard)
 export class MaterialsController {
-  constructor(private readonly materialsService: MaterialsService) { }
+  constructor(private readonly materialsService: MaterialsService) {}
 
   @Post()
-  create(@Body() createMaterialDto: CreateMaterialDto, @ActiveUser() user: any) {
+  create(
+    @Body() createMaterialDto: CreateMaterialDto,
+    @ActiveUser() user: any,
+  ) {
     return this.materialsService.create(createMaterialDto, user.tenantId);
   }
 
@@ -26,7 +38,11 @@ export class MaterialsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateMaterialDto: UpdateMaterialDto, @ActiveUser() user: any) {
+  update(
+    @Param('id') id: string,
+    @Body() updateMaterialDto: UpdateMaterialDto,
+    @ActiveUser() user: any,
+  ) {
     return this.materialsService.update(id, updateMaterialDto, user.tenantId);
   }
 

@@ -81,13 +81,16 @@ describe('enforceScopeWhere', () => {
     expect(result.userId).toBeUndefined();
 
     // Se debe arrojar un warning al logger (console.warn en este caso)
+    // Se debe arrojar un warning al logger (console.warn en este caso) estructurado
     expect(consoleSpy).toHaveBeenCalledWith(
-      `[SECURITY WARNING] Intento de inyección de llave sensible 'tenantId' detectado en extraWhere por el usuario user-1 (tenant: tenant-1)`,
+      expect.stringContaining(`"event":"suspicious_extraWhere_keys"`),
     );
     expect(consoleSpy).toHaveBeenCalledWith(
-      `[SECURITY WARNING] Intento de inyección de llave sensible 'projectId' detectado en extraWhere por el usuario user-1 (tenant: tenant-1)`,
+      expect.stringContaining(`"key":"tenantId"`),
     );
-
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining(`"key":"projectId"`),
+    );
     consoleSpy.mockRestore();
   });
 });

@@ -1,21 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { enforceScopeWhere } from '../../common/database/prisma-scope.helper';
 
 @Injectable()
 export class FieldReportsService {
   constructor(private prisma: PrismaService) {}
 
-  async getTodayReport(projectId: string, userId: string) {
+  async getTodayReport(projectId: string, user: any) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 1. Try to find existing report
-    let report = await this.prisma.fieldDailyReport.findUnique({
+    // 1. Try to find existing report (Ensure project access)
+    let report = await this.prisma.fieldDailyReport.findFirst({
       where: {
-        projectId_date: {
-          projectId,
-          date: today,
-        },
+        projectId,
+        date: today,
+        project: enforceScopeWhere(user, {}, projectId),
       },
       include: {
         entries: {
@@ -28,11 +28,19 @@ export class FieldReportsService {
 
     // 2. Create if not exists
     if (!report) {
+      // Pre-flight check: User must be able to access project before creation!
+      const canAccessProject = await this.prisma.project.findFirst({
+        where: enforceScopeWhere(user, {}, projectId),
+      });
+      if (!canAccessProject) {
+        throw new NotFoundException('Project not found or access denied');
+      }
+
       report = await this.prisma.fieldDailyReport.create({
         data: {
           projectId,
           date: today,
-          createdBy: userId,
+          createdBy: user.id || user.userId,
           status: 'DRAFT',
         },
         include: {
@@ -48,7 +56,7 @@ export class FieldReportsService {
     return report;
   }
 
-  async upsertEntry(dto: any, userId: string = 'SYNC_SYSTEM') {
+  async upsertEntry(dto: any, user: any) {
     // Determine status based on input or logic
     let {
       dailyReportId,
@@ -63,16 +71,29 @@ export class FieldReportsService {
       createdBy,
     } = dto;
 
+    const currentUserId = user.id || user.userId;
     // Use provided createdBy (from offline capture) or fallback to current user
-    const authorId = createdBy || userId;
+    const authorId = createdBy || currentUserId;
 
     // 0. Ensure Daily Report exists (Robust Sync)
     if (projectId && dateString) {
       const date = new Date(dateString);
 
+      // Verify Project Access First
+      const projectAccess = await this.prisma.project.findFirst({
+        where: enforceScopeWhere(user, {}, projectId),
+      });
+      if (!projectAccess) {
+        throw new NotFoundException('Project not found or access denied');
+      }
+
       // Try to find by unique constraint first
-      let report = await this.prisma.fieldDailyReport.findUnique({
-        where: { projectId_date: { projectId, date } },
+      let report = await this.prisma.fieldDailyReport.findFirst({
+        where: {
+          projectId,
+          date,
+          project: enforceScopeWhere(user, {}, projectId),
+        },
       });
 
       if (!report) {
@@ -88,14 +109,18 @@ export class FieldReportsService {
               // If we strictly want offline sync, we should use the ID if provided.
               projectId,
               date,
-              createdBy: userId,
+              createdBy: currentUserId,
               status: 'DRAFT',
             },
           })
           .catch(async (e) => {
             // Race condition?
-            return this.prisma.fieldDailyReport.findUnique({
-              where: { projectId_date: { projectId, date } },
+            return this.prisma.fieldDailyReport.findFirst({
+              where: {
+                projectId,
+                date,
+                project: enforceScopeWhere(user, {}, projectId),
+              },
             });
           });
       }
@@ -204,7 +229,14 @@ export class FieldReportsService {
     return entry;
   }
 
-  async submitReport(id: string, userId: string) {
+  async submitReport(id: string, user: any, projectId: string) {
+    const report = await this.prisma.fieldDailyReport.findFirst({
+      where: { id, project: enforceScopeWhere(user, {}, projectId) },
+    });
+    if (!report) {
+      throw new NotFoundException('Report not found or access denied');
+    }
+
     return this.prisma.fieldDailyReport.update({
       where: { id },
       data: {
@@ -214,7 +246,96 @@ export class FieldReportsService {
     });
   }
 
-  async generatePdf(reportId: string) {
+  async syncDraft(dto: any, user: any) {
+    // Unifies field-updates offline draft behavior into field-reports
+    const { projectId, date, items } = dto;
+    const dateObj = new Date(date);
+
+    const currentUserId = user.id || user.userId;
+
+    // Verify Project Access First
+    const projectAccess = await this.prisma.project.findFirst({
+      where: { id: projectId, tenantId: user.tenantId },
+    });
+    if (!projectAccess) {
+      throw new NotFoundException('Project not found or access denied');
+    }
+
+    // 1. Get or Create Daily Report
+    let report = await this.prisma.fieldDailyReport.findFirst({
+      where: { projectId, date: dateObj },
+    });
+
+    if (!report) {
+      report = await this.prisma.fieldDailyReport.create({
+        data: {
+          projectId,
+          date: dateObj,
+          createdBy: currentUserId,
+          status: 'DRAFT',
+        },
+      });
+    }
+
+    // 2. Process Items
+    const results = [];
+    if (items && Array.isArray(items)) {
+      for (const item of items) {
+        const activity = await this.prisma.projectActivity.findUnique({
+          where: { id: item.activityId },
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            measurementType: true,
+            totalQty: true,
+          },
+        });
+
+        if (!activity) continue;
+
+        let status = item.status || 'IN_PROGRESS';
+        if (item.manualPercent === 100) status = 'DONE';
+
+        let note = item.notes || '';
+        if (item.isRisk) note = `[RISK] ${note}`;
+
+        // Preserve qtyDone for Quantity-based activities in notes
+        if (
+          item.qtyDone !== undefined &&
+          activity.measurementType === 'QUANTITY'
+        ) {
+          note = `[Qty Done: ${item.qtyDone}] ${note}`;
+        }
+
+        const entryDto = {
+          dailyReportId: report.id,
+          scheduleActivityId: item.activityId,
+          activityName: activity.name,
+          status,
+          progressChip: item.manualPercent,
+          note,
+          projectId,
+          dateString: date,
+          createdBy: currentUserId,
+        };
+
+        const result = await this.upsertEntry(entryDto, user);
+        results.push(result);
+      }
+    }
+
+    return { fieldUpdate: report, items: results };
+  }
+
+  async generatePdf(reportId: string, user: any, projectId: string) {
+    const report = await this.prisma.fieldDailyReport.findFirst({
+      where: { id: reportId, project: enforceScopeWhere(user, {}, projectId) },
+    });
+    if (!report) {
+      throw new NotFoundException('Report not found or access denied');
+    }
+
     // Mock PDF generation logic
     // In a real app, use 'pdfkit' or similar to generate a stream
     return {
@@ -223,10 +344,26 @@ export class FieldReportsService {
     };
   }
 
-  async getActivityLog(activityId: string, limit: number = 20) {
+  async getActivityLog(
+    activityId: string,
+    user: any,
+    projectId: string,
+    limit: number = 20,
+  ) {
+    // Verify Access
+    const project = await this.prisma.project.findFirst({
+      where: enforceScopeWhere(user, {}, projectId),
+    });
+    if (!project) throw new NotFoundException('Access denied to this project');
+
     // 1. Fetch Field Entries
     const fieldEntries = await this.prisma.fieldDailyEntry.findMany({
-      where: { scheduleActivityId: activityId },
+      where: {
+        scheduleActivityId: activityId,
+        dailyReport: {
+          project: enforceScopeWhere(user),
+        },
+      },
       orderBy: { createdAt: 'desc' },
       take: Number(limit),
       include: {
@@ -241,7 +378,10 @@ export class FieldReportsService {
 
     // 2. Fetch Scrum Daily Updates linked to this WBS Activity
     const scrumUpdates = await this.prisma.dailyUpdate.findMany({
-      where: { wbsActivityId: activityId },
+      where: {
+        wbsActivityId: activityId,
+        project: enforceScopeWhere(user), // Ensure data isolation
+      },
       orderBy: { createdAt: 'desc' },
       take: Number(limit),
       include: {
@@ -344,8 +484,16 @@ export class FieldReportsService {
 
   async getPMDashboardMetrics(
     projectId: string,
+    user: any,
     daysWithoutUpdate: number = 3,
   ) {
+    // Validation
+    const projectAccess = await this.prisma.project.findFirst({
+      where: enforceScopeWhere(user, {}, projectId),
+    });
+    if (!projectAccess)
+      throw new NotFoundException('Project not found or access denied');
+
     console.log(`[PM Dashboard] Fetching metrics for project: ${projectId}`);
     const today = new Date();
     const cutoffDate = new Date();

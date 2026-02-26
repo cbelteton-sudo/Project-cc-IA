@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Req,
+  BadRequestException,
+} from '@nestjs/common';
 import { BudgetsService } from './budgets.service';
 import { CreateBudgetDto } from './dto/create-budget.dto';
 import { UpdateBudgetDto } from './dto/update-budget.dto';
@@ -10,7 +21,7 @@ import { ActiveUser } from '../../common/decorators/active-user.decorator';
 @Controller('budgets')
 @UseGuards(JwtAuthGuard)
 export class BudgetsController {
-  constructor(private readonly budgetsService: BudgetsService) { }
+  constructor(private readonly budgetsService: BudgetsService) {}
 
   @Post()
   async create(@Body() createBudgetDto: CreateBudgetDto, @Req() req: any) {
@@ -42,7 +53,11 @@ export class BudgetsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateBudgetDto: UpdateBudgetDto, @ActiveUser() user: any) {
+  update(
+    @Param('id') id: string,
+    @Body() updateBudgetDto: UpdateBudgetDto,
+    @ActiveUser() user: any,
+  ) {
     return this.budgetsService.update(id, updateBudgetDto, user.tenantId);
   }
 
@@ -60,10 +75,21 @@ export class BudgetsController {
 
   @Post(':budgetId/lines')
   @Post(':budgetId/lines')
-  async createLine(@Param('budgetId') budgetId: string, @Body() createBudgetLineDto: CreateBudgetLineDto) {
-    console.log('BudgetsController.createLine - BudgetID:', budgetId, 'Body:', createBudgetLineDto);
+  async createLine(
+    @Param('budgetId') budgetId: string,
+    @Body() createBudgetLineDto: CreateBudgetLineDto,
+  ) {
+    console.log(
+      'BudgetsController.createLine - BudgetID:',
+      budgetId,
+      'Body:',
+      createBudgetLineDto,
+    );
     try {
-      return await this.budgetsService.createLine(budgetId, createBudgetLineDto);
+      return await this.budgetsService.createLine(
+        budgetId,
+        createBudgetLineDto,
+      );
     } catch (e) {
       console.error('Controller createLine Catch:', e);
       throw e;
@@ -71,7 +97,10 @@ export class BudgetsController {
   }
 
   @Patch('lines/:id')
-  updateLine(@Param('id') id: string, @Body() updateBudgetLineDto: UpdateBudgetLineDto) {
+  updateLine(
+    @Param('id') id: string,
+    @Body() updateBudgetLineDto: UpdateBudgetLineDto,
+  ) {
     return this.budgetsService.updateLine(id, updateBudgetLineDto);
   }
 

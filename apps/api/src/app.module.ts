@@ -2,7 +2,8 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { DeprecationInterceptor } from './common/interceptors/deprecation.interceptor';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -31,6 +32,7 @@ import { ContractorsModule } from './modules/contractors/contractors.module';
 import { ScrumModule } from './modules/scrum/scrum.module';
 import { TimesheetsModule } from './modules/timesheets/timesheets.module';
 import { ProjectMembersModule } from './modules/project-members/project-members.module';
+import { FieldRecordsModule } from './modules/field-records/field-records.module';
 
 import { HealthController } from './health.controller';
 
@@ -70,6 +72,7 @@ import { HealthController } from './health.controller';
     ScrumModule,
     TimesheetsModule,
     ProjectMembersModule,
+    FieldRecordsModule,
   ],
   controllers: [AppController, HealthController],
   providers: [
@@ -77,6 +80,10 @@ import { HealthController } from './health.controller';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: DeprecationInterceptor,
     },
   ],
 })

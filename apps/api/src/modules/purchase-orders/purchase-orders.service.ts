@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { UpdatePurchaseOrderDto } from './dto/update-purchase-order.dto';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -11,7 +16,7 @@ export class PurchaseOrdersService {
   constructor(
     private prisma: PrismaService,
     private ledger: LedgerService,
-  ) { }
+  ) {}
 
   async create(createDto: CreatePurchaseOrderDto, tenantId: string) {
     // Validate project
@@ -23,7 +28,10 @@ export class PurchaseOrdersService {
     }
 
     // Calculate total
-    const total = createDto.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+    const total = createDto.items.reduce(
+      (sum, item) => sum + item.quantity * item.unitPrice,
+      0,
+    );
 
     // Transaction: Create PO -> Add Ledger Entries
     const po = await this.prisma.$transaction(async (tx) => {
@@ -37,7 +45,7 @@ export class PurchaseOrdersService {
           docStatus: 'APPROVED',
           date: new Date(),
           items: {
-            create: createDto.items.map(item => ({
+            create: createDto.items.map((item) => ({
               description: item.description,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
@@ -52,7 +60,7 @@ export class PurchaseOrdersService {
       // 2. Create Ledger Entries (Commitments)
       // We need to do this outside the transaction or pass tx to ledger service?
       // LedgerService uses this.prisma. If we want transactional integrity, we should refactor LedgerService to accept tx.
-      // For now, we will do it after or assume eventual consistency is acceptable for MVP prototypes, 
+      // For now, we will do it after or assume eventual consistency is acceptable for MVP prototypes,
       // OR better: Just manually create Ledger entries here using `tx` to match the pattern.
       // But `LedgerService` logic is reusable.
       // Let's use `tx.costLedger.create` here directly to be safe.
@@ -60,7 +68,9 @@ export class PurchaseOrdersService {
       for (const item of createDto.items) {
         if (item.budgetLineId) {
           // Need to fetch budget line to get CostType
-          const line = await tx.budgetLine.findUnique({ where: { id: item.budgetLineId } });
+          const line = await tx.budgetLine.findUnique({
+            where: { id: item.budgetLineId },
+          });
 
           if (line) {
             const itemTotal = item.quantity * item.unitPrice;
@@ -74,7 +84,7 @@ export class PurchaseOrdersService {
                 referenceId: newPo.id,
                 description: `PO #${newPo.id.substring(0, 8)} - ${item.description}`,
                 date: new Date(),
-              }
+              },
             });
           }
         }
@@ -103,11 +113,16 @@ export class PurchaseOrdersService {
       include: { items: true, project: true },
     });
 
-    if (!po || po.project.tenantId !== tenantId) throw new NotFoundException('PO not found');
+    if (!po || po.project.tenantId !== tenantId)
+      throw new NotFoundException('PO not found');
     return po;
   }
 
-  async update(id: string, updateDto: UpdatePurchaseOrderDto, tenantId: string) {
+  async update(
+    id: string,
+    updateDto: UpdatePurchaseOrderDto,
+    tenantId: string,
+  ) {
     await this.findOne(id, tenantId);
     return this.prisma.purchaseOrder.update({
       where: { id },

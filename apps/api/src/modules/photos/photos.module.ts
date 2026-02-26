@@ -5,8 +5,8 @@ import { PhotosService } from './photos.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Module({
-    controllers: [PhotosController, PublicPhotosController],
-    providers: [PhotosService, PrismaService],
-    exports: [PhotosService],
+  controllers: [PhotosController, PublicPhotosController],
+  providers: [PhotosService, PrismaService],
+  exports: [PhotosService],
 })
-export class PhotosModule { }
+export class PhotosModule {}

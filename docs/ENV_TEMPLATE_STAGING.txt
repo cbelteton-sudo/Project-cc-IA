@@ -1,0 +1,23 @@
+#####################################
+# RAILWAY STAGING ENV VARIABLES
+# Copiar y pegar en raw text edit de Railway
+#####################################
+
+# === DATABASE ===
+# El plugin de Postgres de Railway inyectará esto en el proyecto completo, 
+# pero asegúrate de referenciarlo en tu servicio API.
+# DATABASE_URL=postgresql://postgres:...
+
+# === API SERVICE ===
+NODE_ENV=production
+# Reemplazar con clave fuerte aleatoria
+JWT_SECRET=super_hard_staging_secret_key_99182312
+# Reemplazar con el dominio exacto del frontend en Railway
+FRONTEND_URL=https://web-staging.up.railway.app
+
+
+# === WEB (FRONTEND) SERVICE ===
+# Reemplazar con el dominio público del servicio API en Railway 
+# (Importante no olvidar el sufijo /api si el backend tiene global prefix)
+VITE_API_URL=https://api-staging.up.railway.app/api
+VITE_FIELD_RECORDS_V1_FRONTEND=true

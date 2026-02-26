@@ -19,7 +19,7 @@ async function bootstrap() {
   }
   (globalThis as any)[BOOT_KEY] = true;
 
-  const port = Number(process.env.PORT ?? 4181);
+  const port = Number(process.env.PORT ?? 3000);
 
   try {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -34,13 +34,18 @@ async function bootstrap() {
     const cookieParser = require('cookie-parser');
     app.use(cookieParser());
 
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:3000',
+    ];
+    if (process.env.FRONTEND_URL) {
+      allowedOrigins.push(process.env.FRONTEND_URL);
+    }
+
     app.enableCors({
-      origin: [
-        'http://localhost:5173',
-        'http://localhost:3000',
-        'http://127.0.0.1:5173',
-        'http://127.0.0.1:3000',
-      ],
+      origin: allowedOrigins,
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
       credentials: true,
     });

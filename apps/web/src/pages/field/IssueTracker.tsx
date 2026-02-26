@@ -5,7 +5,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useNetwork } from '../../context/NetworkContext';
 import { getDB } from '../../services/db';
 import { SyncQueue } from '../../services/sync-queue';
+import { isFieldRecordsV1Enabled } from '../../services/field-records';
 import { v4 as uuidv4 } from 'uuid';
+import { api } from '../../lib/api';
+import { toast } from 'sonner';
 
 interface IssueData {
   id: string;
@@ -25,7 +28,9 @@ export const IssueTracker: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const { isOnline } = useNetwork();
   const { user } = useAuth();
-  const projectMember = user?.projectMembers?.find((m: any) => m.projectId === projectId);
+  const projectMember = user?.projectMembers?.find(
+    (m: { projectId: string; role: string }) => m.projectId === projectId,
+  );
   const isExecutiveViewer = projectMember?.role === 'EXECUTIVE_VIEWER';
 
   // State
@@ -41,16 +46,82 @@ export const IssueTracker: React.FC = () => {
     severity: 'MEDIUM',
     status: 'OPEN',
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (projectId) loadIssues();
+    if (projectId) {
+      loadIssues();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   const loadIssues = async () => {
     setLoading(true);
     try {
       const db = await getDB();
-      const projectIssues = await db.getAllFromIndex('issues', 'by-project', projectId!);
+      let projectIssues: IssueData[] = [];
+
+      // 1. Fetch from API if online
+      if (isOnline) {
+        if (isFieldRecordsV1Enabled()) {
+          const res = await api.get(`/field-records?projectId=${projectId}&type=ISSUE`);
+          const apiIssues = res.data.map(
+            (r: {
+              id: string;
+              projectId: string;
+              content: Record<string, unknown>;
+              status: string;
+              createdAt: string;
+              updatedAt: string;
+              syncStatus?: string;
+            }) => ({
+              id: r.id,
+              projectId: r.projectId,
+              title: r.content.title,
+              description: r.content.description,
+              status: r.status,
+              severity: r.content.severity,
+              createdAt: new Date(r.createdAt).getTime(),
+              updatedAt: new Date(r.updatedAt).getTime(),
+              syncStatus: r.syncStatus || 'SYNCED',
+            }),
+          );
+          // Save to local DB for offline access
+          for (const i of apiIssues) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await db.put('issues', i as any);
+          }
+          projectIssues = apiIssues;
+        } else {
+          try {
+            const res = await api.get(`/projects/${projectId}/issues`);
+            projectIssues = res.data;
+            for (const i of projectIssues) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              await db.put('issues', { ...i, syncStatus: 'SYNCED' } as any);
+            }
+          } catch (e) {
+            console.warn('Fallback to local issues due to legacy API fail', e);
+          }
+        }
+      }
+
+      // 2. Load from local DB (includes pending ones or fetched ones)
+      const localIssues = await db.getAllFromIndex('issues', 'by-project', projectId!);
+
+      // Merge: prefer local pending over remote if conflict (simple approach: just use local if offline)
+      if (!isOnline || projectIssues.length === 0) {
+        projectIssues = localIssues as unknown as IssueData[];
+      } else {
+        // Merge pending sync issues from localDB that aren't in API yet
+        const pendingLocal = (localIssues as unknown as IssueData[]).filter(
+          (i) => i.syncStatus === 'PENDING_SYNC',
+        );
+        projectIssues = [...projectIssues, ...pendingLocal];
+        // Deduplicate
+        projectIssues = projectIssues.filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i);
+      }
+
       // Sort by date desc
       projectIssues.sort((a, b) => {
         const dateA =
@@ -59,7 +130,7 @@ export const IssueTracker: React.FC = () => {
           typeof b.updatedAt === 'string' ? new Date(b.updatedAt).getTime() : b.updatedAt;
         return dateB - dateA;
       });
-      setIssues(projectIssues as unknown as IssueData[]);
+      setIssues(projectIssues);
     } catch (err) {
       console.error('Error loading issues:', err);
     } finally {
@@ -70,6 +141,7 @@ export const IssueTracker: React.FC = () => {
   const handleCreateIssue = async () => {
     if (!newIssue.title || !projectId) return;
 
+    setIsSubmitting(true);
     try {
       const issue: IssueData = {
         id: uuidv4(),
@@ -77,7 +149,7 @@ export const IssueTracker: React.FC = () => {
         title: newIssue.title,
         description: newIssue.description || '',
         status: 'OPEN',
-        severity: (newIssue.severity as any) || 'MEDIUM',
+        severity: (newIssue.severity as IssueData['severity']) || 'MEDIUM',
         createdAt: Date.now(),
         updatedAt: Date.now(),
         syncStatus: isOnline ? 'SYNCED' : 'PENDING_SYNC',
@@ -85,18 +157,36 @@ export const IssueTracker: React.FC = () => {
 
       // 1. Save Local
       const db = await getDB();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await db.put('issues', issue as any); // Type assertion to bypass strict DB type check if needed
 
       // 2. Queue Sync
-      await SyncQueue.add('/issues', 'POST', issue);
+      if (isFieldRecordsV1Enabled()) {
+        const payload = {
+          type: 'ISSUE' as const,
+          projectId,
+          status: 'OPEN',
+          content: {
+            title: newIssue.title,
+            description: newIssue.description || '',
+            severity: newIssue.severity || 'MEDIUM',
+          },
+        };
+        await SyncQueue.add('/field-records', 'POST', payload);
+      } else {
+        await SyncQueue.add('/issues', 'POST', issue);
+      }
 
       // 3. Update UI
       setIssues([issue, ...issues]);
       setIsModalOpen(false);
       setNewIssue({ title: '', description: '', severity: 'MEDIUM', status: 'OPEN' });
+      toast.success('Incidencia creada');
     } catch (err) {
       console.error('Error creating issue:', err);
-      alert('Error al crear incidencia');
+      toast.error('Error al crear incidencia');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -137,28 +227,30 @@ export const IssueTracker: React.FC = () => {
           <div className="flex items-center">
             <button
               onClick={() => navigate(-1)}
-              className="mr-3 p-1 rounded-full hover:bg-gray-100"
+              className="mr-3 p-2 rounded-full hover:bg-gray-100 transition-colors"
             >
-              <ArrowLeft size={24} className="text-gray-600" />
+              <ArrowLeft size={20} className="text-gray-600" />
             </button>
             <div>
-              <h1 className="font-bold text-gray-800 text-lg">Reporte de Incidencias</h1>
-              <p className="text-xs text-gray-500 flex items-center gap-1">
+              <h1 className="font-bold text-gray-900 text-xl tracking-tight">
+                Reporte de Incidencias
+              </h1>
+              <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-0.5">
                 {isOnline ? (
-                  <Wifi size={12} className="text-green-500" />
+                  <Wifi size={14} className="text-green-600" />
                 ) : (
-                  <WifiOff size={12} className="text-red-500" />
+                  <WifiOff size={14} className="text-red-500" />
                 )}
-                {issues.length} incidencias
+                <span className="font-medium">{issues.length}</span> registradas
               </p>
             </div>
           </div>
           {!isExecutiveViewer && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 shadow-md transition"
+              className="bg-black text-white p-2.5 rounded-full hover:bg-gray-800 shadow-md shadow-gray-200 transition-all active:scale-95"
             >
-              <Plus size={24} />
+              <Plus size={22} />
             </button>
           )}
         </div>
@@ -184,7 +276,23 @@ export const IssueTracker: React.FC = () => {
       {/* List */}
       <div className="flex-1 overflow-auto p-4 space-y-3">
         {loading ? (
-          <div className="text-center py-10 text-gray-400">Cargando...</div>
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="bg-white p-5 rounded-2xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] border border-gray-100 flex flex-col gap-3 animate-pulse"
+              >
+                <div className="flex justify-between items-start mb-1">
+                  <div className="w-16 h-5 bg-gray-200 rounded-md"></div>
+                  <div className="w-16 h-5 bg-gray-200 rounded-md"></div>
+                </div>
+                <div className="w-3/4 h-5 bg-gray-200 rounded mb-1.5"></div>
+                <div className="w-full h-3 bg-gray-100 rounded"></div>
+                <div className="w-5/6 h-3 bg-gray-100 rounded"></div>
+                <div className="mt-2 text-xs font-medium text-gray-400 w-24 h-4 bg-gray-100 rounded"></div>
+              </div>
+            ))}
+          </div>
         ) : filteredIssues.length === 0 ? (
           <div className="text-center py-10 text-gray-400 flex flex-col items-center">
             <div className="bg-gray-100 p-4 rounded-full mb-3">
@@ -196,29 +304,33 @@ export const IssueTracker: React.FC = () => {
           filteredIssues.map((issue) => (
             <div
               key={issue.id}
-              className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 active:scale-[0.99] transition transform"
+              className="bg-white p-5 rounded-2xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] border border-gray-100 active:scale-[0.99] transition transform hover:shadow-md"
             >
-              <div className="flex justify-between items-start mb-2">
+              <div className="flex justify-between items-start mb-3">
                 <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${getSeverityColor(issue.severity)}`}
+                  className={`text-[11px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wide ${getSeverityColor(issue.severity)}`}
                 >
                   {issue.severity}
                 </span>
                 <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${getStatusColor(issue.status)}`}
+                  className={`text-[11px] px-2.5 py-1 rounded-md font-bold uppercase tracking-wide ${getStatusColor(issue.status)}`}
                 >
                   {issue.status}
                 </span>
               </div>
-              <h3 className="font-bold text-gray-800 mb-1">{issue.title}</h3>
-              <p className="text-sm text-gray-500 line-clamp-2">{issue.description}</p>
-              <div className="mt-3 flex justify-between items-end border-t border-gray-50 pt-3">
-                <div className="text-xs text-gray-400">
+              <h3 className="font-bold text-gray-900 mb-1.5 text-base leading-tight">
+                {issue.title}
+              </h3>
+              <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">
+                {issue.description}
+              </p>
+              <div className="mt-4 flex justify-between items-center border-t border-gray-50 pt-3">
+                <div className="text-xs font-medium text-gray-400">
                   {new Date(issue.updatedAt).toLocaleDateString()}
                 </div>
                 {issue.syncStatus === 'PENDING_SYNC' && (
-                  <span className="text-[10px] text-orange-500 font-medium flex items-center gap-1">
-                    <WifiOff size={10} /> Pendiente
+                  <span className="text-[11px] text-orange-600 bg-orange-50 px-2 py-1 rounded-md font-bold flex items-center gap-1.5">
+                    <WifiOff size={12} /> PENDIENTE
                   </span>
                 )}
               </div>
@@ -229,25 +341,27 @@ export const IssueTracker: React.FC = () => {
 
       {/* Create Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl animate-in slide-in-from-bottom duration-300">
+        <div className="fixed inset-0 bg-gray-900/40 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 sm:p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-800">Nueva Incidencia</h2>
+              <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">
+                Nueva Incidencia
+              </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 hover:bg-gray-100 rounded-full"
+                className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
               >
                 <X size={24} className="text-gray-500" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">Título</label>
                 <input
                   autoFocus
                   type="text"
-                  className="w-full p-3 bg-gray-50 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full p-3.5 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-black focus:bg-white outline-none transition-all placeholder:text-gray-400 text-gray-900 font-medium"
                   placeholder="¿Qué pasó / Qué se necesita?"
                   value={newIssue.title}
                   onChange={(e) => setNewIssue({ ...newIssue, title: e.target.value })}
@@ -256,11 +370,16 @@ export const IssueTracker: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Prioridad</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Prioridad</label>
                   <select
-                    className="w-full p-3 bg-gray-50 rounded-lg border border-gray-200 outline-none"
+                    className="w-full p-3.5 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-black focus:bg-white outline-none transition-all text-gray-900 font-medium appearance-none"
                     value={newIssue.severity}
-                    onChange={(e) => setNewIssue({ ...newIssue, severity: e.target.value as any })}
+                    onChange={(e) =>
+                      setNewIssue({
+                        ...newIssue,
+                        severity: e.target.value as IssueData['severity'],
+                      })
+                    }
                   >
                     <option value="LOW">Baja</option>
                     <option value="MEDIUM">Media</option>
@@ -269,9 +388,9 @@ export const IssueTracker: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Estado</label>
                   <select
-                    className="w-full p-3 bg-gray-50 rounded-lg border border-gray-200 outline-none"
+                    className="w-full p-3.5 bg-gray-100 rounded-xl border border-gray-200 outline-none text-gray-500 font-medium appearance-none"
                     value={newIssue.status}
                     disabled
                   >
@@ -281,10 +400,10 @@ export const IssueTracker: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">Descripción</label>
                 <textarea
                   rows={3}
-                  className="w-full p-3 bg-gray-50 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                  className="w-full p-3.5 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-black focus:bg-white outline-none transition-all resize-none placeholder:text-gray-400 text-gray-900 font-medium"
                   placeholder="Detalles adicionales..."
                   value={newIssue.description}
                   onChange={(e) => setNewIssue({ ...newIssue, description: e.target.value })}
@@ -293,9 +412,16 @@ export const IssueTracker: React.FC = () => {
 
               <button
                 onClick={handleCreateIssue}
-                className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-lg hover:bg-blue-700 active:scale-[0.98] transition shadow-lg shadow-blue-200 mt-2"
+                disabled={isSubmitting || !newIssue.title}
+                className="w-full bg-black text-white py-4 rounded-xl font-bold text-base hover:bg-gray-800 disabled:opacity-50 disabled:bg-gray-400 active:scale-[0.98] transition-all shadow-lg mt-4 flex items-center justify-center gap-2"
               >
-                Crear Incidencia
+                {isSubmitting ? (
+                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                ) : (
+                  <>
+                    <Save size={18} /> Crear Incidencia
+                  </>
+                )}
               </button>
             </div>
           </div>

@@ -10,4 +10,4 @@ import { LedgerService } from './ledger.service';
   providers: [BudgetsService, LedgerService],
   exports: [BudgetsService, LedgerService],
 })
-export class BudgetsModule { }
+export class BudgetsModule {}

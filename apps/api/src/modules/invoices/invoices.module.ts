@@ -9,4 +9,4 @@ import { BudgetsModule } from '../budgets/budgets.module';
   controllers: [InvoicesController],
   providers: [InvoicesService],
 })
-export class InvoicesModule { }
+export class InvoicesModule {}

@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { CreateBudgetDto } from './dto/create-budget.dto';
 import { UpdateBudgetDto } from './dto/update-budget.dto';
 import { CreateBudgetLineDto } from './dto/create-budget-line.dto';
@@ -11,7 +16,7 @@ export class BudgetsService {
   constructor(
     private prisma: PrismaService,
     private ledger: LedgerService,
-  ) { }
+  ) {}
 
   async create(createBudgetDto: CreateBudgetDto, tenantId: string) {
     console.log('Creating Budget:', createBudgetDto, 'Tenant:', tenantId);
@@ -43,7 +48,9 @@ export class BudgetsService {
       return budget;
     } catch (error) {
       console.error('Error creating budget:', error);
-      throw new InternalServerErrorException(`Failed to create budget: ${error instanceof Error ? error.message : String(error)}`);
+      throw new InternalServerErrorException(
+        `Failed to create budget: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -66,7 +73,7 @@ export class BudgetsService {
       include: {
         project: true,
         budgetLines: {
-          include: { wbsActivity: true }
+          include: { wbsActivity: true },
         },
       },
     });
@@ -76,15 +83,25 @@ export class BudgetsService {
     }
 
     // Enrich with Real-time Ledger Data
-    const enrichedLines = await Promise.all(budget.budgetLines.map(async (line) => {
-      const costs = await this.ledger.getAggregatedCosts(budget.projectId, line.wbsActivityId!, line.costType);
-      return {
-        ...line,
-        amountCommitted: costs.committed,
-        amountExecuted: costs.actual,
-        variance: (line.budgetBase + line.budgetCO + line.budgetTransfer) - (costs.committed + costs.actual) // Budget - Actual/Committed? Or (Budget - Actual). Usually Variance = Budget - (Committed + Actual) is "Remaining Budget"
-      };
-    }));
+    const enrichedLines = await Promise.all(
+      budget.budgetLines.map(async (line) => {
+        const costs = await this.ledger.getAggregatedCosts(
+          budget.projectId,
+          line.wbsActivityId!,
+          line.costType,
+        );
+        return {
+          ...line,
+          amountCommitted: costs.committed,
+          amountExecuted: costs.actual,
+          variance:
+            line.budgetBase +
+            line.budgetCO +
+            line.budgetTransfer -
+            (costs.committed + costs.actual), // Budget - Actual/Committed? Or (Budget - Actual). Usually Variance = Budget - (Committed + Actual) is "Remaining Budget"
+        };
+      }),
+    );
 
     return { ...budget, budgetLines: enrichedLines };
   }
@@ -107,13 +124,26 @@ export class BudgetsService {
   }
 
   async getSummary(id: string, tenantId: string) {
-    const budget = await this.findOne(id, tenantId); // uses enriched findOne now? 
+    const budget = await this.findOne(id, tenantId); // uses enriched findOne now?
     // Wait, typical findOne call above returns object with enriched lines.
 
     // Calculate totals from enriched lines
-    const totalPlanned = budget.budgetLines.reduce((sum: number, line: any) => sum + (line.budgetBase || 0) + (line.budgetCO || 0) + (line.budgetTransfer || 0), 0);
-    const totalCommitted = budget.budgetLines.reduce((sum: number, line: any) => sum + (line.amountCommitted || 0), 0);
-    const totalExecuted = budget.budgetLines.reduce((sum: number, line: any) => sum + (line.amountExecuted || 0), 0);
+    const totalPlanned = budget.budgetLines.reduce(
+      (sum: number, line: any) =>
+        sum +
+        (line.budgetBase || 0) +
+        (line.budgetCO || 0) +
+        (line.budgetTransfer || 0),
+      0,
+    );
+    const totalCommitted = budget.budgetLines.reduce(
+      (sum: number, line: any) => sum + (line.amountCommitted || 0),
+      0,
+    );
+    const totalExecuted = budget.budgetLines.reduce(
+      (sum: number, line: any) => sum + (line.amountExecuted || 0),
+      0,
+    );
 
     return {
       ...budget,
@@ -122,7 +152,7 @@ export class BudgetsService {
         totalCommitted,
         totalExecuted,
         variance: totalPlanned - (totalCommitted + totalExecuted),
-      }
+      },
     };
   }
 
@@ -131,7 +161,9 @@ export class BudgetsService {
   async createLine(budgetId: string, dto: CreateBudgetLineDto) {
     // Validation? We assume user has access if they can reach here (Controller should verify)
     // But we should verify budget exists
-    const budget = await this.prisma.budget.findUnique({ where: { id: budgetId } });
+    const budget = await this.prisma.budget.findUnique({
+      where: { id: budgetId },
+    });
     if (!budget) throw new NotFoundException('Budget not found');
 
     return this.prisma.budgetLine.create({
@@ -142,7 +174,7 @@ export class BudgetsService {
         code: dto.code || '',
         name: dto.name,
         budgetBase: dto.budgetBase || 0,
-      }
+      },
     });
   }
 

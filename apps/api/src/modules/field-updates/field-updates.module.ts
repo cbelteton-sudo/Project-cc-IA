@@ -4,8 +4,8 @@ import { FieldUpdatesController } from './field-updates.controller';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Module({
-    controllers: [FieldUpdatesController],
-    providers: [FieldUpdatesService, PrismaService],
-    exports: [FieldUpdatesService],
+  controllers: [FieldUpdatesController],
+  providers: [FieldUpdatesService, PrismaService],
+  exports: [FieldUpdatesService],
 })
-export class FieldUpdatesModule { }
+export class FieldUpdatesModule {}

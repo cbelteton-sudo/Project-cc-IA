@@ -144,7 +144,9 @@ export const usePunchList = (projectId: string) => {
       }
 
       if (isOnline) {
-        const { data } = await api.patch(`/issues/${id}`, updates);
+        // Pass projectId so ProjectAuthGuard can validate correctly
+        const activeProjectId = updates.projectId || item?.projectId || projectId;
+        const { data } = await api.patch(`/issues/${id}?projectId=${activeProjectId}`, updates);
         return data;
       } else {
         return { ...item, ...updates };
@@ -173,7 +175,9 @@ export const usePunchList = (projectId: string) => {
   const createCommentMutation = useMutation({
     mutationFn: async ({ issueId, text }: { issueId: string; text: string }) => {
       if (isOnline) {
-        const { data } = await api.post(`/issues/${issueId}/comments`, { text });
+        const { data } = await api.post(`/issues/${issueId}/comments?projectId=${projectId}`, {
+          text,
+        });
         return data;
       } else {
         toast.error('Comentarios solo online por ahora');

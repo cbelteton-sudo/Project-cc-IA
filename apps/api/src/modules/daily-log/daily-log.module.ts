@@ -4,7 +4,7 @@ import { DailyLogController } from './daily-log.controller';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Module({
-    controllers: [DailyLogController],
-    providers: [DailyLogService, PrismaService],
+  controllers: [DailyLogController],
+  providers: [DailyLogService, PrismaService],
 })
-export class DailyLogModule { }
+export class DailyLogModule {}

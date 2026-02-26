@@ -4,13 +4,24 @@ import { useNetwork } from '../../context/NetworkContext';
 import { SyncQueue } from '../../services/sync-queue';
 import { saveDraft } from '../../services/db';
 import { api } from '../../lib/api';
-import { ArrowLeft, Save, Upload, Camera, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Save, Camera, AlertTriangle } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ActivityLogTimeline } from './ActivityLogTimeline';
 import { PhotoLightbox } from './PhotoLightbox';
+import { toast } from 'sonner';
 
 // API_URL handled by api instance
+
+export interface UpdateActivity {
+  id: string;
+  name: string;
+  code: string;
+  projectId: string;
+  measurementType?: string;
+  percent?: number;
+  unit?: string;
+}
 
 export const ActivityUpdate: React.FC = () => {
   const { id } = useParams();
@@ -18,7 +29,7 @@ export const ActivityUpdate: React.FC = () => {
   const { isOnline } = useNetwork();
 
   // State
-  const [activity, setActivity] = useState<any>(null);
+  const [activity, setActivity] = useState<UpdateActivity | null>(null);
   const [qtyDone, setQtyDone] = useState<number>(0);
   const [manualPercent, setManualPercent] = useState<number>(0);
   const [notes, setNotes] = useState('');
@@ -28,6 +39,7 @@ export const ActivityUpdate: React.FC = () => {
 
   // Log State
   const [activeTab, setActiveTab] = useState<'UPDATE' | 'LOG'>('UPDATE');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [logItems, setLogItems] = useState<any[]>([]);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState('');
@@ -93,12 +105,12 @@ export const ActivityUpdate: React.FC = () => {
       // Logic: If user hits "Submit" but uses SyncQueue due to offline,
       // we add to SyncQueue.
       if (status === 'SUBMITTED') {
-        await SyncQueue.add('/field-updates/draft', 'POST', updateData); // "draft" endpoint handles offline packets
+        await SyncQueue.add('/field/reports/sync-draft', 'POST', updateData); // "draft" endpoint handles offline packets
       }
     } else {
       // Online Submit
       try {
-        await api.post(`/field-updates/draft`, updateData);
+        await api.post(`/field/reports/sync-draft`, updateData);
         // Also upload photos
         if (photos.length > 0) {
           // Uploads are parallel usually
@@ -112,11 +124,12 @@ export const ActivityUpdate: React.FC = () => {
         }
       } catch (e) {
         console.error('Submit failed', e);
-        alert('Failed to submit. Saved to offline queue.');
-        await SyncQueue.add('/field-updates/draft', 'POST', updateData);
+        toast.error('Error al enviar. Guardado en cola offline.');
+        await SyncQueue.add('/field/reports/sync-draft', 'POST', updateData);
       }
     }
 
+    toast.success('Actualización guardada con éxito.');
     navigate(-1);
   };
 
@@ -131,107 +144,133 @@ export const ActivityUpdate: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white px-4 pt-4 pb-0 shadow-sm z-10 flex flex-col">
-        <div className="flex items-center mb-4">
-          <button onClick={() => navigate(-1)} className="mr-3">
-            <ArrowLeft size={24} className="text-gray-600" />
+      <div className="bg-white px-5 py-4 pb-0 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border-b border-gray-100 z-10 flex flex-col">
+        <div className="flex items-center mb-4 gap-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors shrink-0 group"
+          >
+            <ArrowLeft
+              size={22}
+              className="text-gray-500 group-hover:text-black transition-colors"
+            />
           </button>
-          <div className="overflow-hidden">
-            <h1 className="font-bold text-gray-800 truncate">{activity.name}</h1>
-            <span className="text-xs text-gray-500">{activity.code}</span>
+          <div className="overflow-hidden min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 truncate tracking-tight">
+              {activity.name}
+            </h1>
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+              {activity.code}
+            </span>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex space-x-6 border-b border-gray-200">
+        <div className="flex space-x-8 border-b border-gray-200">
           <button
             onClick={() => setActiveTab('UPDATE')}
-            className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'UPDATE' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
+            className={`pb-3 pt-2 text-sm font-bold relative transition-colors ${activeTab === 'UPDATE' ? 'text-black' : 'text-gray-400 hover:text-gray-700'}`}
           >
-            Update
+            Actualizar
+            {activeTab === 'UPDATE' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black rounded-t-full shadow-[0_-2px_4px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-1 fade-in duration-300" />
+            )}
           </button>
           <button
             onClick={() => setActiveTab('LOG')}
-            className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'LOG' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
+            className={`pb-3 pt-2 text-sm font-bold relative transition-colors ${activeTab === 'LOG' ? 'text-black' : 'text-gray-400 hover:text-gray-700'}`}
           >
-            History
+            Historial
+            {activeTab === 'LOG' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black rounded-t-full shadow-[0_-2px_4px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-1 fade-in duration-300" />
+            )}
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-4 space-y-6">
+      <div className="flex-1 overflow-auto p-4 sm:p-6 space-y-6 max-w-3xl mx-auto w-full">
         {activeTab === 'UPDATE' ? (
           <>
             {/* Progress Input */}
-            <div className="bg-white p-4 rounded-lg shadow-sm">
-              <h2 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">
-                Progress
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h2 className="text-sm font-bold text-gray-500 mb-5 uppercase tracking-wider">
+                Progreso
               </h2>
 
               {activity.measurementType === 'QUANTITY' && (
-                <div className="mb-4">
-                  <label className="block text-sm text-gray-600 mb-1">Quantity Done (Today)</label>
-                  <div className="flex items-center">
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Cantidad Ejecutada (Hoy)
+                  </label>
+                  <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-200 focus-within:bg-white focus-within:border-black focus-within:ring-1 focus-within:ring-black transition-all">
                     <input
                       type="number"
-                      className="border p-2 rounded w-full text-lg"
+                      className="bg-transparent p-3 outline-none w-full text-lg font-bold text-gray-900"
                       value={qtyDone}
                       onChange={(e) => setQtyDone(Number(e.target.value))}
                     />
-                    <span className="ml-2 font-medium text-gray-500">
-                      {activity.unit || 'Units'}
+                    <span className="pr-4 font-bold text-gray-400 uppercase tracking-wider text-xs">
+                      {activity.unit || 'UNIDADES'}
                     </span>
                   </div>
                 </div>
               )}
 
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Total % Complete</label>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={manualPercent}
-                    onChange={(e) => setManualPercent(Number(e.target.value))}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <input
-                    type="number"
-                    className="border p-2 rounded w-16 text-center"
-                    value={manualPercent}
-                    onChange={(e) => setManualPercent(Number(e.target.value))}
-                  />
-                  <span className="text-gray-500">%</span>
+                <div className="flex justify-between items-center mb-4">
+                  <label className="text-sm font-bold text-gray-700">Porcentaje de Avance</label>
+                  <span className="text-xl font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">
+                    {manualPercent}%
+                  </span>
                 </div>
+
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={manualPercent}
+                  onChange={(e) => setManualPercent(Number(e.target.value))}
+                  style={{
+                    background: `linear-gradient(to right, #2563eb ${manualPercent}%, #e5e7eb ${manualPercent}%)`,
+                  }}
+                  className="w-full h-4 bg-gray-200 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-blue-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md transition-all shadow-inner mb-2"
+                />
+
                 {/* Suggestion Placeholder */}
-                <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                  Attempted Suggested: {manualPercent}% (Offline estimate)
+                <div className="mt-4 text-[11px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50/50 p-2.5 rounded-lg border border-blue-100 flex items-center justify-between">
+                  <span>Sugerencia Offline:</span>
+                  <span className="bg-white px-2 py-0.5 rounded shadow-sm">{manualPercent}%</span>
                 </div>
               </div>
             </div>
 
             {/* Evidence */}
-            <div className="bg-white p-4 rounded-lg shadow-sm">
-              <h2 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">
-                Evidence
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h2 className="text-sm font-bold text-gray-500 mb-4 uppercase tracking-wider flex items-center gap-2">
+                Evidencia
               </h2>
-              <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-1">
                 {photos.map((p, i) => (
                   <div
                     key={i}
-                    className="aspect-square bg-gray-100 rounded overflow-hidden relative"
+                    className="aspect-[4/3] relative rounded-xl overflow-hidden group shadow-sm ring-1 ring-gray-100"
                   >
                     <img
                       src={URL.createObjectURL(p)}
                       alt="preview"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
                     />
                   </div>
                 ))}
-                <label className="aspect-square bg-gray-50 border-2 border-dashed border-gray-300 rounded flex flex-col items-center justify-center cursor-pointer active:bg-gray-100">
-                  <Camera size={24} className="text-gray-400" />
-                  <span className="text-xs text-gray-500 mt-1">Add</span>
+                <label className="aspect-[4/3] flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-blue-50/50 hover:border-blue-400 hover:scale-[1.01] active:scale-[0.98] transition-all text-gray-400 bg-gray-50/50 group">
+                  <Camera
+                    size={32}
+                    className="mb-2 opacity-50 group-hover:text-blue-500 group-hover:opacity-100 transition-all"
+                  />
+                  <span className="text-xs font-bold uppercase tracking-wider group-hover:text-blue-600 transition-colors">
+                    Agregar Foto
+                  </span>
                   <input
                     type="file"
                     multiple
@@ -244,31 +283,50 @@ export const ActivityUpdate: React.FC = () => {
             </div>
 
             {/* Notes & Risk */}
-            <div className="bg-white p-4 rounded-lg shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                  Notes
-                </h2>
-                <label className="flex items-center space-x-2">
-                  <span
-                    className={`text-sm font-medium ${isRisk ? 'text-red-600' : 'text-gray-500'}`}
-                  >
-                    At Risk
-                  </span>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Notas</h2>
+              </div>
+
+              <div className="mb-4">
+                <label
+                  className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all cursor-pointer ${isRisk ? 'bg-red-50 border-red-500 ring-2 ring-red-500/20' : 'bg-gray-50 border-gray-200 hover:border-gray-300 hover:bg-gray-100'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`p-2 rounded-lg ${isRisk ? 'bg-red-100 text-red-600' : 'bg-gray-200 text-gray-500'}`}
+                    >
+                      <AlertTriangle size={20} />
+                    </span>
+                    <div>
+                      <span
+                        className={`font-bold block ${isRisk ? 'text-red-900' : 'text-gray-700'}`}
+                      >
+                        Reportar Riesgo/Bloqueo
+                      </span>
+                      <span
+                        className={`text-[11px] font-medium block ${isRisk ? 'text-red-700' : 'text-gray-500'}`}
+                      >
+                        Marca si esta actividad requiere atención urgente
+                      </span>
+                    </div>
+                  </div>
                   <input
                     type="checkbox"
                     checked={isRisk}
                     onChange={(e) => setIsRisk(e.target.checked)}
-                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                    className="h-5 w-5 text-red-600 focus:ring-red-500 border-gray-300 rounded cursor-pointer"
                   />
                 </label>
               </div>
 
               <textarea
-                className={`w-full border rounded p-3 text-sm focus:ring-2 focus:outline-none ${isRisk ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:ring-blue-100'}`}
-                rows={3}
+                className={`w-full p-4 bg-gray-50 border-0 rounded-xl text-base focus:ring-2 outline-none transition-all text-gray-700 leading-relaxed ${isRisk ? 'focus:ring-red-200 focus:bg-red-50/30 ring-1 ring-red-200 placeholder:text-red-300' : 'focus:ring-blue-100 focus:bg-white placeholder:text-gray-400'}`}
+                rows={4}
                 placeholder={
-                  isRisk ? 'Explain the risk/blocker (Required)...' : 'Any observations...'
+                  isRisk
+                    ? 'Explica el motivo del bloqueo o riesgo (Requerido)...'
+                    : 'Escribe tus observaciones o notas del día...'
                 }
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -286,20 +344,22 @@ export const ActivityUpdate: React.FC = () => {
 
       {/* Footer - Only show in UPDATE mode */}
       {activeTab === 'UPDATE' && (
-        <div className="bg-white p-4 border-t border-gray-200 flex space-x-3">
-          <button
-            onClick={() => handleSave('DRAFT')}
-            className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-medium active:bg-gray-200 transition-colors"
-          >
-            Save Draft
-          </button>
-          <button
-            onClick={() => handleSave('SUBMITTED')}
-            className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium active:bg-blue-700 shadow-md transition-colors flex justify-center items-center"
-          >
-            <Save size={18} className="mr-2" />
-            Submit Update
-          </button>
+        <div className="p-5 bg-white border-t border-gray-100 z-30 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] flex-none">
+          <div className="max-w-3xl mx-auto flex gap-3">
+            <button
+              onClick={() => handleSave('DRAFT')}
+              className="px-6 py-4 bg-gray-100 text-gray-700 rounded-xl font-bold active:scale-[0.98] hover:bg-gray-200 transition-all shadow-sm"
+            >
+              Guardar Borrador
+            </button>
+            <button
+              onClick={() => handleSave('SUBMITTED')}
+              className="flex-1 bg-black text-white py-4 rounded-xl font-bold active:scale-[0.98] shadow-xl shadow-gray-300 hover:bg-gray-800 transition-all flex justify-center items-center gap-2"
+            >
+              <Save size={18} />
+              Enviar Actualización
+            </button>
+          </div>
         </div>
       )}
 

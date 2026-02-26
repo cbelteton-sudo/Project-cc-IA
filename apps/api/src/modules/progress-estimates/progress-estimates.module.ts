@@ -8,4 +8,4 @@ import { PrismaModule } from '../../prisma/prisma.module';
   controllers: [ProgressEstimatesController],
   providers: [ProgressEstimatesService],
 })
-export class ProgressEstimatesModule { }
+export class ProgressEstimatesModule {}

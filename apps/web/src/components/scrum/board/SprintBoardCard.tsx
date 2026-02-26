@@ -125,8 +125,22 @@ export const SprintBoardCardInner = ({
       })()}
 
       <div className="mt-2 pt-2 flex items-center justify-between border-t border-gray-50">
-        {/* Action Buttons for Progress/Log */}
+        {/* Action Buttons for Progress/Log/Transitions */}
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          {columnId === 'TODO' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveUpdated(item.id, 'IN_PROGRESS');
+              }}
+              className="p-1.5 hover:bg-blue-50 text-gray-400 hover:text-blue-600 rounded transition-colors"
+              title="Mover a En Progreso"
+            >
+              <Mountain size={14} />{' '}
+              {/* Reusing Mountain as an action or we can just use text, but Mountain works as metaphor */}
+            </button>
+          )}
+
           {(columnId === 'IN_PROGRESS' || columnId === 'IN_REVIEW') && (
             <>
               <button
@@ -150,6 +164,32 @@ export const SprintBoardCardInner = ({
                 <FileText size={14} />
               </button>
             </>
+          )}
+
+          {columnId === 'IN_PROGRESS' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveUpdated(item.id, 'IN_REVIEW');
+              }}
+              className="p-1.5 hover:bg-yellow-50 text-gray-400 hover:text-yellow-600 rounded transition-colors"
+              title="Solicitar Revisión"
+            >
+              <CheckSquare size={14} />
+            </button>
+          )}
+
+          {columnId === 'IN_REVIEW' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveUpdated(item.id, 'DONE');
+              }}
+              className="p-1.5 hover:bg-green-50 text-gray-400 hover:text-green-600 rounded transition-colors"
+              title="Aprobar (Terminado)"
+            >
+              <CheckSquare size={14} className="text-green-500" />
+            </button>
           )}
         </div>
 

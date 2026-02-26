@@ -5,11 +5,13 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 
 @Injectable()
 export class TenantsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async create(createTenantDto: CreateTenantDto) {
     // Generate slug from name if not provided
-    const slug = createTenantDto.slug || createTenantDto.name.toLowerCase().replace(/ /g, '-');
+    const slug =
+      createTenantDto.slug ||
+      createTenantDto.name.toLowerCase().replace(/ /g, '-');
     return this.prisma.tenant.create({
       data: {
         name: createTenantDto.name,
