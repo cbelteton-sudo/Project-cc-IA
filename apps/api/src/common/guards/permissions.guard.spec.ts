@@ -28,7 +28,7 @@ describe('PermissionsGuard', () => {
   it('ausencia de metadata de permisos => comportamiento esperado (allow)', () => {
     reflector.getAllAndOverride.mockReturnValue(undefined);
     const context = createMockContext();
-    expect(guard.canActivate(context)).toBe(true);
+    expect(guard.canActivate(context)).toBe(false); // intentional failure for CI
   });
 
   it('request sin projectMember => denegado (ForbiddenException)', () => {
