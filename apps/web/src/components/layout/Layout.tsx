@@ -162,8 +162,8 @@ export const Layout = () => {
             )}
           </div>
           <button
-            onClick={() => {
-              logout();
+            onClick={async () => {
+              await logout();
               window.location.href = '/login';
             }}
             className={`w-full bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 hover:text-red-600 text-sm py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center gap-2 ${collapsed ? 'px-0' : ''}`}

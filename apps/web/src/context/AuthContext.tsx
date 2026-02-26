@@ -82,8 +82,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (e: any) {
         console.error('AuthContext: Falló checkAuth', e);
-        if (e.response?.data?.message === 'No Refresh Token') {
-          console.log('AuthContext: No previous session found (expected for new visitors)');
+        if (e.response?.status === 401) {
+          console.log('AuthContext: No previous session found or session expired (401)');
         } else {
           toast.error('Error al restaurar sesión', {
             description: `RAW ERROR: ${JSON.stringify(e.response?.data || e.message)}`,
