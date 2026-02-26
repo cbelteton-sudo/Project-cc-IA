@@ -22,5 +22,3 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Run RBAC Unit Tests
         run: pnpm --filter api exec jest src/common/guards/permissions.guard.spec.ts
-        env:
-          NODE_OPTIONS: --experimental-vm-modules
