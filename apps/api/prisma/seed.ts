@@ -12,9 +12,22 @@ async function main() {
   await prisma.activityDependency.deleteMany();
   await prisma.projectActivity.deleteMany();
   await prisma.projectMilestone.deleteMany();
+  await prisma.contractorProjectAssignment.deleteMany();
   await prisma.contractor.deleteMany();
 
   // Clean Projects if needed to avoid dupes (optional, but safer for demo)
+  await prisma.fieldDailyReport.deleteMany({
+    where: { project: { code: 'T-MAWI' } },
+  });
+  await prisma.projectMember.deleteMany({
+    where: { project: { code: 'T-MAWI' } },
+  });
+  await prisma.backlogItem.deleteMany({
+    where: { project: { code: 'T-MAWI' } },
+  });
+  await prisma.sprint.deleteMany({
+    where: { project: { code: 'T-MAWI' } },
+  });
   await prisma.project.deleteMany({ where: { code: 'T-MAWI' } });
 
   console.log('🧹 Cleaned existing Phase 9 data');
