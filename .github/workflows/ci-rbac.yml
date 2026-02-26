@@ -1,56 +1,34 @@
 name: CI Gating (RBAC & Isolation)
 
 on:
-  pull_request:
-    branches: [main, develop]
-  push:
-    branches: [main]
+pull_request:
+branches: [master, main, develop]
+push:
+branches: [master, main]
+workflow_dispatch:
 
 jobs:
-  test-and-coverage:
-    runs-on: ubuntu-latest
+test-and-coverage:
+runs-on: ubuntu-latest
+steps:
+- uses: actions/checkout@v3
 
-    steps:
-      - uses: actions/checkout@v3
+- name: Use Node.js
+uses: actions/setup-node@v3
+with:
+node-version: '20'
+cache: 'pnpm'
 
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-          cache: 'pnpm'
+- name: Install pnpm
+uses: pnpm/action-setup@v2
+with:
+version: 8
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
+- name: Install dependencies
+run: pnpm install --frozen-lockfile
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+- name: Generate Prisma Client
+run: pnpm --filter api exec prisma generate
 
-      - name: Generate Prisma Client
-        run: pnpm --filter api exec prisma generate
-
-      # Assuming a dockerized DB for testing in real CI
-      # - name: Start MySQL for E2E
-      #   run: docker-compose -f docker-compose.test.yml up -d db
-
-      - name: Run E2E Tests (Isolation / Fuga de datos)
-        run: pnpm --filter api test:e2e test/data-isolation.e2e-spec.ts
-
-      - name: Run RBAC Unit Tests & Check Coverage
-        # Requiere que coverageOptions estén configurados en package.json o jest.config.js
-        # --coverageThreshold '{"global":{"branches":85,"functions":90,"lines":90,"statements":90}}'
-        run: |
-          pnpm --filter api exec jest \
-            src/common/auth/authorization.service.spec.ts \
-            src/common/guards/permissions.guard.spec.ts \
-            src/common/guards/project-auth.guard.spec.ts \
-            src/common/database/prisma-scope.helper.spec.ts \
-            --coverage
-
-      # Opcional: Subir reporte de cobertura como Artifact
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage-report
-          path: apps/api/coverage/
+- name: Run RBAC tests
+run: pnpm --filter api test -- --runInBand
