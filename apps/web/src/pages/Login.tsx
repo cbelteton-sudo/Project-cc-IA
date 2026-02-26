@@ -65,11 +65,24 @@ export const Login = () => {
     } catch (err: any) {
       console.error('Login Error:', err);
       if (err.response) {
-        setError(`Server Error: ${err.response.status} - ${JSON.stringify(err.response.data)}`);
+        const status = err.response.status;
+        console.error(`Technical Error (${status}):`, err.response.data);
+
+        if (status === 401) {
+          setError('Correo o contraseña incorrectos.');
+        } else if (status === 403) {
+          setError('No tienes acceso para iniciar sesión en esta plataforma.');
+        } else if (status >= 500) {
+          setError(
+            'Ocurrió un problema en nuestros servidores. Por favor, intenta de nuevo más tarde.',
+          );
+        } else {
+          setError(`Error no reconocido (${status}). Contáctenos si persiste.`);
+        }
       } else if (err.request) {
-        setError('Network Error: No response from server. Check if API is running.');
+        setError('No hay respuesta del servidor. Verifica tu conexión o intenta más tarde.');
       } else {
-        setError(`Error: ${err.message}`);
+        setError('Ocurrió un error interno al intentar iniciar sesión.');
       }
     }
   };
