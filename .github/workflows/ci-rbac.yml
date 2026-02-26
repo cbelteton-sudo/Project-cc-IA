@@ -2,33 +2,41 @@ name: CI Gating (RBAC & Isolation)
 
 on:
 pull_request:
-branches: [master, main, develop]
+branches:
+- master
+- main
+- develop
 push:
-branches: [master, main]
+branches:
+- master
+- main
 workflow_dispatch:
 
 jobs:
 test-and-coverage:
 runs-on: ubuntu-latest
+
 steps:
-- uses: actions/checkout@v3
+- name: Checkout
+uses: actions/checkout@v4
 
-- name: Use Node.js
-uses: actions/setup-node@v3
-with:
-node-version: '20'
-cache: 'pnpm'
-
-- name: Install pnpm
-uses: pnpm/action-setup@v2
+- name: Setup pnpm
+uses: pnpm/action-setup@v4
 with:
 version: 8
 
+- name: Setup Node.js
+uses: actions/setup-node@v4
+with:
+node-version: 20
+cache: pnpm
+cache-dependency-path: pnpm-lock.yaml
+
 - name: Install dependencies
-run: pnpm install --frozen-lockfile
+run: pnpm install --no-frozen-lockfile
 
 - name: Generate Prisma Client
 run: pnpm --filter api exec prisma generate
 
-- name: Run RBAC tests
+- name: Run API tests
 run: pnpm --filter api test -- --runInBand
