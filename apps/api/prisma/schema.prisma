@@ -24,16 +24,24 @@ model Tenant {
   // Phase 9
   contractors           Contractor[]
   contractorAssignments ContractorProjectAssignment[]
+  contractorResources   ContractorResource[]
   projectActivities     ProjectActivity[]
   projectMilestones     ProjectMilestone[]
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String?
-  role      String   @default("USER") // ADMIN, PM, USER
+  id       String  @id @default(uuid())
+  username String? @unique
+  email    String? @unique // Nullable for FieldOperators
+  password String? // Nullable for invited users, but also used for FieldOperator hash
+  name     String?
+  phone    String?
+  role     String  @default("USER") // System Role: ADMIN, PM, USER (Legacy/Global)
+  status   String  @default("ACTIVE") // INVITED, ACTIVE, DISABLED
+
+  invitationToken   String?   @unique
+  invitationExpires DateTime?
+
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
   createdAt DateTime @default(now())
@@ -41,6 +49,10 @@ model User {
 
   contractorId String?
   contractor   Contractor? @relation(fields: [contractorId], references: [id])
+
+  // Phase 12: Project Specific Users
+  projectId       String?
+  projectSpecific Project? @relation("ProjectSpecificUsers", fields: [projectId], references: [id])
 
   auditLogs          AuditLog[]
   assignedActivities ProjectActivity[]
@@ -56,33 +68,53 @@ model User {
   // Budget Module
   approvedPOs PurchaseOrder[] @relation("POApprover")
   timesheets  Timesheet[]
+
+  // Phase 0 Relations
+  sessions           Session[]
+  projectMemberships ProjectMember[]
+  managedProjects    Project[]       @relation("ProjectManager")
 }
 
 model AuditLog {
-  id        String   @id @default(uuid())
-  action    String
-  entity    String
-  entityId  String
-  metadata  String   @default("{}") // JSON string
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  id         String  @id @default(uuid())
+  action     String
+  resource   String  @default("UNKNOWN") // Resource Type (e.g. PROJECT, TASK)
+  resourceId String? // ID of the resource
+
+  // Tenancy
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  // Context
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  // Data
+  metadata String  @default("{}") // JSON string (Legacy)
+  diff     String? // JSON string of changes {before, after}
+
+  ipAddress String?
+  userAgent String?
+
   createdAt DateTime @default(now())
 }
 
 // --- PROJECT MANAGEMENT ---
 
 model Project {
-  id        String   @id @default(uuid())
-  name      String
-  code      String?
-  status    String   @default("ACTIVE")
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  currency  String   @default("USD")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  code        String?
+  status      String   @default("ACTIVE")
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  currency    String   @default("GTQ")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   budgets          Budget[]
   purchaseOrders   PurchaseOrder[]
@@ -99,9 +131,21 @@ model Project {
   endDate      DateTime?
   globalBudget Float?
 
+  // New Fields for Create Project Form
+  clientName       String?
+  mainContractorId String?
+  mainContractor   Contractor? @relation("ProjectMainContractor", fields: [mainContractorId], references: [id])
+  projectManagerId String?
+  projectManager   User?       @relation("ProjectManager", fields: [projectManagerId], references: [id])
+
+  // Phase 0: Security & RBAC
+  members ProjectMember[]
+
   activities            ProjectActivity[]
   milestones            ProjectMilestone[]
   contractorAssignments ContractorProjectAssignment[]
+  projectContractors    Contractor[]                  @relation("ProjectContractors") // Phase 9.1: Project-scoped contractors
+  projectSpecificUsers  User[]                        @relation("ProjectSpecificUsers")
 
   // Phase 6: Field Management
   fieldUpdates         FieldUpdate[]
@@ -128,6 +172,12 @@ model Project {
   // Scrum Module
   enableScrum Boolean @default(false)
 
+  // Budget & Financials Module
+  enableBudget Boolean @default(false)
+
+  // Field Management Module
+  enableFieldManagement Boolean @default(false)
+
   managerName String? // Company managing the project
 
   // Scrum Relations
@@ -140,6 +190,7 @@ model Project {
   expenses   Expense[]
   costLedger CostLedger[]
   timesheets Timesheet[]
+  auditLogs  AuditLog[]
 }
 
 // ... (Budget model starts here)
@@ -496,7 +547,37 @@ model Contractor {
   issues             Issue[]
 
   // Scrum Relations
-  backlogItems BacklogItem[]
+  backlogItems   BacklogItem[]
+  projectMembers ProjectMember[]
+
+  // Phase 9 Extensions
+  mainProjects Project[] @relation("ProjectMainContractor")
+
+  // Phase 9.1: Project-scoped contractors
+  projectId String?
+  project   Project? @relation("ProjectContractors", fields: [projectId], references: [id])
+
+  // Phase 19: Contractor Resources
+  resources ContractorResource[]
+}
+
+model ContractorResource {
+  id           String     @id @default(uuid())
+  tenantId     String
+  tenant       Tenant     @relation(fields: [tenantId], references: [id])
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+
+  name  String
+  role  String  @default("OPERATOR") // CREW, OPERATOR, INSTALLER, SUPERVISOR
+  phone String?
+  email String?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([contractorId, email])
 }
 
 model ProjectActivity {
@@ -1094,4 +1175,41 @@ model TimesheetEntry {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// --- PHASE 0: SECURITY & RBAC ---
+
+model Session {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique // Hashed Refresh Token
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  ipAddress String?
+  userAgent String?
+  // Phase 1 Security Fields
+  revokedAt DateTime?
+}
+
+model ProjectMember {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  role String @default("VIEWER")
+  // ENUM: PROJECT_ADMIN, EXECUTIVE_VIEWER, PM, CONTRACTOR_LEAD, FIELD_OPERATOR
+
+  contractorId String?
+  contractor   Contractor? @relation(fields: [contractorId], references: [id])
+
+  status String @default("ACTIVE") // ACTIVE, DISABLED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, userId])
 }

@@ -1,11 +1,18 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrumMetricsTab } from './ScrumMetricsTab';
 import { BacklogView } from './BacklogView';
 import { SprintBoard } from './SprintBoard';
 import { SprintPlanning } from './SprintPlanning';
-import { LayoutDashboard, ListTodo, KanbanSquare, CalendarClock, LayoutGrid } from 'lucide-react';
+import {
+  LayoutDashboard,
+  ListTodo,
+  KanbanSquare,
+  CalendarClock,
+  LayoutGrid,
+  FileText,
+} from 'lucide-react';
 import { EisenhowerMatrix } from '../eisenhower/EisenhowerMatrix';
 
 export function ScrumDashboard({ projectId }: { projectId: string }) {
@@ -30,7 +37,7 @@ export function ScrumDashboard({ projectId }: { projectId: string }) {
         onValueChange={handleTabChange}
         className="flex-1 flex flex-col overflow-hidden w-full"
       >
-        <TabsList className="grid w-full grid-cols-5 lg:w-[750px] bg-white border border-gray-200 flex-shrink-0">
+        <TabsList className="grid w-full grid-cols-6 lg:w-[900px] bg-white border border-gray-200 flex-shrink-0">
           <TabsTrigger
             value="dashboard"
             className="data-[state=active]:bg-field-blue data-[state=active]:text-white data-[state=active]:shadow-sm"
@@ -66,6 +73,13 @@ export function ScrumDashboard({ projectId }: { projectId: string }) {
             <LayoutGrid className="w-4 h-4 mr-2" />
             Matriz
           </TabsTrigger>
+          <Link
+            to={`/projects/${projectId}/sprint-assignments`}
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-gray-100 hover:text-gray-900 border-l border-gray-100"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Reporte
+          </Link>
         </TabsList>
 
         <div className="flex-1 overflow-hidden mt-6">

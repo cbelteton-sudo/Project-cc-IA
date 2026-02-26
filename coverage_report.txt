@@ -1,0 +1,279 @@
+-----------------------------------------|---------|----------|---------|---------|-------------------
+File                                     | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-----------------------------------------|---------|----------|---------|---------|-------------------
+All files                                |    3.48 |      3.5 |    2.08 |     3.5 |                   
+ src                                     |       0 |        0 |       0 |       0 |                   
+  all-exceptions.filter.ts               |       0 |        0 |       0 |       0 | 2-34              
+  app.controller.ts                      |       0 |        0 |       0 |       0 | 1-10              
+  app.module.ts                          |       0 |      100 |     100 |       0 | 1-81              
+  app.service.ts                         |       0 |      100 |       0 |       0 | 1-6               
+  health.controller.ts                   |       0 |      100 |       0 |       0 | 1-7               
+  main.ts                                |       0 |        0 |       0 |       0 | 1-116             
+ src/common/auth                         |   91.89 |    84.61 |     100 |   90.62 |                   
+  authorization.service.ts               |      90 |    83.33 |     100 |      88 | 53,65-67          
+  permissions.matrix.ts                  |     100 |      100 |     100 |     100 |                   
+ src/common/constants                    |     100 |      100 |     100 |     100 |                   
+  permissions.ts                         |     100 |      100 |     100 |     100 |                   
+  roles.ts                               |     100 |      100 |     100 |     100 |                   
+ src/common/database                     |     100 |      100 |     100 |     100 |                   
+  prisma-scope.helper.ts                 |     100 |      100 |     100 |     100 |                   
+ src/common/decorators                   |   26.66 |        0 |       0 |      25 |                   
+  active-user.decorator.ts               |       0 |        0 |       0 |       0 | 1-7               
+  permissions.decorator.ts               |      80 |      100 |       0 |      75 | 6                 
+  roles.decorator.ts                     |       0 |      100 |       0 |       0 | 1-4               
+ src/common/enums                        |       0 |        0 |       0 |       0 |                   
+  project-role.enum.ts                   |       0 |        0 |       0 |       0 | 1-10              
+ src/common/guards                       |   54.32 |    42.18 |   55.55 |   54.79 |                   
+  permissions.guard.ts                   |     100 |    85.71 |     100 |     100 | 14,42             
+  project-auth.guard.ts                  |     100 |    88.23 |     100 |     100 | 11,34             
+  roles.guard.ts                         |       0 |        0 |       0 |       0 | 1-27              
+  unified-auth.guard.ts                  |       0 |        0 |       0 |       0 | 1-52              
+ src/common/interceptors                 |       0 |        0 |       0 |       0 |                   
+  audit.interceptor.ts                   |       0 |        0 |       0 |       0 | 1-33              
+ src/modules/activities                  |       0 |        0 |       0 |       0 |                   
+  activities.controller.ts               |       0 |        0 |       0 |       0 | 1-50              
+  activities.module.ts                   |       0 |      100 |     100 |       0 | 1-11              
+  activities.service.ts                  |       0 |        0 |       0 |       0 | 1-630             
+ src/modules/activities/dto              |       0 |      100 |     100 |       0 |                   
+  create-activity.dto.ts                 |       0 |      100 |     100 |       0 | 1-94              
+  reorder-activities.dto.ts              |       0 |      100 |     100 |       0 | 1-6               
+ src/modules/audit-logs                  |       0 |        0 |       0 |       0 |                   
+  audit-logs.module.ts                   |       0 |      100 |     100 |       0 | 1-10              
+  audit-logs.service.ts                  |       0 |        0 |       0 |       0 | 1-30              
+ src/modules/auth                        |       0 |        0 |       0 |       0 |                   
+  auth.controller.ts                     |       0 |        0 |       0 |       0 | 1-221             
+  auth.module.ts                         |       0 |        0 |     100 |       0 | 1-22              
+  auth.service.ts                        |       0 |        0 |       0 |       0 | 1-220             
+  jwt-auth.guard.ts                      |       0 |      100 |     100 |       0 | 1-5               
+  jwt.strategy.ts                        |       0 |        0 |       0 |       0 | 1-16              
+  project-auth.guard.ts                  |       0 |        0 |       0 |       0 | 1-63              
+ src/modules/budgets                     |       0 |        0 |       0 |       0 |                   
+  budgets.controller.ts                  |       0 |        0 |       0 |       0 | 1-80              
+  budgets.module.ts                      |       0 |      100 |     100 |       0 | 1-13              
+  budgets.service.ts                     |       0 |        0 |       0 |       0 | 1-157             
+  ledger.service.ts                      |       0 |        0 |       0 |       0 | 1-55              
+ src/modules/budgets/dto                 |       0 |      100 |     100 |       0 |                   
+  create-budget-line.dto.ts              |       0 |      100 |     100 |       0 | 1-27              
+  create-budget.dto.ts                   |       0 |      100 |     100 |       0 | 1-10              
+  update-budget-line.dto.ts              |       0 |      100 |     100 |       0 | 1-12              
+  update-budget.dto.ts                   |       0 |      100 |     100 |       0 | 1-4               
+ src/modules/budgets/entities            |       0 |      100 |     100 |       0 |                   
+  budget.entity.ts                       |       0 |      100 |     100 |       0 | 1                 
+ src/modules/change-orders               |       0 |        0 |       0 |       0 |                   
+  change-orders.controller.ts            |       0 |        0 |       0 |       0 | 1-66              
+  change-orders.module.ts                |       0 |      100 |     100 |       0 | 1-11              
+  change-orders.service.ts               |       0 |        0 |       0 |       0 | 1-191             
+ src/modules/change-orders/dto           |       0 |      100 |       0 |       0 |                   
+  create-change-order.dto.ts             |       0 |      100 |       0 |       0 | 1-33              
+  update-change-order.dto.ts             |       0 |      100 |     100 |       0 | 1-4               
+ src/modules/change-orders/entities      |       0 |      100 |     100 |       0 |                   
+  change-order.entity.ts                 |       0 |      100 |     100 |       0 | 1                 
+ src/modules/contractors                 |       0 |        0 |       0 |       0 |                   
+  contractor-portal.controller.ts        |       0 |        0 |       0 |       0 | 1-47              
+  contractors.controller.ts              |       0 |        0 |       0 |       0 | 1-135             
+  contractors.module.ts                  |       0 |      100 |     100 |       0 | 1-11              
+  contractors.service.ts                 |       0 |        0 |       0 |       0 | 1-250             
+ src/modules/contractors/dto             |       0 |      100 |     100 |       0 |                   
+  create-contractor-resource.dto.ts      |       0 |      100 |     100 |       0 | 1-23              
+  create-contractor.dto.ts               |       0 |      100 |     100 |       0 | 1-77              
+ src/modules/daily-log                   |       0 |        0 |       0 |       0 |                   
+  daily-log.controller.ts                |       0 |        0 |       0 |       0 | 1-28              
+  daily-log.module.ts                    |       0 |      100 |     100 |       0 | 1-10              
+  daily-log.service.ts                   |       0 |        0 |       0 |       0 | 1-87              
+ src/modules/field-reports               |       0 |        0 |       0 |       0 |                   
+  field-reports.controller.ts            |       0 |        0 |       0 |       0 | 1-38              
+  field-reports.module.ts                |       0 |      100 |     100 |       0 | 1-10              
+  field-reports.service.ts               |       0 |        0 |       0 |       0 | 1-475             
+ src/modules/field-updates               |       0 |        0 |       0 |       0 |                   
+  field-updates.controller.ts            |       0 |        0 |       0 |       0 | 1-23              
+  field-updates.module.ts                |       0 |      100 |     100 |       0 | 1-11              
+  field-updates.service.ts               |       0 |        0 |       0 |       0 | 1-315             
+ src/modules/field-updates/dto           |       0 |      100 |       0 |       0 |                   
+  create-field-update.dto.ts             |       0 |      100 |       0 |       0 | 1-64              
+ src/modules/inspections                 |       0 |        0 |       0 |       0 |                   
+  inspections.controller.ts              |       0 |        0 |       0 |       0 | 1-35              
+  inspections.module.ts                  |       0 |      100 |     100 |       0 | 1-11              
+  inspections.service.ts                 |       0 |        0 |       0 |       0 | 1-58              
+ src/modules/inspections/dto             |       0 |      100 |     100 |       0 |                   
+  create-inspection.dto.ts               |       0 |      100 |     100 |       0 | 1                 
+  update-inspection.dto.ts               |       0 |      100 |     100 |       0 | 1-4               
+ src/modules/inspections/entities        |       0 |      100 |     100 |       0 |                   
+  inspection.entity.ts                   |       0 |      100 |     100 |       0 | 1                 
+ src/modules/invoices                    |       0 |        0 |       0 |       0 |                   
+  invoices.controller.ts                 |       0 |        0 |       0 |       0 | 1-35              
+  invoices.module.ts                     |       0 |      100 |     100 |       0 | 1-12              
+  invoices.service.ts                    |       0 |        0 |       0 |       0 | 1-141             
+ src/modules/invoices/dto                |       0 |      100 |     100 |       0 |                   
+  create-invoice.dto.ts                  |       0 |      100 |     100 |       0 | 1                 
+  update-invoice.dto.ts                  |       0 |      100 |     100 |       0 | 1-4               
+ src/modules/invoices/entities           |       0 |      100 |     100 |       0 |                   
+  invoice.entity.ts                      |       0 |      100 |     100 |       0 | 1                 
+ src/modules/issues                      |       0 |        0 |       0 |       0 |                   
+  issues.controller.ts                   |       0 |        0 |       0 |       0 | 1-35              
+  issues.module.ts                       |       0 |      100 |     100 |       0 | 1-10              
+  issues.service.ts                      |       0 |        0 |       0 |       0 | 1-96              
+ src/modules/issues/dto                  |       0 |      100 |     100 |       0 |                   
+  create-comment.dto.ts                  |       0 |      100 |     100 |       0 | 1-6               
+  create-issue.dto.ts                    |       0 |      100 |     100 |       0 | 1-55              
+  update-issue.dto.ts                    |       0 |      100 |     100 |       0 | 1-12              
+ src/modules/material-requests           |       0 |        0 |       0 |       0 |                   
+  material-requests.controller.ts        |       0 |        0 |       0 |       0 | 1-35              
+  material-requests.module.ts            |       0 |      100 |     100 |       0 | 1-12              
+  material-requests.service.ts           |       0 |        0 |       0 |       0 | 1-81              
+  whatsapp.controller.ts                 |       0 |        0 |       0 |       0 | 1-67              
+ src/modules/material-requests/dto       |       0 |      100 |     100 |       0 |                   
+  create-material-request.dto.ts         |       0 |      100 |     100 |       0 | 1-6               
+  update-material-request.dto.ts         |       0 |      100 |     100 |       0 | 1-4               
+ src/modules/material-requests/entities  |       0 |      100 |     100 |       0 |                   
+  material-request.entity.ts             |       0 |      100 |     100 |       0 | 1                 
+ src/modules/materials                   |       0 |        0 |       0 |       0 |                   
+  materials.controller.ts                |       0 |        0 |       0 |       0 | 1-35              
+  materials.module.ts                    |       0 |      100 |     100 |       0 | 1-11              
+  materials.service.ts                   |       0 |        0 |       0 |       0 | 1-50              
+ src/modules/materials/dto               |       0 |      100 |     100 |       0 |                   
+  create-material.dto.ts                 |       0 |      100 |     100 |       0 | 1                 
+  update-material.dto.ts                 |       0 |      100 |     100 |       0 | 1-4               
+ src/modules/materials/entities          |       0 |      100 |     100 |       0 |                   
+  material.entity.ts                     |       0 |      100 |     100 |       0 | 1                 
+ src/modules/notifications               |       0 |        0 |       0 |       0 |                   
+  notifications.controller.ts            |       0 |        0 |       0 |       0 | 2-24              
+  notifications.module.ts                |       0 |      100 |     100 |       0 | 2-13              
+  notifications.service.ts               |       0 |        0 |       0 |       0 | 2-37              
+ src/modules/photos                      |       0 |        0 |       0 |       0 |                   
+  photos.controller.ts                   |       0 |        0 |       0 |       0 | 1-17              
+  photos.module.ts                       |       0 |      100 |     100 |       0 | 1-12              
+  photos.service.ts                      |       0 |        0 |       0 |       0 | 1-68              
+  public-photos.controller.ts            |       0 |        0 |       0 |       0 | 1-14              
+ src/modules/pm-dashboard                |       0 |        0 |       0 |       0 |                   
+  pm-dashboard.controller.ts             |       0 |        0 |       0 |       0 | 2-29              
+  pm-dashboard.module.ts                 |       0 |      100 |     100 |       0 | 2-13              
+  pm-dashboard.service.ts                |       0 |        0 |       0 |       0 | 2-151             
+ src/modules/progress-estimates          |       0 |        0 |       0 |       0 |                   
+  progress-estimates.controller.ts       |       0 |        0 |       0 |       0 | 1-35              
+  progress-estimates.module.ts           |       0 |      100 |     100 |       0 | 1-11              
+  progress-estimates.service.ts          |       0 |        0 |       0 |       0 | 1-70              
+ src/modules/progress-estimates/dto      |       0 |      100 |     100 |       0 |                   
+  create-progress-estimate.dto.ts        |       0 |      100 |     100 |       0 | 1                 
+  update-progress-estimate.dto.ts        |       0 |      100 |     100 |       0 | 1-4               
+ src/modules/progress-estimates/entities |       0 |      100 |     100 |       0 |                   
+  progress-estimate.entity.ts            |       0 |      100 |     100 |       0 | 1                 
+ src/modules/project-members             |       0 |        0 |       0 |       0 |                   
+  project-members.controller.ts          |       0 |        0 |       0 |       0 | 1-73              
+  project-members.module.ts              |       0 |      100 |     100 |       0 | 1-13              
+  project-members.service.ts             |       0 |        0 |       0 |       0 | 1-198             
+ src/modules/project-members/dto         |       0 |        0 |     100 |       0 |                   
+  add-member.dto.ts                      |       0 |        0 |     100 |       0 | 1-29              
+  update-member-role.dto.ts              |       0 |        0 |     100 |       0 | 1-11              
+ src/modules/projects                    |       0 |        0 |       0 |       0 |                   
+  milestones.controller.ts               |       0 |        0 |       0 |       0 | 1-50              
+  milestones.service.ts                  |       0 |        0 |       0 |       0 | 1-63              
+  projects.controller.ts                 |       0 |        0 |       0 |       0 | 1-100             
+  projects.module.ts                     |       0 |      100 |     100 |       0 | 1-14              
+  projects.service.ts                    |       0 |        0 |       0 |       0 | 1-420             
+ src/modules/projects/dto                |       0 |      100 |     100 |       0 |                   
+  create-operator.dto.ts                 |       0 |      100 |     100 |       0 | 1-18              
+  create-project.dto.ts                  |       0 |      100 |     100 |       0 | 1-65              
+  project-dashboard-overview.dto.ts      |       0 |      100 |     100 |       0 | 1                 
+  update-project.dto.ts                  |       0 |      100 |     100 |       0 | 1-4               
+ src/modules/projects/entities           |       0 |      100 |     100 |       0 |                   
+  project.entity.ts                      |       0 |      100 |     100 |       0 | 1                 
+ src/modules/purchase-orders             |       0 |        0 |       0 |       0 |                   
+  purchase-orders.controller.ts          |       0 |        0 |       0 |       0 | 1-35              
+  purchase-orders.module.ts              |       0 |      100 |     100 |       0 | 1-12              
+  purchase-orders.service.ts             |       0 |        0 |       0 |       0 | 1-120             
+ src/modules/purchase-orders/dto         |       0 |      100 |     100 |       0 |                   
+  create-purchase-order.dto.ts           |       0 |      100 |     100 |       0 | 1-8               
+  update-purchase-order.dto.ts           |       0 |      100 |     100 |       0 | 1-4               
+ src/modules/purchase-orders/entities    |       0 |      100 |     100 |       0 |                   
+  purchase-order.entity.ts               |       0 |      100 |     100 |       0 | 1                 
+ src/modules/reports                     |       0 |        0 |       0 |       0 |                   
+  reports.controller.ts                  |       0 |        0 |       0 |       0 | 1-46              
+  reports.module.ts                      |       0 |      100 |     100 |       0 | 1-11              
+  reports.service.ts                     |       0 |        0 |       0 |       0 | 1-855             
+ src/modules/reports/dto                 |       0 |      100 |     100 |       0 |                   
+  create-report.dto.ts                   |       0 |      100 |     100 |       0 | 1                 
+  update-report.dto.ts                   |       0 |      100 |     100 |       0 | 1-4               
+ src/modules/reports/entities            |       0 |      100 |     100 |       0 |                   
+  report.entity.ts                       |       0 |      100 |     100 |       0 | 1                 
+ src/modules/rfis                        |       0 |        0 |       0 |       0 |                   
+  rfis.controller.ts                     |       0 |        0 |       0 |       0 | 1-35              
+  rfis.module.ts                         |       0 |      100 |     100 |       0 | 1-11              
+  rfis.service.ts                        |       0 |        0 |       0 |       0 | 1-55              
+ src/modules/rfis/dto                    |       0 |      100 |     100 |       0 |                   
+  create-rfi.dto.ts                      |       0 |      100 |     100 |       0 | 1                 
+  update-rfi.dto.ts                      |       0 |      100 |     100 |       0 | 1-4               
+ src/modules/rfis/entities               |       0 |      100 |     100 |       0 |                   
+  rfi.entity.ts                          |       0 |      100 |     100 |       0 | 1                 
+ src/modules/rfqs                        |       0 |        0 |       0 |       0 |                   
+  rfqs.controller.ts                     |       0 |        0 |       0 |       0 | 1-35              
+  rfqs.module.ts                         |       0 |      100 |     100 |       0 | 1-11              
+  rfqs.service.ts                        |       0 |        0 |       0 |       0 | 1-51              
+ src/modules/rfqs/dto                    |       0 |      100 |     100 |       0 |                   
+  create-rfq.dto.ts                      |       0 |      100 |     100 |       0 | 1                 
+  update-rfq.dto.ts                      |       0 |      100 |     100 |       0 | 1-4               
+ src/modules/rfqs/entities               |       0 |      100 |     100 |       0 |                   
+  rfq.entity.ts                          |       0 |      100 |     100 |       0 | 1                 
+ src/modules/scrum                       |       0 |        0 |       0 |       0 |                   
+  scrum.controller.ts                    |       0 |        0 |       0 |       0 | 1-230             
+  scrum.module.ts                        |       0 |      100 |     100 |       0 | 1-12              
+  scrum.service.ts                       |       0 |        0 |       0 |       0 | 1-958             
+ src/modules/scrum/dto                   |       0 |        0 |       0 |       0 |                   
+  add-sprint-items.dto.ts                |       0 |      100 |     100 |       0 | 1-6               
+  assign-backlog-item.dto.ts             |       0 |      100 |     100 |       0 | 1-5               
+  close-sprint.dto.ts                    |       0 |      100 |     100 |       0 | 1-14              
+  convert-activity.dto.ts                |       0 |      100 |     100 |       0 | 1-8               
+  create-backlog-item.dto.ts             |       0 |        0 |       0 |       0 | 1-94              
+  create-daily-update.dto.ts             |       0 |      100 |     100 |       0 | 1-33              
+  create-impediment.dto.ts               |       0 |        0 |       0 |       0 | 1-48              
+  create-scrum-project.dto.ts            |       0 |      100 |     100 |       0 | 1-49              
+  create-sprint.dto.ts                   |       0 |        0 |       0 |       0 | 1-38              
+  dashboard-metrics.dto.ts               |       0 |      100 |     100 |       0 | 1-16              
+  reorder-items.dto.ts                   |       0 |      100 |     100 |       0 | 1-9               
+  update-backlog-item.dto.ts             |       0 |      100 |     100 |       0 | 1-4               
+  update-item-status.dto.ts              |       0 |        0 |       0 |       0 | 1-13              
+  update-sprint.dto.ts                   |       0 |      100 |     100 |       0 | 1-4               
+ src/modules/subcontracts                |       0 |        0 |       0 |       0 |                   
+  subcontracts.controller.ts             |       0 |        0 |       0 |       0 | 1-35              
+  subcontracts.module.ts                 |       0 |      100 |     100 |       0 | 1-11              
+  subcontracts.service.ts                |       0 |        0 |       0 |       0 | 1-61              
+ src/modules/subcontracts/dto            |       0 |      100 |     100 |       0 |                   
+  create-subcontract.dto.ts              |       0 |      100 |     100 |       0 | 1                 
+  update-subcontract.dto.ts              |       0 |      100 |     100 |       0 | 1-4               
+ src/modules/subcontracts/entities       |       0 |      100 |     100 |       0 |                   
+  subcontract.entity.ts                  |       0 |      100 |     100 |       0 | 1                 
+ src/modules/tenants                     |       0 |        0 |       0 |       0 |                   
+  tenants.controller.ts                  |       0 |        0 |       0 |       0 | 1-32              
+  tenants.module.ts                      |       0 |      100 |     100 |       0 | 1-11              
+  tenants.service.ts                     |       0 |        0 |       0 |       0 | 1-41              
+ src/modules/tenants/dto                 |       0 |      100 |     100 |       0 |                   
+  create-tenant.dto.ts                   |       0 |      100 |     100 |       0 | 1                 
+  update-tenant.dto.ts                   |       0 |      100 |     100 |       0 | 1-4               
+ src/modules/tenants/entities            |       0 |      100 |     100 |       0 |                   
+  tenant.entity.ts                       |       0 |      100 |     100 |       0 | 1                 
+ src/modules/timesheets                  |       0 |        0 |       0 |       0 |                   
+  timesheets.controller.ts               |       0 |        0 |       0 |       0 | 1-35              
+  timesheets.module.ts                   |       0 |      100 |     100 |       0 | 1-13              
+  timesheets.service.ts                  |       0 |        0 |       0 |       0 | 1-150             
+ src/modules/timesheets/dto              |       0 |      100 |       0 |       0 |                   
+  create-timesheet.dto.ts                |       0 |      100 |       0 |       0 | 1-36              
+ src/modules/users                       |       0 |        0 |       0 |       0 |                   
+  admin-users.controller.ts              |       0 |        0 |       0 |       0 | 1-72              
+  invite.controller.ts                   |       0 |        0 |       0 |       0 | 1-60              
+  users.controller.ts                    |       0 |        0 |       0 |       0 | 1-43              
+  users.module.ts                        |       0 |      100 |     100 |       0 | 1-14              
+  users.service.ts                       |       0 |        0 |       0 |       0 | 1-136             
+ src/modules/users/dto                   |       0 |      100 |     100 |       0 |                   
+  create-user.dto.ts                     |       0 |      100 |     100 |       0 | 1                 
+  update-user.dto.ts                     |       0 |      100 |     100 |       0 | 1-4               
+ src/modules/users/entities              |       0 |      100 |     100 |       0 |                   
+  user.entity.ts                         |       0 |      100 |     100 |       0 | 1                 
+ src/prisma                              |   31.25 |      100 |       0 |      25 |                   
+  prisma.module.ts                       |       0 |      100 |     100 |       0 | 1-9               
+  prisma.service.ts                      |   45.45 |      100 |       0 |   33.33 | 10-25             
+ src/scripts                             |       0 |        0 |       0 |       0 |                   
+  debug_ledger.ts                        |       0 |        0 |       0 |       0 | 2-99              
+  debug_sprint_items.ts                  |       0 |        0 |       0 |       0 | 2-59              
+  seed-resident.ts                       |       0 |        0 |       0 |       0 | 1-46              
+  seed-test-project.ts                   |       0 |        0 |       0 |       0 | 1-109             
+  sync_budget.ts                         |       0 |        0 |       0 |       0 | 2-64              
+-----------------------------------------|---------|----------|---------|---------|-------------------

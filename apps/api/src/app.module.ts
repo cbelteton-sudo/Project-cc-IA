@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -27,11 +29,18 @@ import { PMDashboardModule } from './modules/pm-dashboard/pm-dashboard.module';
 import { ContractorsModule } from './modules/contractors/contractors.module';
 import { ScrumModule } from './modules/scrum/scrum.module';
 import { TimesheetsModule } from './modules/timesheets/timesheets.module';
+import { ProjectMembersModule } from './modules/project-members/project-members.module';
 
 import { HealthController } from './health.controller';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100, // Global limit: 100 requests per minute
+      },
+    ]),
     TenantsModule,
     UsersModule,
     AuthModule,
@@ -58,8 +67,15 @@ import { HealthController } from './health.controller';
     ContractorsModule,
     ScrumModule,
     TimesheetsModule,
+    ProjectMembersModule,
   ],
   controllers: [AppController, HealthController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

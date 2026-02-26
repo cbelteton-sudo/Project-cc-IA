@@ -4,10 +4,11 @@ import { ProjectsController } from './projects.controller';
 import { MilestonesController } from './milestones.controller';
 import { MilestonesService } from './milestones.service';
 import { PrismaModule } from '../../prisma/prisma.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, UsersModule],
   controllers: [ProjectsController, MilestonesController],
   providers: [ProjectsService, MilestonesService],
 })
-export class ProjectsModule { }
+export class ProjectsModule {}

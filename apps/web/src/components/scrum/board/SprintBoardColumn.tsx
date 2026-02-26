@@ -36,13 +36,15 @@ export const SprintBoardColumn = ({
       className={`flex flex-col rounded-xl border ${column.color} h-full overflow-hidden`}
     >
       <div
-        className={`p-3 border-b border-gray-200 flex items-center justify-between ${column.color.replace('bg-', 'bg-opacity-30 bg-')} border-t-4`}
+        className={`px-4 py-3 border-b border-gray-200 flex items-center justify-between ${column.color.replace('bg-', 'bg-opacity-40 bg-')} border-t-4 backdrop-blur-sm`}
       >
-        <div className="flex items-center gap-2 font-bold text-gray-700 text-sm">
-          {column.icon}
-          {column.label}
+        <div className="flex items-center gap-2.5">
+          <div className={`p-1.5 rounded-md bg-white shadow-sm text-gray-600`}>{column.icon}</div>
+          <span className="font-bold text-gray-800 text-sm tracking-wide uppercase">
+            {column.label}
+          </span>
         </div>
-        <span className="bg-white px-2 py-0.5 rounded-full text-xs font-bold border border-gray-200 text-gray-500 shadow-sm">
+        <span className="bg-white/80 px-2.5 py-0.5 rounded-full text-xs font-bold border border-gray-200 text-gray-600 shadow-sm min-w-[24px] text-center">
           {items.length}
         </span>
       </div>

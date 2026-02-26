@@ -2,6 +2,7 @@
 FROM node:20-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+RUN apk add --no-cache openssl
 RUN corepack enable
 
 # 2. Dependencies (Cached Layer)
@@ -51,18 +52,19 @@ RUN pnpm --filter api build
 # 4. Production Image
 FROM base AS deploy
 WORKDIR /app
-# FIX: Copy node_modules from 'build' stage because that's where 'prisma generate' ran!
-# Copying from 'dependencies' meant we lost the generated client.
+# FIX: In a pnpm workspace, we must maintain the folder structure for symlinked dependencies.
 COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/apps/api/dist ./dist
-COPY --from=build /app/apps/api/prisma ./prisma
-COPY --from=build /app/apps/api/package.json ./package.json
+COPY --from=build /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=build /app/apps/api/dist ./apps/api/dist
+COPY --from=build /app/apps/api/prisma ./apps/api/prisma
+COPY --from=build /app/apps/api/package.json ./apps/api/package.json
+COPY --from=build /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 
 EXPOSE 3000
 
 # Ensure uploads directory exists
 RUN mkdir -p /app/uploads
 
-# Debug: List files to verify structure, then start app
-CMD ["sh", "-c", "echo 'Current directory:' && pwd && echo 'Listing /app/dist:' && ls -F /app/dist && echo 'Listing /app/dist/src:' && ls -F /app/dist/src && node dist/src/main"]
-# trigger build
+# Set working directory to the API app so Node finds the right node_modules
+WORKDIR /app/apps/api
+CMD ["node", "dist/src/main.js"]

@@ -4,10 +4,9 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 
-
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async findTenantBySlug(slug: string) {
     return this.prisma.tenant.findUnique({ where: { slug } });
@@ -15,7 +14,10 @@ export class UsersService {
 
   async create(createUserDto: CreateUserDto) {
     try {
-      console.log('Creating user with DTO:', JSON.stringify(createUserDto, null, 2));
+      console.log(
+        'Creating user with DTO:',
+        JSON.stringify(createUserDto, null, 2),
+      );
       let hashedPassword;
       if (createUserDto.password) {
         hashedPassword = await bcrypt.hash(createUserDto.password, 10);
@@ -39,22 +41,39 @@ export class UsersService {
 
   // Admin: Find all users for a tenant (filtered)
   async findAll(tenantId?: string) {
-    if (!tenantId) return this.prisma.user.findMany(); // Superadmin?
+    if (!tenantId) {
+      return this.prisma.user.findMany({
+        where: { projectId: null },
+      }); // Superadmin?
+    }
     return this.prisma.user.findMany({
-      where: { tenantId },
-      include: { contractor: true }
+      where: { tenantId, projectId: null },
+      include: { contractor: true },
     });
   }
 
   async findOne(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
-      include: { contractor: true }
+      include: { contractor: true },
     });
   }
 
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({ where: { email } });
+  }
+
+  async findByUsername(username: string) {
+    return this.prisma.user.findUnique({ where: { username } });
+  }
+
+  async findByIdentifier(identifier: string) {
+    return this.prisma.user.findFirst({
+      where: {
+        OR: [{ email: identifier }, { username: identifier }],
+      },
+      include: { contractor: true },
+    });
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
@@ -70,5 +89,58 @@ export class UsersService {
 
   async remove(id: string) {
     return this.prisma.user.delete({ where: { id } });
+  }
+
+  // --- Invite System ---
+
+  async createInvitedUser(
+    email: string,
+    role: string,
+    tenantId: string,
+    name?: string,
+    contractorId?: string,
+  ) {
+    const existingUser = await this.findByEmail(email);
+    if (existingUser) {
+      throw new Error('User already exists');
+    }
+
+    const invitationToken =
+      Math.random().toString(36).substring(2, 15) +
+      Math.random().toString(36).substring(2, 15);
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 48); // 48h expiry
+
+    return this.prisma.user.create({
+      data: {
+        email,
+        role,
+        tenantId,
+        name,
+        contractorId, // Optional link to contractor
+        status: 'INVITED',
+        invitationToken,
+        invitationExpires: expiresAt,
+        password: null, // No password yet
+      },
+    });
+  }
+
+  async findUserByInvitationToken(token: string) {
+    return this.prisma.user.findUnique({
+      where: { invitationToken: token },
+    });
+  }
+
+  async activateUser(userId: string, passwordHash: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: passwordHash,
+        status: 'ACTIVE',
+        invitationToken: null,
+        invitationExpires: null,
+      },
+    });
   }
 }

@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -50,12 +50,10 @@ export const ProjectBudget = () => {
     'dashboard',
   );
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
-
   const { data: projectData, isLoading: isProjectLoading } = useQuery({
     queryKey: ['project', id],
     queryFn: async () => {
-      const res = await axios.get(`${API_URL}/projects/${id}`);
+      const res = await api.get(`/projects/${id}`);
       return res.data;
     },
   });
@@ -65,7 +63,7 @@ export const ProjectBudget = () => {
   const { data: budgetData, isLoading: isBudgetLoading } = useQuery({
     queryKey: ['budget-summary', budgetId],
     queryFn: async () => {
-      const res = await axios.get(`${API_URL}/budgets/${budgetId}/summary`);
+      const res = await api.get(`/budgets/${budgetId}/summary`);
       return res.data;
     },
     enabled: !!budgetId,
@@ -74,11 +72,7 @@ export const ProjectBudget = () => {
   const updateProjectMutation = useMutation({
     mutationFn: async (data: any) => {
       if (!token) throw new Error('Authentication required');
-      return axios.patch(`${API_URL}/projects/${id}`, data, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      return api.patch(`/projects/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', id] });
@@ -95,15 +89,7 @@ export const ProjectBudget = () => {
       if (!id) throw new Error('Project ID is missing');
       if (!token) throw new Error('Authentication required');
 
-      return axios.post(
-        `${API_URL}/budgets`,
-        { projectId: id, name: 'Project Budget' },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
+      return api.post(`/budgets`, { projectId: id, name: 'Project Budget' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', id] });

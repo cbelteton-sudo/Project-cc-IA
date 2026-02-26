@@ -20,8 +20,6 @@ export class ActivitiesService {
 
   async create(tenantId: string, dto: CreateActivityDto) {
     try {
-      console.log('CREATE ACTIVITY START', { tenantId, dto });
-
       // 1. Verify Project exists and dates are valid
       const project = await this.prisma.project.findFirst({
         where: { id: dto.projectId, tenantId },
@@ -31,11 +29,8 @@ export class ActivitiesService {
           'Project not found (check tenant/project id)',
         );
 
-      console.log('Project found:', project.id);
-
       const start = new Date(dto.startDate);
       const end = new Date(dto.endDate);
-      console.log('Dates parsed:', { start, end });
 
       if (isNaN(start.getTime()) || isNaN(end.getTime())) {
         throw new BadRequestException('Invalid date format');
@@ -86,7 +81,6 @@ export class ActivitiesService {
           orderIndex: nextIndex,
         } as any,
       });
-      console.log('Activity Created:', result);
 
       // 4. Trigger Rollup if this activity has a parent
       if (result.parentId) {
@@ -101,10 +95,6 @@ export class ActivitiesService {
   }
 
   async findAllByProject(tenantId: string, projectId: string) {
-    console.log('FIND ALL REQUEST (ignoring tenantId for debug):', {
-      projectId,
-    });
-
     // Debug: Remove tenantId filter to see if we find ANYTHING for this project
     // return this.prisma.projectActivity.findMany({
     //    where: { tenantId, projectId },
@@ -114,7 +104,6 @@ export class ActivitiesService {
     const count = await this.prisma.projectActivity.count({
       where: { projectId },
     });
-    console.log('DB COUNT for this query (No Tenant Filter):', count);
 
     // Fetch flat list, UI builds the tree
     const results = await this.prisma.projectActivity.findMany({
@@ -127,8 +116,6 @@ export class ActivitiesService {
       },
       orderBy: { orderIndex: 'asc' } as any, // Changed from startDate to orderIndex for stability
     });
-
-    console.log('Found results (No Tenant Filter):', results.length);
 
     // Calculate CPM
     return this.calculateCPM(results);

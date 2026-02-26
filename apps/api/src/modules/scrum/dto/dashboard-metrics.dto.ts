@@ -23,4 +23,7 @@ export class DashboardMetricsDto {
   sprintHealth: 'on_track' | 'ahead' | 'behind';
   recentSprints: RecentSprintDto[];
   teamSize: number;
+  projectBudget: number;
+  spi: number;
+  cpi: number;
 }

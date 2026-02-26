@@ -6,12 +6,14 @@ import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import { getDB } from '../../services/db';
 import { SyncQueue } from '../../services/sync-queue';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import { format } from 'date-fns';
 import { ActivityLogTimeline } from './ActivityLogTimeline';
 import { PhotoLightbox } from './PhotoLightbox';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
+// API_URL removed, handled by api instance. For getImageUrl needing base URL, we can use import.meta.env
+// API_URL removed, handled by api instance. For getImageUrl needing base URL, we can use import.meta.env
+// const BASE_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
 
 interface ActivityDetail {
   id: string;
@@ -33,7 +35,7 @@ export const FieldEntryDetail: React.FC = () => {
   const location = useLocation();
   const { state } = location;
   const { isOnline } = useNetwork();
-  const { token, user } = useAuth(); // Get user
+  const { user } = useAuth(); // Get user
 
   // Data State
   const [activity, setActivity] = useState<ActivityDetail | null>(null);
@@ -75,27 +77,21 @@ export const FieldEntryDetail: React.FC = () => {
 
         if (isOnline) {
           try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get(`${API_URL}/activities/${id}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
+            // const token = localStorage.getItem('token');
+            const res = await api.get(`/activities/${id}`);
             act = res.data;
 
             // Enrich with Context if possible
             if (act) {
               if (act.parentId) {
                 try {
-                  const pRes = await axios.get(`${API_URL}/activities/${act.parentId}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                  });
+                  const pRes = await api.get(`/activities/${act.parentId}`);
                   act.parentName = pRes.data.name;
                 } catch (e) {}
               }
               if (state?.projectId) {
                 try {
-                  const projRes = await axios.get(`${API_URL}/projects/${state.projectId}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                  });
+                  const projRes = await api.get(`/projects/${state.projectId}`);
                   act.projectName = projRes.data.name;
                   act.projectId = state.projectId; // Ensure ID is set
                 } catch (e) {}
@@ -124,7 +120,7 @@ export const FieldEntryDetail: React.FC = () => {
         // 2. Load Log (History)
         let apiItems: any[] = [];
         try {
-          const res = await axios.get(`${API_URL}/field/reports/activities/${id}/log`);
+          const res = await api.get(`/field/reports/activities/${id}/log`);
           apiItems = res.data; // Now returns { ...entry, author: { name } }
         } catch (e) {
           console.error('Log fetch error', e);
@@ -182,8 +178,9 @@ export const FieldEntryDetail: React.FC = () => {
           if (path.startsWith('http')) return path;
 
           const cleanPath = path.startsWith('/') ? path : `/${path}`;
-          const cleanApiUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
-          return `${cleanApiUrl}${cleanPath}`;
+          // const cleanApiUrl = BASE_API_URL.endsWith('/') ? BASE_API_URL.slice(0, -1) : BASE_API_URL;
+          const baseUrl = (api.defaults.baseURL || '').replace('/api', '');
+          return `${baseUrl}${cleanPath}`;
         };
 
         const formattedApiItems = apiItems.map((e: any) => ({

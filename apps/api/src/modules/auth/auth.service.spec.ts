@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../../prisma/prisma.service';
+import { prismaMock } from '../../../test/mocks/authz.mocks';
 import * as bcrypt from 'bcrypt';
 
 jest.mock('bcrypt');
@@ -12,7 +14,7 @@ describe('AuthService', () => {
   let jwtService: JwtService;
 
   const mockUsersService = {
-    findByEmail: jest.fn(),
+    findByIdentifier: jest.fn(),
   };
 
   const mockJwtService = {
@@ -30,6 +32,10 @@ describe('AuthService', () => {
         {
           provide: JwtService,
           useValue: mockJwtService,
+        },
+        {
+          provide: PrismaService,
+          useValue: prismaMock,
         },
       ],
     }).compile();
@@ -49,7 +55,7 @@ describe('AuthService', () => {
 
   describe('validateUser', () => {
     it('should return null if user not found', async () => {
-      mockUsersService.findByEmail.mockResolvedValue(null);
+      mockUsersService.findByIdentifier.mockResolvedValue(null);
       const result = await service.validateUser('test@example.com', 'password');
       expect(result).toBeNull();
     });
@@ -60,7 +66,7 @@ describe('AuthService', () => {
         email: 'test@example.com',
         password: 'hashedPassword',
       };
-      mockUsersService.findByEmail.mockResolvedValue(user);
+      mockUsersService.findByIdentifier.mockResolvedValue(user);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       const result = await service.validateUser(
@@ -77,7 +83,7 @@ describe('AuthService', () => {
         password: 'hashedPassword',
         name: 'Test User',
       };
-      mockUsersService.findByEmail.mockResolvedValue(user);
+      mockUsersService.findByIdentifier.mockResolvedValue(user);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
       const result = await service.validateUser('test@example.com', 'password');
@@ -97,15 +103,40 @@ describe('AuthService', () => {
       mockJwtService.sign.mockReturnValue(token);
 
       const result = await service.login(user);
-      expect(result).toEqual({ access_token: token });
-      expect(mockJwtService.sign).toHaveBeenCalledWith({
-        email: user.email,
-        sub: user.id,
-        tenantId: undefined, // undefined based on mock user
-        role: user.role,
-        contractorId: undefined, // undefined based on mock user
-        name: undefined, // undefined based on mock user
+      expect(result).toEqual({
+        access_token: token,
+        refresh_token: token,
+        user: {
+          sub: user.id,
+          email: user.email,
+          tenantId: undefined,
+          role: user.role,
+          contractorId: undefined,
+          name: undefined,
+          username: undefined,
+        },
       });
+      expect(mockJwtService.sign).toHaveBeenNthCalledWith(
+        1,
+        {
+          email: user.email,
+          sub: user.id,
+          tenantId: undefined,
+          role: user.role,
+          contractorId: undefined,
+          name: undefined,
+          username: undefined,
+        },
+        { expiresIn: '15m' },
+      );
+
+      expect(mockJwtService.sign).toHaveBeenNthCalledWith(
+        2,
+        {
+          sub: user.id,
+        },
+        { expiresIn: '7d' },
+      );
     });
   });
 });

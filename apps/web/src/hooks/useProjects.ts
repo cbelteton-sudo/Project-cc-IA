@@ -1,26 +1,37 @@
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
 export interface Project {
-    id: string;
-    name: string;
-    code: string;
-    status: string;
+  id: string;
+  name: string;
+  code: string;
+  status: string;
+  description?: string;
+  currency?: string;
+  startDate?: string;
+  endDate?: string;
+  globalBudget?: number;
+  managerName?: string;
+  projectManagerId?: string;
+  mainContractorId?: string;
+  enableScrum?: boolean;
+  enableBudget?: boolean;
+  enableFieldManagement?: boolean;
+  enablePMDashboard?: boolean;
+  enablePunchListPro?: boolean;
 }
 
 export const useProjects = () => {
-    const { token } = useAuth();
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
+  const { token } = useAuth();
+  // API_URL handled by api instance
 
-    return useQuery({
-        queryKey: ['projects'],
-        queryFn: async () => {
-            const res = await axios.get(`${API_URL}/projects`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            return res.data as Project[];
-        },
-        enabled: !!token,
-    });
+  return useQuery({
+    queryKey: ['projects'],
+    queryFn: async () => {
+      const res = await api.get('/projects');
+      return res.data as Project[];
+    },
+    enabled: !!token,
+  });
 };

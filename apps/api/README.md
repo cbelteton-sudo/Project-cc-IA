@@ -25,6 +25,31 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## Authentication & Security
+
+This project implements a secure authentication strategy:
+
+- **Access Tokens**: Short-lived (15m), stored in memory (frontend).
+- **Refresh Tokens**: Long-lived (7d), stored in **HttpOnly, Secure** cookies.
+- **RBAC**: Role-Based Access Control using `ProjectMember` and `ProjectAuthGuard`.
+- **Rate Limiting**: Throttling enabled (100 req/min).
+
+### Environment Variables
+
+Ensure these are set in `.env`:
+
+- `JWT_SECRET`: Strong secret for token signing.
+- `NODE_ENV`: Set to `production` for secure cookies (requires HTTPS).
+- `CORS_ORIGIN`: Frontend URL (e.g., `http://localhost:5173`) to allow credentials.
+
+## Seeding
+
+To create the default Admin user (`admin@demo.com` / `password123`):
+
+```bash
+$ npx ts-node prisma/seed-admin.ts
+```
+
 ## Project setup
 
 ```bash

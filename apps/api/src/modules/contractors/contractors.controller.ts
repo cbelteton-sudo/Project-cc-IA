@@ -1,56 +1,137 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { ContractorsService } from './contractors.service';
-import { CreateContractorDto, UpdateContractorDto } from './dto/create-contractor.dto';
+import {
+  CreateContractorDto,
+  UpdateContractorDto,
+} from './dto/create-contractor.dto';
+import {
+  CreateContractorResourceDto,
+  UpdateContractorResourceDto,
+} from './dto/create-contractor-resource.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ActiveUser } from '../../common/decorators/active-user.decorator';
 
 @Controller('contractors')
 @UseGuards(JwtAuthGuard)
 export class ContractorsController {
-    constructor(private readonly contractorsService: ContractorsService) { }
+  constructor(private readonly contractorsService: ContractorsService) {}
 
-    @Post()
-    create(@ActiveUser('tenantId') tenantId: string, @Body() createContractorDto: CreateContractorDto) {
-        return this.contractorsService.create(tenantId, createContractorDto);
-    }
+  @Post()
+  create(
+    @ActiveUser('tenantId') tenantId: string,
+    @Body() createContractorDto: CreateContractorDto,
+  ) {
+    return this.contractorsService.create(tenantId, createContractorDto);
+  }
 
-    @Get()
-    findAll(@ActiveUser('tenantId') tenantId: string) {
-        return this.contractorsService.findAll(tenantId);
-    }
+  @Get()
+  findAll(
+    @ActiveUser('tenantId') tenantId: string,
+    @Query('projectId') projectId?: string,
+  ) {
+    return this.contractorsService.findAll(tenantId, projectId);
+  }
 
-    @Get(':id')
-    findOne(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string) {
-        return this.contractorsService.findOne(tenantId, id);
-    }
+  @Get(':id')
+  findOne(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string) {
+    return this.contractorsService.findOne(tenantId, id);
+  }
 
-    @Patch(':id')
-    update(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string, @Body() updateContractorDto: UpdateContractorDto) {
-        return this.contractorsService.update(tenantId, id, updateContractorDto);
-    }
+  @Patch(':id')
+  update(
+    @ActiveUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() updateContractorDto: UpdateContractorDto,
+  ) {
+    return this.contractorsService.update(tenantId, id, updateContractorDto);
+  }
 
-    @Delete(':id')
-    remove(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string) {
-        return this.contractorsService.remove(tenantId, id);
-    }
+  @Delete(':id')
+  remove(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string) {
+    return this.contractorsService.remove(tenantId, id);
+  }
 
-    // Assignments
-    @Get(':id/projects')
-    getAssignments(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string) {
-        return this.contractorsService.getAssignments(tenantId, id);
-    }
+  // Assignments
+  @Get(':id/projects')
+  getAssignments(
+    @ActiveUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+  ) {
+    return this.contractorsService.getAssignments(tenantId, id);
+  }
 
-    @Post(':id/projects')
-    assignProject(
-        @ActiveUser('tenantId') tenantId: string,
-        @Param('id') id: string,
-        @Body() body: { projectId: string; role?: string }
-    ) {
-        return this.contractorsService.assignProject(tenantId, id, body.projectId, body.role);
-    }
+  @Post(':id/projects')
+  assignProject(
+    @ActiveUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() body: { projectId: string; role?: string },
+  ) {
+    return this.contractorsService.assignProject(
+      tenantId,
+      id,
+      body.projectId,
+      body.role,
+    );
+  }
 
-    @Delete(':id/projects/:assignmentId')
-    removeAssignment(@ActiveUser('tenantId') tenantId: string, @Param('assignmentId') assignmentId: string) {
-        return this.contractorsService.removeAssignment(tenantId, assignmentId);
-    }
+  @Delete(':id/projects/:assignmentId')
+  removeAssignment(
+    @ActiveUser('tenantId') tenantId: string,
+    @Param('assignmentId') assignmentId: string,
+  ) {
+    return this.contractorsService.removeAssignment(tenantId, assignmentId);
+  }
+
+  // --- Resources ---
+  @Get(':id/resources')
+  getResources(
+    @ActiveUser('tenantId') tenantId: string,
+    @Param('id') contractorId: string,
+  ) {
+    return this.contractorsService.getResources(tenantId, contractorId);
+  }
+
+  @Post(':id/resources')
+  createResource(
+    @ActiveUser('tenantId') tenantId: string,
+    @Param('id') contractorId: string,
+    @Body() createResourceDto: CreateContractorResourceDto,
+  ) {
+    return this.contractorsService.createResource(
+      tenantId,
+      contractorId,
+      createResourceDto,
+    );
+  }
+
+  @Patch('resources/:resourceId')
+  updateResource(
+    @ActiveUser('tenantId') tenantId: string,
+    @Param('resourceId') resourceId: string,
+    @Body() updateResourceDto: UpdateContractorResourceDto,
+  ) {
+    return this.contractorsService.updateResource(
+      tenantId,
+      resourceId,
+      updateResourceDto,
+    );
+  }
+
+  @Delete('resources/:resourceId')
+  removeResource(
+    @ActiveUser('tenantId') tenantId: string,
+    @Param('resourceId') resourceId: string,
+  ) {
+    return this.contractorsService.removeResource(tenantId, resourceId);
+  }
 }

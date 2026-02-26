@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { PhotoLightbox } from '../../pages/field/PhotoLightbox';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import {
   CheckCircle,
   Calendar,
@@ -57,14 +57,11 @@ export const ActivityDetails = ({
   };
 
   // Fetch full details
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
   const { data: activity, isLoading } = useQuery({
     queryKey: ['activity', activityId],
     queryFn: async () => {
-      const res = await axios.get(`${API_URL}/activities/${activityId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return res.data;
+      const { data } = await api.get(`/activities/${activityId}`);
+      return data;
     },
   });
 
@@ -81,15 +78,12 @@ export const ActivityDetails = ({
 
   const { data: users } = useQuery({
     queryKey: ['users'],
-    queryFn: async () =>
-      (await axios.get(`${API_URL}/users`, { headers: { Authorization: `Bearer ${token}` } })).data,
+    queryFn: async () => (await api.get(`/users`)).data,
   });
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      return axios.patch(`${API_URL}/activities/${activityId}`, data, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      return api.patch(`/activities/${activityId}`, data);
     },
     onSuccess: () => {
       toast.success('Activity updated');
@@ -108,16 +102,12 @@ export const ActivityDetails = ({
     queryFn: async () => {
       const pid = (activity as any)?.projectId;
       if (!pid) return [];
-      const res = await axios.get(`${API_URL}/budgets`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const projectBudget = res.data.find((b: any) => b.projectId === pid);
+      const { data: projectBudgets } = await api.get(`/budgets`);
+      const projectBudget = projectBudgets.find((b: any) => b.projectId === pid);
       if (!projectBudget) return [];
 
       // Now fetch details (lines) for this budget
-      const resDetails = await axios.get(`${API_URL}/budgets/${projectBudget.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const resDetails = await api.get(`/budgets/${projectBudget.id}`);
       return resDetails.data.budgetLines || [];
     },
     enabled: !!activity,
@@ -137,23 +127,17 @@ export const ActivityDetails = ({
     queryFn: async () => {
       const pid = (activity as any)?.projectId;
       if (!pid) return [];
-      const res = await axios.get(`${API_URL}/activities/project/${pid}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return res.data;
+      const { data } = await api.get(`/activities/project/${pid}`);
+      return data;
     },
     enabled: !!activity,
   });
 
   const addDependencyMutation = useMutation({
     mutationFn: async () => {
-      return axios.post(
-        `${API_URL}/activities/${activityId}/dependencies`,
-        {
-          dependsOnActivityId: selectedDependencyId,
-        },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      return api.post(`/activities/${activityId}/dependencies`, {
+        dependsOnActivityId: selectedDependencyId,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activity', activityId] });
@@ -167,9 +151,7 @@ export const ActivityDetails = ({
 
   const removeDependencyMutation = useMutation({
     mutationFn: async (depId: string) => {
-      return axios.delete(`${API_URL}/activities/${activityId}/dependencies/${depId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      return api.delete(`/activities/${activityId}/dependencies/${depId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activity', activityId] });
@@ -590,7 +572,7 @@ export const ActivityDetails = ({
                           <button
                             onClick={() => {
                               const url = record.photos[0].urlMain || record.photos[0].urlThumb;
-                              const baseUrl = API_URL.replace('/api', '');
+                              const baseUrl = (api.defaults.baseURL || '').replace('/api', '');
                               const fullUrl = url.startsWith('/') ? `${baseUrl}${url}` : url;
                               openLightbox(fullUrl);
                             }}

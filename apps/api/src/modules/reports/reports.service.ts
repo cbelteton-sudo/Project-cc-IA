@@ -283,7 +283,7 @@ export class ReportsService {
     // 1. Calculate Earned Value (Revenue Proxy)
     // Formula: Sum of (Activity Weight/Budget * % Complete)
     let earnedValue = 0;
-    let totalProjectBudget = project.globalBudget || 0;
+    const totalProjectBudget = project.globalBudget || 0;
 
     // If global budget is set, we can use it to prorate, or sum bottom-up budget
     // Let's use bottom-up sum if global is 0
@@ -397,11 +397,11 @@ export class ReportsService {
     end.setDate(end.getDate() + 7); // Pad end
 
     const timeline: { date: string; pv: number; ev: number; ac: number }[] = [];
-    let current = new Date(start);
+    const current = new Date(start);
 
     // 3. Calculate Cumulative Data Points
-    let cumPV = 0;
-    let cumEV = 0;
+    const cumPV = 0;
+    const cumEV = 0;
 
     // Optimized: Pre-calculate daily burn rates for all activities
     const activityBurns = project.activities.map((act: any) => {
@@ -516,7 +516,7 @@ export class ReportsService {
     if (activities.length === 0) return [];
     const starts = activities.map((a: any) => new Date(a.startDate).getTime());
     const ends = activities.map((a: any) => new Date(a.endDate).getTime());
-    let current = this.getStartOfWeek(new Date(Math.min(...starts)));
+    const current = this.getStartOfWeek(new Date(Math.min(...starts)));
     const end = new Date(Math.max(...ends));
     end.setDate(end.getDate() + 7);
 
@@ -775,5 +775,85 @@ export class ReportsService {
   }
   remove(id: number) {
     return `This action removes a #${id} report`;
+  }
+  async getSprintAssignments(projectId: string, tenantId: string) {
+    const prisma = this.prisma as any;
+
+    // 1. Fetch Active Sprint (or latest if none active)
+    let sprint = await prisma.sprint.findFirst({
+      where: { projectId, status: 'ACTIVE' },
+      include: {
+        items: {
+          include: {
+            backlogItem: {
+              include: {
+                assigneeUser: true,
+                contractor: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!sprint) {
+      sprint = await prisma.sprint.findFirst({
+        where: { projectId },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          items: {
+            include: {
+              backlogItem: {
+                include: {
+                  assigneeUser: true,
+                  contractor: true,
+                },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    if (!sprint) {
+      return { sprint: null, assignments: [] };
+    }
+
+    // 2. Map Assignments
+    const assignments = sprint.items.map((item: any) => {
+      const bi = item.backlogItem;
+      return {
+        id: bi.id,
+        title: bi.title,
+        status: item.boardStatus,
+        type: bi.type,
+        priority: bi.priority,
+        assignee: bi.assigneeUser?.name || bi.contractor?.name || 'Sin Asignar',
+        assigneeType: bi.assigneeUser
+          ? 'USER'
+          : bi.contractor
+            ? 'CONTRACTOR'
+            : 'NONE',
+        startDate: sprint.startDate, // Default to Sprint Start
+        endDate: bi.dueDate || sprint.endDate, // Default to Sprint End if no due date
+      };
+    });
+
+    return {
+      sprint: {
+        id: sprint.id,
+        name: sprint.name,
+        goal: sprint.goal,
+        status: sprint.status,
+        startDate: sprint.startDate,
+        endDate: sprint.endDate,
+      },
+      assignments: assignments.sort((a: any, b: any) => {
+        // Sort by Assignee, then Status
+        if (a.assignee < b.assignee) return -1;
+        if (a.assignee > b.assignee) return 1;
+        return 0;
+      }),
+    };
   }
 }

@@ -1,21 +1,12 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import { api } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
-import {
-  CalendarClock,
-  ArrowRight,
-  Loader,
-  Search,
-  Folder,
-  Calendar,
-  Briefcase,
-} from 'lucide-react';
+import { CalendarClock, Search, FolderOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { CreateProjectModal } from '../components/scrum/CreateProjectModal'; // Import
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
+import { ProjectCard, type ProjectCardProps } from '../components/scrum/ProjectCard';
 
 // Types (Mirrored from Projects.tsx)
 interface Project {
@@ -23,12 +14,17 @@ interface Project {
   name: string;
   code: string;
   status: string;
+  description?: string;
   globalBudget?: number;
   currency?: string;
   startDate?: string;
   endDate?: string;
   managerName?: string;
   sprints?: { id: string; name: string }[];
+  _count?: {
+    sprints?: number;
+    backlogItems?: number;
+  };
 }
 
 export const ScrumProjects = () => {
@@ -39,38 +35,9 @@ export const ScrumProjects = () => {
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ['projects'],
-    queryFn: async () =>
-      (
-        await axios.get(`${API_URL}/projects`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-      ).data,
+    queryFn: async () => (await api.get(`/projects`)).data,
     enabled: !!token,
   });
-
-  const getProjectStatus = (project: Project) => {
-    if (project.status === 'DONE' || project.status === 'CLOSED') {
-      return { label: 'Terminado', color: 'bg-green-100 text-green-700 border-green-200' };
-    }
-    if (!project.startDate) {
-      return { label: 'No iniciado', color: 'bg-gray-100 text-gray-500 border-gray-200' };
-    }
-    if (!project.endDate) {
-      return { label: 'En Tiempo', color: 'bg-blue-100 text-blue-700 border-blue-200' };
-    }
-
-    const now = new Date();
-    const end = new Date(project.endDate);
-    const diffDays = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) {
-      return { label: 'Atrasado', color: 'bg-red-100 text-red-700 border-red-200' };
-    } else if (diffDays < 14) {
-      return { label: 'En Riesgo', color: 'bg-orange-100 text-orange-700 border-orange-200' };
-    } else {
-      return { label: 'En Tiempo', color: 'bg-blue-100 text-blue-700 border-blue-200' };
-    }
-  };
 
   const filteredProjects = projects?.filter(
     (p: Project) =>
@@ -85,9 +52,9 @@ export const ScrumProjects = () => {
           <div className="h-8 w-48 bg-gray-200 rounded"></div>
           <div className="h-10 w-32 bg-gray-200 rounded"></div>
         </div>
-        <div className="space-y-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="h-64 bg-gray-100 rounded-xl animate-pulse"></div>
           ))}
         </div>
       </div>
@@ -123,118 +90,24 @@ export const ScrumProjects = () => {
         </div>
       </div>
 
-      {/* Projects Table List View */}
+      {/* Projects Grid View */}
       {filteredProjects?.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
-          <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Folder size={32} className="text-gray-400" />
+        <div className="flex flex-col items-center justify-center py-24 bg-white rounded-2xl border-2 border-dashed border-gray-200 text-center">
+          <div className="bg-blue-50 w-20 h-20 rounded-full flex items-center justify-center mb-6">
+            <FolderOpen size={40} className="text-field-blue" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900">No se encontraron proyectos</h3>
-          <p className="text-gray-500 mb-6">
-            Comienza creando un nuevo proyecto para gestionar tus obras.
+          <h3 className="text-xl font-bold text-gray-900 mb-2">No hay proyectos aún</h3>
+          <p className="text-gray-500 mb-8 max-w-md mx-auto">
+            Crea tu primer proyecto Scrum para comenzar a gestionar sprints, backlogs y métricas de
+            tus obras.
           </p>
           <CreateProjectModal />
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-lg border-0 overflow-hidden ring-1 ring-black/5">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-field-blue text-white shadow-md z-10 relative">
-              <tr>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-white/90">
-                  Proyecto
-                </th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-white/90">
-                  Responsable
-                </th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-center text-white/90">
-                  Estado
-                </th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-white/90">
-                  Entrega
-                </th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-white/90">
-                  Sprint Activo
-                </th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-center text-white/90">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredProjects?.map((project: Project) => {
-                const status = getProjectStatus(project);
-                const activeSprint = project.sprints?.[0]; // Assuming backend returns [0] as the active one due to query
-
-                return (
-                  <tr
-                    key={project.id}
-                    className="hover:bg-blue-50/30 transition-colors group cursor-pointer"
-                    onClick={() => navigate(`/scrum/${project.id}`)}
-                  >
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-gray-900 group-hover:text-field-blue transition-colors text-base py-2">
-                        {project.name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600">
-                        {project.managerName || (
-                          <span className="text-gray-400 italic">No asignado</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${status.color}`}
-                      >
-                        {status.label}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar size={14} className="text-gray-400" />
-                        {project.endDate ? (
-                          new Date(project.endDate).toLocaleDateString()
-                        ) : (
-                          <span className="text-gray-400 italic">---</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {activeSprint ? (
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/scrum/${project.id}?tab=board`);
-                          }}
-                          className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md text-sm font-bold cursor-pointer hover:bg-emerald-100 transition-colors"
-                        >
-                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                          {activeSprint.name}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 italic text-sm">Sin Sprint Activo</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/scrum/${project.id}`);
-                          }}
-                          className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-field-orange bg-orange-50 hover:bg-orange-100 rounded-md transition-colors border border-orange-100/50 shadow-sm"
-                        >
-                          <span>Ver Tablero</span>
-                          <ArrowRight size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProjects?.map((project: Project) => (
+            <ProjectCard key={project.id} project={project as ProjectCardProps['project']} />
+          ))}
         </div>
       )}
     </div>

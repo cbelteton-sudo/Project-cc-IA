@@ -1,16 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
-import {
-  Activity,
-  AlertCircle,
-  BarChart3,
-  Calendar,
-  CheckCircle2,
-  Clock,
-  LayoutList,
-  Target,
-  Users,
-} from 'lucide-react';
+import { api } from '../../lib/api';
+import { Activity, AlertCircle, BarChart3, Calendar, Clock, Target } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -24,8 +14,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo } from 'react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
 
 type DashboardMetrics = {
   activeSprintName: string;
@@ -48,13 +36,16 @@ type DashboardMetrics = {
     endDate: string;
   }[];
   teamSize: number;
+  projectBudget: number;
+  spi: number;
+  cpi: number;
 };
 
 export function ScrumMetricsTab({ projectId }: { projectId: string }) {
   const { data, isLoading } = useQuery<DashboardMetrics>({
     queryKey: ['scrum-dashboard', projectId],
     queryFn: async () => {
-      const res = await axios.get(`${API_URL}/scrum/projects/${projectId}/dashboard`);
+      const res = await api.get(`/scrum/projects/${projectId}/dashboard`);
       return res.data;
     },
   });
@@ -71,28 +62,40 @@ export function ScrumMetricsTab({ projectId }: { projectId: string }) {
         bg: 'bg-blue-50',
       },
       {
-        label: 'Velocity',
-        value: `${data.velocity} pts`,
-        subtext: 'Promedio ult. 3 sprints',
-        icon: Activity,
-        color: 'text-green-500',
-        bg: 'bg-green-50',
-      },
-      {
-        label: 'Backlog Total',
-        value: data.totalBacklogItems,
-        subtext: `${data.itemsByStatus.todo} Por hacer`,
-        icon: LayoutList,
+        label: 'Presupuesto',
+        value: new Intl.NumberFormat('es-GT', {
+          style: 'currency',
+          currency: 'GTQ',
+          maximumFractionDigits: 0,
+        }).format(data.projectBudget),
+        subtext: 'Presupuesto Total',
+        icon: BarChart3,
         color: 'text-purple-500',
         bg: 'bg-purple-50',
       },
       {
-        label: 'Completados',
-        value: data.itemsByStatus.done,
-        subtext: 'Items entregados',
-        icon: CheckCircle2,
-        color: 'text-teal-500',
-        bg: 'bg-teal-50',
+        label: 'SPI (Cronograma)',
+        value: data.spi.toFixed(2),
+        subtext: data.spi >= 1 ? 'Adelantado/A tiempo' : 'Atrasado',
+        icon: Clock,
+        color: data.spi >= 1 ? 'text-green-600' : 'text-red-500',
+        bg: data.spi >= 1 ? 'bg-green-50' : 'bg-red-50',
+      },
+      {
+        label: 'CPI (Costo)',
+        value: data.cpi.toFixed(2),
+        subtext: data.cpi >= 1 ? 'Eficiente' : 'Sobrecosto',
+        icon: Activity,
+        color: data.cpi >= 1 ? 'text-green-600' : 'text-orange-500',
+        bg: data.cpi >= 1 ? 'bg-green-50' : 'bg-orange-50',
+      },
+      {
+        label: 'Velocity',
+        value: `${data.velocity} pts`,
+        subtext: 'Promedio ult. 3 sprints',
+        icon: Target,
+        color: 'text-indigo-500',
+        bg: 'bg-indigo-50',
       },
       {
         label: 'Impedimentos',
@@ -102,29 +105,6 @@ export function ScrumMetricsTab({ projectId }: { projectId: string }) {
         color: data.openImpediments > 0 ? 'text-red-500' : 'text-gray-400',
         bg: data.openImpediments > 0 ? 'bg-red-50' : 'bg-gray-50',
         urgent: data.openImpediments > 0,
-      },
-      {
-        label: 'Salud del Sprint',
-        value:
-          data.sprintHealth === 'ahead'
-            ? 'Adelantado'
-            : data.sprintHealth === 'behind'
-              ? 'Atrasado'
-              : 'On Track',
-        subtext: 'Basado en tiempo vs progreso',
-        icon: Target,
-        color:
-          data.sprintHealth === 'ahead'
-            ? 'text-cyan-600'
-            : data.sprintHealth === 'behind'
-              ? 'text-orange-500'
-              : 'text-green-600',
-        bg:
-          data.sprintHealth === 'ahead'
-            ? 'bg-cyan-50'
-            : data.sprintHealth === 'behind'
-              ? 'bg-orange-50'
-              : 'bg-green-50',
       },
     ];
   }, [data]);

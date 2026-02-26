@@ -1,0 +1,19 @@
+﻿Permisos ; Descripción ;PROJECT_ADMIN;EXECUTIVE_VIEWER;DIRECTOR;PM;PMO;FINANCIERO;CONTRACTOR_LEAD;FIELD_OPERATOR;VIEWER
+project.view;Ver configuración del proyecto (listados, métricas base);X;X;X;X;X;X;X;X;X;
+project.edit;Editar configuración y presupuesto global del proyecto;X;;X;X;X;;;;;
+project.delete;Eliminar el proyecto;X;;X;;;;;;;
+task.view;Ver actividades del plan de trabajo y dashboard;X;X;X;X;X;;X;X;;
+task.create;Crear nuevas actividades y/o hitos;X;;X;X;X;;X;X;;
+task.update;Editar detalles de las actividades y hitos;X;;X;X;X;;X;;;
+task.delete;Eliminar actividades o hitos;X;;X;X;X;;;;;
+task.mark_done;Marcar actividades como terminadas (Completar);X;;X;X;X;;X;X;;
+task.approve;Aprobar actividades terminadas (Cerrar);X;;X;X;X;;;;;
+task.reopen;Reabrir actividades finalizadas;X;;X;X;X;;;;;
+rfi.view;Ver RFIs (Solicitudes de Información);X;X;X;X;X;;X;;;
+rfi.create;Crear RFIs;X;;X;X;X;;X;;;
+rfi.update;Actualizar detalles de RFIs;X;;X;X;X;;;;;
+member.view;Ver listado de miembros del equipo y contratistas;X;X;X;X;X;X;X;;;
+member.invite;Invitar nuevos usuarios al proyecto;X;;X;X;X;;;;;
+member.update;Actualizar accesos y roles de miembros del proyecto;X;;X;X;X;;;;;
+operator.create;Crear cuentas para Operadores de Campo limitados;X;;X;X;X;;X;;;
+budget.view;Ver el presupuesto y finanzas detalladas del proyecto;X;X;X;X;X;X;;;;

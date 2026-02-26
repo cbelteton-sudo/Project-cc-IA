@@ -6,7 +6,7 @@ import { ActiveUser } from '../../common/decorators/active-user.decorator';
 @Controller('reports')
 @UseGuards(JwtAuthGuard)
 export class ReportsController {
-  constructor(private readonly reportsService: ReportsService) { }
+  constructor(private readonly reportsService: ReportsService) {}
 
   @Get('dashboard')
   getDashboard(@ActiveUser() user: any, @Query('period') period?: string) {
@@ -19,7 +19,11 @@ export class ReportsController {
   }
 
   @Get('project/:id/executive')
-  getExecutiveReport(@Param('id') id: string, @ActiveUser() user: any, @Query() query: any) {
+  getExecutiveReport(
+    @Param('id') id: string,
+    @ActiveUser() user: any,
+    @Query() query: any,
+  ) {
     return this.reportsService.getExecutiveReport(id, user.tenantId, query);
   }
 
@@ -36,5 +40,9 @@ export class ReportsController {
   @Get('project/:id/pnl')
   getPnL(@Param('id') id: string, @ActiveUser() user: any) {
     return this.reportsService.getPnL(id, user.tenantId);
+  }
+  @Get('project/:id/sprint-assignments')
+  getSprintAssignments(@Param('id') id: string, @ActiveUser() user: any) {
+    return this.reportsService.getSprintAssignments(id, user.tenantId);
   }
 }

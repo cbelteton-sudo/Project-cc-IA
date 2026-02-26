@@ -149,6 +149,7 @@ export class ChangeOrdersService {
     // GAP FIX: Role Guard
     if (
       user.role !== 'ADMIN' &&
+      user.role !== 'ADMINISTRADOR' &&
       user.role !== 'PROJECT_MANAGER' &&
       user.role !== 'PM'
     ) {

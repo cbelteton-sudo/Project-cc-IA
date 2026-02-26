@@ -34,5 +34,6 @@ export class CreateSprintDto {
   status?: string;
 
   @IsUUID()
-  createdByUserId: string;
+  @IsOptional()
+  createdByUserId?: string;
 }

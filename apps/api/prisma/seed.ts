@@ -383,7 +383,42 @@ async function main() {
       });
     }
   }
-  console.log('✅ Materials Seeded');
+  // 14. Assign Project Members (Phase 2)
+  console.log('👥 Assigning Project Members...');
+
+  // Helper to assign
+  const assignMember = async (
+    email: string,
+    role: 'DIRECTOR' | 'PM' | 'SUPERVISOR' | 'USER',
+  ) => {
+    const u = await prisma.user.findUnique({ where: { email } });
+    if (u) {
+      await prisma.projectMember.upsert({
+        where: {
+          projectId_userId: {
+            projectId: project.id,
+            userId: u.id,
+          },
+        },
+        update: { role },
+        create: {
+          projectId: project.id,
+          userId: u.id,
+          role,
+        },
+      });
+      console.log(`   - Assigned ${u.name} as ${role}`);
+    }
+  };
+
+  await assignMember('admin@demo.com', 'DIRECTOR');
+  await assignMember('director@demo.com', 'DIRECTOR');
+  await assignMember('supervisor@demo.com', 'SUPERVISOR');
+  await assignMember('operador@demo.com', 'USER');
+  await assignMember('contratista1@demo.com', 'USER');
+
+  console.log('✅ Project Members Assigned');
+  console.log('✅ MATERIALS Seeded');
   console.log('✅ Seed complete!');
 }
 

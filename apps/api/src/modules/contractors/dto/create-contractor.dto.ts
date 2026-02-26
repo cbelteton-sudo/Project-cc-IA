@@ -1,26 +1,78 @@
 import { PartialType } from '@nestjs/mapped-types';
+import { IsString, IsOptional, IsEmail, IsBoolean } from 'class-validator';
 
 export class CreateContractorDto {
-    name: string; // Commercial Name
-    type?: string;
-    email?: string;
-    phone?: string;
-    taxId?: string;
-    address?: string;
+  @IsString()
+  name: string; // Commercial Name
 
-    // Phase 10 Extended
-    legalName?: string;
-    website?: string;
-    specialties?: string;
-    certifications?: string;
-    insurancePolicy?: string;
-    bankName?: string;
-    bankAccount?: string;
-    contactPersonName?: string;
-    contactPersonPhone?: string;
-    notes?: string;
+  @IsString()
+  @IsOptional()
+  type?: string;
+
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @IsString()
+  @IsOptional()
+  taxId?: string;
+
+  @IsString()
+  @IsOptional()
+  address?: string;
+
+  // Phase 10 Extended
+  @IsString()
+  @IsOptional()
+  legalName?: string;
+
+  @IsString()
+  @IsOptional()
+  website?: string;
+
+  @IsString()
+  @IsOptional()
+  specialties?: string;
+
+  @IsString()
+  @IsOptional()
+  certifications?: string;
+
+  @IsString()
+  @IsOptional()
+  insurancePolicy?: string;
+
+  @IsString()
+  @IsOptional()
+  bankName?: string;
+
+  @IsString()
+  @IsOptional()
+  bankAccount?: string;
+
+  @IsString()
+  @IsOptional()
+  contactPersonName?: string;
+
+  @IsString()
+  @IsOptional()
+  contactPersonPhone?: string;
+
+  @IsString()
+  @IsOptional()
+  notes?: string;
+
+  @IsString()
+  @IsOptional()
+  projectId?: string; // Phase 9.1: Project-scoped contractors
 }
 
 export class UpdateContractorDto extends PartialType(CreateContractorDto) {
-    isActive?: boolean;
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 }

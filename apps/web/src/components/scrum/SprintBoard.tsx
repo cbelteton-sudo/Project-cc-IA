@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import { api } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 import { AlertCircle, CheckCircle, Clock, PlayCircle, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState } from 'react';
@@ -23,7 +24,6 @@ import { SprintBoardColumn } from './board/SprintBoardColumn';
 import { SprintBoardCardInner } from './board/SprintBoardCard';
 
 export const SprintBoard = ({ projectId }: { projectId: string }) => {
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
   const queryClient = useQueryClient();
   const [reportingItem, setReportingItem] = useState<{
     id: string;
@@ -41,6 +41,11 @@ export const SprintBoard = ({ projectId }: { projectId: string }) => {
   const [contractorFilter, setContractorFilter] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  const { user } = useAuth();
+  const projectMember = user?.projectMembers?.find((m: any) => m.projectId === projectId);
+  const isExecutiveViewer = projectMember?.role === 'EXECUTIVE_VIEWER';
+  const isFieldOperator = projectMember?.role === 'FIELD_OPERATOR';
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -54,19 +59,19 @@ export const SprintBoard = ({ projectId }: { projectId: string }) => {
 
   const { data: sprints } = useQuery({
     queryKey: ['scrum', 'sprints', projectId],
-    queryFn: async () => (await axios.get(`${API_URL}/scrum/sprints/${projectId}`)).data,
+    queryFn: async () => (await api.get(`/scrum/sprints/${projectId}`)).data,
   });
 
   const { data: users } = useQuery({
     queryKey: ['users'],
-    queryFn: async () => (await axios.get(`${API_URL}/users`)).data,
+    queryFn: async () => (await api.get(`/users`)).data,
   });
 
   const activeSprint = sprints?.find((s: any) => s.status === 'ACTIVE');
 
   const assignMutation = useMutation({
     mutationFn: async ({ itemId, userId }: { itemId: string; userId: string }) => {
-      return axios.patch(`${API_URL}/scrum/backlog/${itemId}/assign`, { userId });
+      return api.patch(`/scrum/backlog/${itemId}/assign`, { userId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scrum', 'sprints', projectId] });
@@ -76,7 +81,7 @@ export const SprintBoard = ({ projectId }: { projectId: string }) => {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ itemId, status }: { itemId: string; status: string }) => {
-      return axios.patch(`${API_URL}/scrum/items/${itemId}/status`, { status });
+      return api.patch(`/scrum/items/${itemId}/status`, { status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scrum', 'sprints', projectId] });
@@ -84,6 +89,7 @@ export const SprintBoard = ({ projectId }: { projectId: string }) => {
   });
 
   const handleDragStart = (event: DragStartEvent) => {
+    if (isExecutiveViewer) return;
     setActiveId(event.active.id as string);
   };
 
@@ -112,6 +118,12 @@ export const SprintBoard = ({ projectId }: { projectId: string }) => {
       if (overItem) {
         targetStatus = overItem.boardStatus;
       }
+    }
+
+    if (isFieldOperator && targetStatus === 'DONE') {
+      toast.error('Operadores no pueden finalizar tareas directamente. Mueva a "Revisión".');
+      setActiveId(null);
+      return;
     }
 
     const activeItem = activeSprint?.items?.find((i: any) => i.id === activeId);
@@ -250,13 +262,15 @@ export const SprintBoard = ({ projectId }: { projectId: string }) => {
               ))}
             </select>
           </div>
-          <button
-            onClick={() => setIsClosureModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shadow-sm transition-colors text-sm"
-          >
-            <CheckCircle size={16} />
-            Finalizar Sprint
-          </button>
+          {!isExecutiveViewer && !isFieldOperator && (
+            <button
+              onClick={() => setIsClosureModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shadow-sm transition-colors text-sm"
+            >
+              <CheckCircle size={16} />
+              Finalizar Sprint
+            </button>
+          )}
         </div>
       </div>
 
@@ -330,6 +344,9 @@ export const SprintBoard = ({ projectId }: { projectId: string }) => {
             activeSprint.items?.filter((i: any) => i.boardStatus === 'DONE').length || 0
           }
           totalCount={activeSprint.items?.length || 0}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['scrum', 'sprints', projectId] });
+          }}
         />
       )}
     </div>

@@ -7,10 +7,17 @@ import {
   Patch,
   Query,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ScrumService } from './scrum.service';
 import { JwtAuthGuard } from '../../modules/auth/jwt-auth.guard';
 import { ActiveUser } from '../../common/decorators/active-user.decorator';
+import { ProjectRole } from '../../common/constants/roles';
+import { Permission } from '../../common/constants/permissions';
+import { ProjectAuthGuard } from '../../common/guards/project-auth.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import type { ActiveUserData } from '../../common/interfaces/active-user-data.interface';
 
 import { CreateScrumProjectDto } from './dto/create-scrum-project.dto';
 import { CreateBacklogItemDto } from './dto/create-backlog-item.dto';
@@ -31,19 +38,27 @@ export class ScrumController {
   constructor(private readonly scrumService: ScrumService) {}
 
   @Post('projects')
-  createProject(@Body() data: CreateScrumProjectDto, @ActiveUser() user: any) {
+  createProject(
+    @Body() data: CreateScrumProjectDto,
+    @ActiveUser() user: ActiveUserData,
+  ) {
     return this.scrumService.createProject({
       ...data,
       tenantId: user.tenantId,
+      ownerUserId: user.userId || user.id,
     });
   }
 
   @Get('projects/:projectId/dashboard')
+  @UseGuards(ProjectAuthGuard, PermissionsGuard)
+  @RequirePermissions(Permission.PROJECT_VIEW)
   getDashboardMetrics(@Param('projectId') projectId: string) {
     return this.scrumService.getDashboardMetrics(projectId);
   }
 
   @Get('projects/:projectId/eisenhower')
+  @UseGuards(ProjectAuthGuard, PermissionsGuard)
+  @RequirePermissions(Permission.TASK_VIEW)
   getEisenhowerMatrix(@Param('projectId') projectId: string) {
     return this.scrumService.getEisenhowerMatrix(projectId);
   }
@@ -66,8 +81,13 @@ export class ScrumController {
   }
 
   @Get('backlog/:projectId')
-  getBacklog(@Param('projectId') projectId: string) {
-    return this.scrumService.getBacklog(projectId);
+  @UseGuards(ProjectAuthGuard, PermissionsGuard)
+  @RequirePermissions(Permission.TASK_VIEW)
+  getBacklog(
+    @Param('projectId') projectId: string,
+    @ActiveUser() user: ActiveUserData,
+  ) {
+    return this.scrumService.getBacklog(projectId, user?.id);
   }
 
   @Post('backlog/convert')
@@ -95,13 +115,24 @@ export class ScrumController {
   }
 
   @Post('sprints')
-  createSprint(@Body() data: CreateSprintDto) {
-    return this.scrumService.createSprint(data);
+  createSprint(
+    @Body() data: CreateSprintDto,
+    @ActiveUser() user: ActiveUserData,
+  ) {
+    return this.scrumService.createSprint({
+      ...data,
+      createdByUserId: user.userId || user.id,
+    });
   }
 
   @Get('sprints/:projectId')
-  getSprints(@Param('projectId') projectId: string) {
-    return this.scrumService.getSprints(projectId);
+  @UseGuards(ProjectAuthGuard, PermissionsGuard)
+  @RequirePermissions(Permission.TASK_VIEW)
+  getSprints(
+    @Param('projectId') projectId: string,
+    @ActiveUser() user: ActiveUserData,
+  ) {
+    return this.scrumService.getSprints(projectId, user.id);
   }
 
   @Post('sprints/:sprintId/items')
@@ -126,10 +157,30 @@ export class ScrumController {
   }
 
   @Patch('items/:itemId/status')
-  updateItemStatus(
+  async updateItemStatus(
     @Param('itemId') itemId: string,
     @Body() body: UpdateItemStatusDto,
+    @ActiveUser() user: ActiveUserData,
   ) {
+    const { member } = await this.scrumService.getSprintItemContext(
+      itemId,
+      user.userId || user.id,
+    );
+
+    // ABAC Rule: Field Operator can only mark DonePendingApproval
+    if ((member.role as ProjectRole) === ProjectRole.FIELD_OPERATOR) {
+      if (body.status === 'DONE') {
+        throw new ForbiddenException(
+          'Field Operators cannot mark items as DONE. Use DONE_PENDING_APPROVAL.',
+        );
+      }
+    }
+
+    // ABAC Rule: Executive Viewer is Read Only
+    if ((member.role as ProjectRole) === ProjectRole.EXECUTIVE_VIEWER) {
+      throw new ForbiddenException('Executive Viewers cannot update items.');
+    }
+
     return this.scrumService.updateSprintItemStatus(itemId, body.status);
   }
 
@@ -139,8 +190,14 @@ export class ScrumController {
   }
 
   @Post('daily-updates')
-  createDailyUpdate(@Body() data: CreateDailyUpdateDto) {
-    return this.scrumService.createDailyUpdate(data);
+  createDailyUpdate(
+    @Body() data: CreateDailyUpdateDto,
+    @ActiveUser() user: ActiveUserData,
+  ) {
+    return this.scrumService.createDailyUpdate({
+      ...data,
+      userId: user.userId || user.id,
+    });
   }
 
   @Get('daily-updates/:projectId')
@@ -162,6 +219,8 @@ export class ScrumController {
   }
 
   @Get('impediments/:projectId')
+  @UseGuards(ProjectAuthGuard, PermissionsGuard)
+  @RequirePermissions(Permission.TASK_VIEW)
   getImpediments(@Param('projectId') projectId: string) {
     return this.scrumService.getImpediments(projectId);
   }

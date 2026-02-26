@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import { api } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 import {
   Plus,
   Filter,
@@ -41,23 +42,35 @@ export const BacklogView = ({ projectId }: { projectId: string }) => {
   const [expandedStories, setExpandedStories] = useState<Record<string, boolean>>({});
   const [newItemParentId, setNewItemParentId] = useState<string | null>(null); // For "Add Task" directly
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
   const queryClient = useQueryClient();
-
   const { contractors } = useContractors();
   const [contractorFilter, setContractorFilter] = useState<string | null>(null);
+  const { user } = useAuth();
+  const projectMember = user?.projectMembers?.find((m: any) => m.projectId === projectId);
+  const isViewer =
+    projectMember?.role === 'EXECUTIVE_VIEWER' || projectMember?.role === 'FIELD_OPERATOR';
 
-  const { data: backlogItems, isLoading } = useQuery({
+  const {
+    data: backlogItems,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ['scrum', 'backlog', projectId],
     queryFn: async () => {
-      const res = await axios.get(`${API_URL}/scrum/backlog/${projectId}`);
-      return res.data;
+      try {
+        const res = await api.get(`/scrum/backlog/${projectId}`);
+        return res.data;
+      } catch (err: any) {
+        console.error('Backlog fetch error:', err);
+        throw err;
+      }
     },
   });
 
   const createMutation = useMutation({
     mutationFn: async (newItem: Partial<BacklogItem>) => {
-      return axios.post(`${API_URL}/scrum/backlog`, { ...newItem, projectId });
+      return api.post(`/scrum/backlog`, { ...newItem, projectId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scrum', 'backlog', projectId] });
@@ -68,7 +81,7 @@ export const BacklogView = ({ projectId }: { projectId: string }) => {
 
   const importMutation = useMutation({
     mutationFn: async (activityId: string) => {
-      return axios.post(`${API_URL}/scrum/backlog/convert`, { activityId, projectId });
+      return api.post(`/scrum/backlog/convert`, { activityId, projectId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scrum', 'backlog', projectId] });
@@ -80,6 +93,27 @@ export const BacklogView = ({ projectId }: { projectId: string }) => {
   };
 
   if (isLoading) return <div className="p-8 text-center text-gray-500">Cargando backlog...</div>;
+
+  if (isError) {
+    return (
+      <div className="p-8 text-center bg-red-50 rounded-lg border border-red-100 m-4">
+        <h3 className="text-red-700 font-bold mb-2">Error al cargar el backlog</h3>
+        <p className="text-red-600 text-sm mb-4">
+          {(error as any)?.response?.data?.message ||
+            (error as Error)?.message ||
+            'Ocurrió un error inesperado'}
+        </p>
+        <button
+          onClick={() =>
+            queryClient.invalidateQueries({ queryKey: ['scrum', 'backlog', projectId] })
+          }
+          className="px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors text-sm font-medium"
+        >
+          Reintentar
+        </button>
+      </div>
+    );
+  }
 
   // Hierarchy Logic: Filter roots
   const rootItems = (backlogItems || [])
@@ -198,7 +232,7 @@ export const BacklogView = ({ projectId }: { projectId: string }) => {
               </div>
             </div>
             <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              {isStory && !item.isVirtual && (
+              {isStory && !item.isVirtual && !isViewer && (
                 <button
                   onClick={() => {
                     setNewItemParentId(item.id);
@@ -214,8 +248,12 @@ export const BacklogView = ({ projectId }: { projectId: string }) => {
               {item.isVirtual ? (
                 <button
                   onClick={() => importMutation.mutate(item.linkedWbsActivityId!)}
-                  disabled={importMutation.isPending}
-                  className="px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-md hover:bg-blue-200 transition-colors"
+                  disabled={importMutation.isPending || isViewer}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${
+                    isViewer
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                  }`}
                 >
                   {importMutation.isPending ? '...' : 'Añadir al Backlog'}
                 </button>
@@ -267,12 +305,14 @@ export const BacklogView = ({ projectId }: { projectId: string }) => {
             <Filter size={14} /> Filtros
           </button> */}
 
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 shadow-sm transition-all hover:scale-105 active:scale-95"
-          >
-            <Plus size={16} /> Crear Ítem
-          </button>
+          {!isViewer && (
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 shadow-sm transition-all hover:scale-105 active:scale-95"
+            >
+              <Plus size={16} /> Crear Ítem
+            </button>
+          )}
         </div>
       </div>
 
@@ -303,7 +343,7 @@ export const BacklogView = ({ projectId }: { projectId: string }) => {
           }}
           onSave={(data) => createMutation.mutate(data)}
           isLoading={createMutation.isPending}
-          stories={backlogItems.filter((i: BacklogItem) => i.type === 'STORY') || []}
+          stories={(backlogItems || []).filter((i: BacklogItem) => i.type === 'STORY')}
           initialParentId={newItemParentId}
         />
       )}

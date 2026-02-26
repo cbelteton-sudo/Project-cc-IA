@@ -1,44 +1,29 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Plus, Folder, Search, Building2, Briefcase, FileText, ChevronDown } from 'lucide-react';
+import { Plus, Folder, Search, Building2, Briefcase, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { toast } from 'sonner';
-import { useTranslation } from 'react-i18next';
 
 // Types
-import { projectsService, type Project, type CreateProjectDTO } from '../services/projects';
+import { projectsService, type Project } from '../services/projects';
+import { CreateProjectModal } from '@/components/scrum/CreateProjectModal';
 
-// Zod Schema
-const createProjectSchema = z.object({
-  name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres').max(50),
-  code: z
-    .string()
-    .min(3, 'El código debe tener al menos 3 caracteres')
-    .regex(/^[A-Z0-9-]+$/, 'El código debe ser alfanumérico (Mayúsculas)'),
-  managerName: z.string().optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  globalBudget: z.coerce.number().optional(),
-  enablePMDashboard: z.boolean().optional(),
-  enablePunchListPro: z.boolean().optional(),
-});
-
-type CreateProjectForm = z.infer<typeof createProjectSchema>;
+// Shared Tab/Filter State Types
+type FilterTab = 'all' | 'active' | 'risk' | 'done';
 
 const FilterPill = ({
   label,
   active,
   hasDropdown,
+  onClick,
 }: {
   label: string;
   active?: boolean;
   hasDropdown?: boolean;
+  onClick?: () => void;
 }) => (
   <button
+    onClick={onClick}
     className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors flex items-center gap-1.5
       ${
         active
@@ -56,13 +41,16 @@ const TabOption = ({
   count,
   active,
   color,
+  onClick,
 }: {
   label: string;
   count: number;
   active?: boolean;
   color?: string;
+  onClick: () => void;
 }) => (
   <button
+    onClick={onClick}
     className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors flex items-center gap-2
       ${
         active
@@ -81,28 +69,11 @@ const TabOption = ({
 
 export const Projects = () => {
   const { token } = useAuth();
-  const queryClient = useQueryClient();
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const { t } = useTranslation();
-
-  // Form Hooks
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<CreateProjectForm>({
-    resolver: zodResolver(createProjectSchema),
-    defaultValues: {
-      name: '',
-      code: '',
-      managerName: '',
-      globalBudget: undefined,
-      enablePMDashboard: true,
-      enablePunchListPro: false,
-    },
-  });
+  const [activeTab, setActiveTab] = useState<FilterTab>('all');
+  const [activeFilters, setActiveFilters] = useState<string[]>(['mis-proyectos']);
+  const [isManagerDropdownOpen, setIsManagerDropdownOpen] = useState(false);
+  const [selectedManager, setSelectedManager] = useState<string | null>(null);
 
   // Fetch Projects
   const { data: projects, isLoading } = useQuery({
@@ -111,32 +82,11 @@ export const Projects = () => {
     enabled: !!token,
   });
 
-  // Create Project Mutation
-  const createMutation = useMutation({
-    mutationFn: async (data: CreateProjectForm) => {
-      const payload: CreateProjectDTO = {
-        ...data,
-        currency: 'USD',
-        startDate: data.startDate ? new Date(data.startDate).toISOString() : undefined,
-        endDate: data.endDate ? new Date(data.endDate).toISOString() : undefined,
-      };
-      return projectsService.create(payload);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      setIsModalOpen(false);
-      reset();
-      toast.success(t('common.save'));
-    },
-    onError: (err: any) => {
-      console.error('Create failed', err);
-      toast.error(err.response?.data?.message || t('common.error'));
-    },
-  });
-
-  const onSubmit = (data: CreateProjectForm) => {
-    createMutation.mutate(data);
-  };
+  const managers = useMemo(() => {
+    if (!projects) return [];
+    const allManagers = projects.map((p: Project) => (p as any).managerName).filter(Boolean);
+    return Array.from(new Set(allManagers));
+  }, [projects]);
 
   const getProjectStatus = (project: Project) => {
     // 1. Projects marked as finished
@@ -168,18 +118,48 @@ export const Projects = () => {
       return { label: 'En Tiempo', color: 'bg-blue-100 text-blue-700 border-blue-200' };
     }
   };
-  const filteredProjects = projects?.filter(
-    (p: Project) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.code.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredProjects = projects?.filter((p: Project) => {
+    // Search text
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch =
+      (p.name?.toLowerCase() || '').includes(searchLower) ||
+      (p.code?.toLowerCase() || '').includes(searchLower);
 
-  // Derive counts for tabs based on status
+    if (!matchesSearch) return false;
+
+    // Manager filter
+    const matchesManager = !selectedManager || (p as any).managerName === selectedManager;
+    if (!matchesManager) return false;
+
+    // Tab filtering
+    const status = getProjectStatus(p);
+    if (activeTab === 'active') {
+      return (
+        status.label === 'En Tiempo' ||
+        status.label === 'En Riesgo' ||
+        status.label === 'No iniciado'
+      );
+    }
+    if (activeTab === 'risk') {
+      return status.label === 'En Riesgo' || status.label === 'Atrasado';
+    }
+    if (activeTab === 'done') {
+      return status.label === 'Terminado';
+    }
+
+    return true; // 'all'
+  });
+
+  // Derive counts for tabs based on status (calculate from ALL projects, not filtered ones)
   const allCount = projects?.length || 0;
   const activeCount =
     projects?.filter((p: Project) => {
       const status = getProjectStatus(p);
-      return status.label === 'En Tiempo' || status.label === 'En Riesgo';
+      return (
+        status.label === 'En Tiempo' ||
+        status.label === 'En Riesgo' ||
+        status.label === 'No iniciado'
+      );
     }).length || 0;
   const atRiskCount =
     projects?.filter((p: Project) => {
@@ -210,14 +190,72 @@ export const Projects = () => {
   return (
     <div className="container mx-auto max-w-7xl p-6 min-h-screen bg-gray-50/30">
       {/* Action Center Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 mt-2">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6 mt-2">
         <div className="flex items-center gap-3">
           <Briefcase className="text-gray-700" size={28} />
-          <h2 className="text-2xl font-bold text-gray-800 tracking-tight">{t('projects.title')}</h2>
+          <h2 className="text-2xl font-bold text-gray-800 tracking-tight">
+            Resumen General de Proyectos
+          </h2>
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-72">
+        {/* Filters, Search and New Project Button */}
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-3 w-full xl:w-auto">
+          {/* Pill Filters */}
+          <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
+            <FilterPill
+              label="Mis proyectos"
+              active={activeFilters.includes('mis-proyectos')}
+              onClick={() =>
+                setActiveFilters((prev) =>
+                  prev.includes('mis-proyectos')
+                    ? prev.filter((f) => f !== 'mis-proyectos')
+                    : [...prev, 'mis-proyectos'],
+                )
+              }
+            />
+          </div>
+
+          {/* Responsable Dropdown */}
+          <div className="relative">
+            <FilterPill
+              label={selectedManager ? `Resp: ${selectedManager}` : 'Responsable'}
+              active={!!selectedManager}
+              hasDropdown
+              onClick={() => setIsManagerDropdownOpen(!isManagerDropdownOpen)}
+            />
+
+            {isManagerDropdownOpen && (
+              <div className="absolute top-full left-0 mt-2 bg-white border border-gray-200 shadow-lg rounded-xl z-20 min-w-[200px] py-1 overflow-hidden">
+                <div
+                  className="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-700 font-medium border-b border-gray-100"
+                  onClick={() => {
+                    setSelectedManager(null);
+                    setIsManagerDropdownOpen(false);
+                  }}
+                >
+                  Todos
+                </div>
+                {managers.map((manager) => (
+                  <div
+                    key={manager as string}
+                    className={`px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm ${selectedManager === manager ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}`}
+                    onClick={() => {
+                      setSelectedManager(manager as string);
+                      setIsManagerDropdownOpen(false);
+                    }}
+                  >
+                    {manager as string}
+                  </div>
+                ))}
+                {managers.length === 0 && (
+                  <div className="px-4 py-2 text-sm text-gray-500 italic">
+                    No hay responsables asignados
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="relative flex-1 w-full md:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               type="text"
@@ -228,48 +266,49 @@ export const Projects = () => {
             />
           </div>
 
-          <button
-            onClick={() => {
-              reset();
-              setIsModalOpen(true);
-            }}
-            className="bg-gray-900 text-white px-4 py-2 rounded-full flex items-center gap-2 hover:bg-gray-800 transition shadow-sm font-medium text-sm whitespace-nowrap active:scale-95"
-          >
-            <Plus size={16} />
-            <span className="hidden sm:inline">Nuevo Proyecto</span>
-          </button>
+          <CreateProjectModal
+            customTrigger={
+              <button className="bg-gray-900 text-white px-4 py-2 rounded-full flex justify-center items-center gap-2 hover:bg-gray-800 transition shadow-sm font-medium text-sm whitespace-nowrap active:scale-95 w-full md:w-auto">
+                <Plus size={16} />
+                <span className="inline">Nuevo Proyecto</span>
+              </button>
+            }
+          />
         </div>
-      </div>
-
-      {/* Pill Filters */}
-      <div className="flex flex-wrap items-center gap-2 mb-8">
-        <FilterPill label="Mis proyectos" active />
-        <FilterPill label="Responsable" hasDropdown />
-        <FilterPill label="Estado" hasDropdown />
-        <FilterPill label="Facturados" />
-        <FilterPill label="Atrasados" />
       </div>
 
       {/* Tabs */}
       <div className="flex items-center gap-6 border-b border-gray-200 mb-6">
-        <TabOption label="Todos" count={allCount} active />
+        <TabOption
+          label="Todos"
+          count={allCount}
+          active={activeTab === 'all'}
+          onClick={() => setActiveTab('all')}
+        />
         <TabOption
           label="Activos"
           count={activeCount}
-          active={false}
-          color="bg-blue-100 text-blue-700"
+          active={activeTab === 'active'}
+          color={activeTab === 'active' ? 'bg-blue-100 text-blue-800' : 'bg-blue-50 text-blue-600'}
+          onClick={() => setActiveTab('active')}
         />
         <TabOption
           label="En Riesgo"
           count={atRiskCount}
-          active={false}
-          color="bg-orange-100 text-orange-700"
+          active={activeTab === 'risk'}
+          color={
+            activeTab === 'risk' ? 'bg-orange-100 text-orange-800' : 'bg-orange-50 text-orange-600'
+          }
+          onClick={() => setActiveTab('risk')}
         />
         <TabOption
           label="Terminados"
           count={doneCount}
-          active={false}
-          color="bg-green-100 text-green-700"
+          active={activeTab === 'done'}
+          color={
+            activeTab === 'done' ? 'bg-green-100 text-green-800' : 'bg-green-50 text-green-600'
+          }
+          onClick={() => setActiveTab('done')}
         />
       </div>
 
@@ -291,62 +330,51 @@ export const Projects = () => {
                 <th className="px-6 py-3 text-sm font-bold text-gray-700">Responsable</th>
                 <th className="px-6 py-3 text-sm font-bold text-gray-700">Entrega</th>
                 <th className="px-6 py-3 text-sm font-bold text-gray-700">Estado</th>
-                <th className="px-6 py-3 text-right"></th>
+                <th className="px-6 py-3 text-center text-sm font-bold text-gray-700">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredProjects?.map((project: Project) => {
                 const status = getProjectStatus(project);
-                const isLate = status.label === 'Atrasado';
-
-                // Map status label to dot color (Action Center style)
-                let dotColor = 'bg-gray-400';
-                if (status.label === 'Terminado') dotColor = 'bg-green-500';
-                else if (status.label === 'En Tiempo') dotColor = 'bg-blue-400';
-                else if (status.label === 'En Riesgo') dotColor = 'bg-orange-400';
-                else if (isLate) dotColor = 'bg-red-500';
 
                 return (
                   <tr key={project.id} className="hover:bg-gray-50 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <FileText size={16} className="text-gray-400 shrink-0" />
-                        <span className="text-sm font-medium text-gray-800">
-                          {project.code} - {project.name}
-                        </span>
+                        <Building2 size={16} className="text-gray-400 shrink-0" />
+                        <span className="text-sm font-medium text-gray-800">{project.name}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-600">
                         {/* Mocking Manager for now if not available */}
-                        {(project as any).managerName || (
+                        {project.managerName || (
                           <span className="text-gray-400 italic">Sin asignar</span>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div
-                        className={`text-sm ${isLate ? 'text-red-500 font-medium' : 'text-gray-600'}`}
-                      >
-                        {project.endDate ? (
-                          new Date(project.endDate).toLocaleDateString('es-GT', {
-                            month: '2-digit',
-                            day: '2-digit',
-                            year: '2-digit',
-                          })
-                        ) : (
-                          <span className="text-gray-400 italic">No definida</span>
-                        )}
-                      </div>
+                      {project.endDate ? (
+                        new Intl.DateTimeFormat('es-ES', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: '2-digit',
+                        }).format(new Date(project.endDate))
+                      ) : (
+                        <span className="text-gray-400 italic font-light">No definida</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${dotColor}`}></span>
-                        <span className="text-sm text-gray-700">{status.label}</span>
+                        <span
+                          className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${status.color}`}
+                        >
+                          {status.label}
+                        </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex justify-center gap-2">
                         <Link
                           to={`/projects/${project.id}/plan`}
                           className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 rounded-md transition-colors"
@@ -370,180 +398,6 @@ export const Projects = () => {
       )}
 
       {/* Modal remains mostly the same, just styled a bit if needed. Keeping original modal logic. */}
-      {/* Create Project Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in p-4">
-          <div className="bg-white p-8 rounded-2xl w-full max-w-2xl shadow-2xl transform transition-all scale-100 border border-gray-100 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-8 border-b border-gray-100 pb-4">
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900">{t('projects.newProject')}</h3>
-                <p className="text-gray-500 text-sm mt-1">
-                  Ingresa los detalles para iniciar un nuevo proyecto.
-                </p>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="bg-gray-50 p-2.5 rounded-full hover:bg-gray-100 transition-colors border border-gray-100"
-              >
-                <Plus size={24} className="rotate-45 text-gray-500" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Name */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    {t('projects.title')}
-                  </label>
-                  <div className="relative">
-                    <Building2
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                      size={18}
-                    />
-                    <input
-                      type="text"
-                      {...register('name')}
-                      className={`w-full pl-11 pr-4 py-3 border rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all ${errors.name ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'}`}
-                      placeholder="Ej. Torre Reforma Residencial"
-                    />
-                  </div>
-                  {errors.name && (
-                    <p className="text-xs text-red-500 mt-1.5 font-medium">{errors.name.message}</p>
-                  )}
-                </div>
-
-                {/* Code */}
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    {t('projects.code')}
-                  </label>
-                  <input
-                    type="text"
-                    {...register('code')}
-                    className={`w-full px-4 py-3 border rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all ${errors.code ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50 focus:bg-white'}`}
-                    placeholder="Ej. TR-001"
-                  />
-                  <p className="text-xs text-gray-400 mt-1.5">Identificador único (Mayúsculas).</p>
-                  {errors.code && (
-                    <p className="text-xs text-red-500 mt-1.5 font-medium">{errors.code.message}</p>
-                  )}
-                </div>
-
-                {/* Manager */}
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    Responsable / PM
-                  </label>
-                  <input
-                    type="text"
-                    {...register('managerName')}
-                    className="w-full px-4 py-3 border border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
-                    placeholder="Ej. Arq. Sofia Lopez"
-                  />
-                </div>
-
-                {/* Dates */}
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Fecha Inicio</label>
-                  <input
-                    type="date"
-                    {...register('startDate')}
-                    className="w-full px-4 py-3 border border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-gray-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    Fecha Entrega
-                  </label>
-                  <input
-                    type="date"
-                    {...register('endDate')}
-                    className="w-full px-4 py-3 border border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-gray-600"
-                  />
-                </div>
-
-                {/* Budget */}
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    Presupuesto Global
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">
-                      $
-                    </span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      {...register('globalBudget')}
-                      className="w-full pl-8 pr-4 py-3 border border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1.5">Moneda base: USD</p>
-                </div>
-
-                {/* Settings */}
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-3">
-                    Configuración Inicial
-                  </label>
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
-                      <input
-                        type="checkbox"
-                        {...register('enablePMDashboard')}
-                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
-                      />
-                      <span className="text-sm font-medium text-gray-700">
-                        Habilitar Dashboard PM
-                      </span>
-                    </label>
-                    <label className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
-                      <input
-                        type="checkbox"
-                        {...register('enablePunchListPro')}
-                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
-                      />
-                      <span className="text-sm font-medium text-gray-700">
-                        Activar Punch List Pro
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-4 pt-6 border-t border-gray-100 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-6 py-3.5 text-gray-700 hover:bg-gray-100 rounded-xl font-bold transition-colors border border-transparent hover:border-gray-200"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 px-6 py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 font-bold shadow-lg shadow-blue-200 transition-all active:scale-[0.98] flex justify-center items-center gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Creando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Plus size={20} />
-                      <span>Crear Proyecto</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

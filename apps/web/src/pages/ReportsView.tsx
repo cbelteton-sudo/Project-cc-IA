@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import { api } from '../lib/api';
 import {
   FileText,
   ArrowLeft,
@@ -34,8 +34,6 @@ export const ReportsView = () => {
   const [activeTab, setActiveTab] = useState<'cost-control' | 'pnl' | 's-curve' | 'resources'>(
     'cost-control',
   );
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
-
   // 1. Fetch Cost Control Data
   const {
     data: costData,
@@ -44,7 +42,7 @@ export const ReportsView = () => {
   } = useQuery({
     queryKey: ['report-cost', id],
     queryFn: async () => {
-      const res = await axios.get(`${API_URL}/reports/project/${id}`);
+      const res = await api.get(`/reports/project/${id}`);
       return res.data;
     },
   });
@@ -57,7 +55,7 @@ export const ReportsView = () => {
   } = useQuery({
     queryKey: ['report-pnl', id],
     queryFn: async () => {
-      const res = await axios.get(`${API_URL}/reports/project/${id}/pnl`);
+      const res = await api.get(`/reports/project/${id}/pnl`);
       return res.data;
     },
   });
@@ -70,7 +68,7 @@ export const ReportsView = () => {
   } = useQuery({
     queryKey: ['report-scurve', id],
     queryFn: async () => {
-      const res = await axios.get(`${API_URL}/reports/project/${id}/s-curve`);
+      const res = await api.get(`/reports/project/${id}/s-curve`);
       return res.data;
     },
     enabled: activeTab === 's-curve',
@@ -84,7 +82,7 @@ export const ReportsView = () => {
   } = useQuery({
     queryKey: ['report-histogram', id],
     queryFn: async () => {
-      const res = await axios.get(`${API_URL}/reports/project/${id}/histogram`);
+      const res = await api.get(`/reports/project/${id}/histogram`);
       return res.data;
     },
     enabled: activeTab === 'resources',
@@ -147,6 +145,12 @@ export const ReportsView = () => {
           </div>
         </div>
         <div className="flex gap-2">
+          <Link
+            to={`/projects/${id}/sprint-assignments`}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white border border-blue-700 rounded-lg hover:bg-blue-700 transition font-medium shadow-sm"
+          >
+            <FileText size={18} /> Asignaciones
+          </Link>
           <button
             onClick={handleExport}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-700 transition font-medium"

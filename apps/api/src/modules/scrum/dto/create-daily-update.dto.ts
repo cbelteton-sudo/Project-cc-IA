@@ -5,7 +5,8 @@ export class CreateDailyUpdateDto {
   projectId: string;
 
   @IsUUID()
-  userId: string;
+  @IsOptional()
+  userId?: string;
 
   @IsUUID()
   @IsOptional()

@@ -5,17 +5,42 @@ import { join } from 'path';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './all-exceptions.filter';
 import { HttpAdapterHost } from '@nestjs/core';
+import * as http from 'http';
+
+declare const module: any; // Webpack HMR
+
+const BOOT_KEY = '__fieldclose_api_booted__';
 
 async function bootstrap() {
-  const port = process.env.PORT || 4180;
+  // 1. Global Guard: Prevent double-bootstrap in same process
+  if ((globalThis as any)[BOOT_KEY]) {
+    console.warn('⚠️ [API] Bootstrap called but already booted! Ignoring.');
+    return;
+  }
+  (globalThis as any)[BOOT_KEY] = true;
+
+  const port = Number(process.env.PORT ?? 4181);
 
   try {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+    // 2. Enable Shutdown Hooks (SIGTERM/SIGINT)
+    app.enableShutdownHooks();
+
     app.setGlobalPrefix('api');
+
+    // Phase 0: Security & Hardening
+
+    const cookieParser = require('cookie-parser');
+    app.use(cookieParser());
+
     app.enableCors({
-      origin: process.env.CORS_ORIGIN
-        ? process.env.CORS_ORIGIN.split(',')
-        : true,
+      origin: [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3000',
+      ],
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
       credentials: true,
     });
@@ -37,9 +62,26 @@ async function bootstrap() {
     expressApp.get('/', (_req: any, res: any) => res.send('OK'));
     expressApp.get('/health', (_req: any, res: any) => res.send('OK'));
 
+    // Trigger restart 9
     await app.listen(port, '0.0.0.0');
-    console.log(`Application is running on: ${await app.getUrl()}`);
+    console.log(`[API] listening on ${port} pid=${process.pid}`);
+
+    // 3. HMR / Hot Reload Clean Shutdown
+    if (module.hot) {
+      module.hot.accept();
+      module.hot.dispose(() => app.close());
+    }
   } catch (error) {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`❌ [FATAL] Port ${port} is already in use!`);
+      console.error(
+        'You likely have another instance of the API running in another terminal.',
+      );
+      console.error(
+        'Please close all other "npm run start:dev" or "nest start" processes.',
+      );
+      process.exit(1);
+    }
     console.error(
       '❌ NestJS Bootstrap Failed! Starting fallback server...',
       error,
@@ -47,9 +89,11 @@ async function bootstrap() {
 
     // Emergency Fallback Server
     // Keeps the container alive so we can see logs and debugging info
-    const http = require('http');
+    // Emergency Fallback Server
+    // Keeps the container alive so we can see logs and debugging info
+    // const http = require('http');
     const server = http.createServer((req: any, res: any) => {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(
         JSON.stringify(
           {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ArrowRight, Calendar, Plus } from 'lucide-react';
@@ -13,7 +13,6 @@ export const SprintPlanning = ({
   projectId: string;
   onSprintStarted: () => void;
 }) => {
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -22,13 +21,13 @@ export const SprintPlanning = ({
   // Fetch Backlog
   const { data: backlogItems } = useQuery({
     queryKey: ['scrum', 'backlog', projectId],
-    queryFn: async () => (await axios.get(`${API_URL}/scrum/backlog/${projectId}`)).data,
+    queryFn: async () => (await api.get(`/scrum/backlog/${projectId}`)).data,
   });
 
   // Fetch Sprints
   const { data: sprints } = useQuery({
     queryKey: ['scrum', 'sprints', projectId],
-    queryFn: async () => (await axios.get(`${API_URL}/scrum/sprints/${projectId}`)).data,
+    queryFn: async () => (await api.get(`/scrum/sprints/${projectId}`)).data,
   });
 
   const plannedSprint = sprints?.find((s: any) => s.status === 'PLANNED');
@@ -41,11 +40,9 @@ export const SprintPlanning = ({
 
   const createSprintMutation = useMutation({
     mutationFn: async (data: any) =>
-      axios.post(`${API_URL}/scrum/sprints`, {
+      api.post(`/scrum/sprints`, {
         ...data,
         projectId,
-        createdByUserId:
-          (user as any)?.id || (user as any)?.userId || '4044f19e-764f-4109-9f73-d590b61116ca',
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scrum', 'sprints', projectId] });
@@ -56,7 +53,7 @@ export const SprintPlanning = ({
   const addToSprintMutation = useMutation({
     mutationFn: async () => {
       if (!targetSprint) return;
-      return axios.post(`${API_URL}/scrum/sprints/${targetSprint.id}/items`, {
+      return api.post(`/scrum/sprints/${targetSprint.id}/items`, {
         items: selectedItems,
       });
     },
@@ -68,8 +65,7 @@ export const SprintPlanning = ({
   });
 
   const startSprintMutation = useMutation({
-    mutationFn: async (sprintId: string) =>
-      axios.patch(`${API_URL}/scrum/sprints/${sprintId}/start`),
+    mutationFn: async (sprintId: string) => api.patch(`/scrum/sprints/${sprintId}/start`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scrum', 'sprints', projectId] });
       onSprintStarted();

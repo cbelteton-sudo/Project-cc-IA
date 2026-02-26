@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { useAuth } from './context/AuthContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -14,6 +14,8 @@ const PortalLayout = React.lazy(() =>
 );
 
 // Pages - Lazy Loaded (Critical for crash isolation)
+const AcceptInvite = React.lazy(() => import('./pages/AcceptInvite'));
+
 const Login = React.lazy(() => import('./pages/Login').then((m) => ({ default: m.Login })));
 const Dashboard = React.lazy(() =>
   import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })),
@@ -21,6 +23,24 @@ const Dashboard = React.lazy(() =>
 const Projects = React.lazy(() =>
   import('./pages/Projects').then((m) => ({ default: m.Projects })),
 );
+
+// Project Context Pages
+const ProjectOverview = React.lazy(() =>
+  import('./pages/project/ProjectOverview').then((m) => ({ default: m.ProjectOverview })),
+);
+const ProjectTeam = React.lazy(() =>
+  import('./pages/project/ProjectTeam').then((m) => ({ default: m.ProjectTeam })),
+);
+const ProjectContractors = React.lazy(() =>
+  import('./pages/project/ProjectContractors').then((m) => ({ default: m.ProjectContractors })),
+);
+const ProjectSettings = React.lazy(() =>
+  import('./pages/project/ProjectSettings').then((m) => ({ default: m.ProjectSettings })),
+);
+const ProjectActivity = React.lazy(() =>
+  import('./pages/project/ProjectActivity').then((m) => ({ default: m.ProjectActivity })),
+);
+
 const ProjectBudget = React.lazy(() =>
   import('./pages/ProjectBudget').then((m) => ({ default: m.ProjectBudget })),
 );
@@ -42,9 +62,6 @@ const ChangeOrders = React.lazy(() =>
 );
 
 // Field Pages
-const FieldDashboard = React.lazy(() =>
-  import('./pages/field/FieldDashboard').then((m) => ({ default: m.FieldDashboard })),
-);
 const FieldPMDashboard = React.lazy(() =>
   import('./pages/field/FieldPMDashboard').then((m) => ({ default: m.FieldPMDashboard })),
 );
@@ -80,6 +97,9 @@ const ReportsView = React.lazy(() =>
 
 const ExecutiveReport = React.lazy(() =>
   import('./pages/ExecutiveReport').then((m) => ({ default: m.ExecutiveReport })),
+);
+const SprintAssignmentsReport = React.lazy(() =>
+  import('./pages/SprintAssignmentsReport').then((m) => ({ default: m.SprintAssignmentsReport })),
 );
 const PunchListPro = React.lazy(() =>
   import('./pages/field/PunchListPro').then((m) => ({ default: m.PunchListPro })),
@@ -123,7 +143,12 @@ const PortalOrders = React.lazy(() =>
 import { QuickCaptureProvider } from './context/QuickCaptureContext';
 
 const ProtectedRoute = () => {
-  const { token } = useAuth();
+  const { token, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <Loading />;
+  }
+
   if (!token) return <Navigate to="/login" replace />;
   return (
     <QuickCaptureProvider>
@@ -137,6 +162,30 @@ const Loading = () => (
 );
 
 function App() {
+  const API_URL = import.meta.env.VITE_API_URL;
+
+  if (!API_URL) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-red-900/90 text-white p-4">
+        <div className="max-w-md bg-black p-6 rounded-lg border-2 border-red-500 shadow-2xl">
+          <h1 className="text-2xl font-bold mb-4">Configuration Error</h1>
+          <p className="mb-4">
+            The environment variable{' '}
+            <code className="bg-red-800 px-1 py-0.5 rounded">VITE_API_URL</code> is missing.
+          </p>
+          <p className="text-sm opacity-80">
+            Please create a <code className="bg-gray-800 px-1 py-0.5 rounded">.env</code> file in
+            the web folder with:
+            <br />
+            <span className="block mt-2 bg-gray-900 p-2 rounded font-mono">
+              VITE_API_URL=http://localhost:4180/api
+            </span>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ErrorBoundary
       fallback={
@@ -149,21 +198,32 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
 
+          <Route path="/accept-invite" element={<AcceptInvite />} />
           <Route element={<ProtectedRoute />}>
+            {/* ORGANIZATION CONTEXT */}
             <Route path="/" element={<Dashboard />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/budgets" element={<Budgets />} />
 
-            <Route path="/projects/:id" element={<ProjectBudget />} />
-            <Route path="/projects/:id/reports" element={<ReportsView />} />
-            <Route path="/projects/:id/plan" element={<ProjectPlan />} />
-            <Route path="/projects/:id/change-orders" element={<ChangeOrders />} />
-            <Route path="/projects/:id/pm" element={<PMDashboard />} />
-            <Route path="/projects/:id/punch" element={<PunchListPro />} />
-
             <Route path="/procurement/requests" element={<MaterialRequests />} />
             <Route path="/procurement/orders" element={<PurchaseOrders />} />
             <Route path="/invoices" element={<Invoices />} />
+
+            {/* PROJECT CONTEXT */}
+            <Route path="/projects/:id" element={<Navigate to="overview" replace />} />
+            <Route path="/projects/:id/overview" element={<ProjectOverview />} />
+            <Route path="/projects/:id/budget" element={<ProjectBudget />} />
+            <Route path="/projects/:id/plan" element={<ProjectPlan />} />
+            <Route path="/projects/:id/team" element={<ProjectTeam />} />
+            <Route path="/projects/:id/contractors" element={<ProjectContractors />} />
+            <Route path="/projects/:id/activity" element={<ProjectActivity />} />
+            <Route path="/projects/:id/settings" element={<ProjectSettings />} />
+
+            {/* Existing Project Routes Mapped */}
+            <Route path="/projects/:id/reports" element={<ReportsView />} />
+            <Route path="/projects/:id/change-orders" element={<ChangeOrders />} />
+            <Route path="/projects/:id/pm" element={<PMDashboard />} />
+            <Route path="/projects/:id/punch" element={<PunchListPro />} />
 
             <Route path="/field" element={<FieldLayout />}>
               <Route index element={<Navigate to="today" replace />} />
@@ -182,6 +242,7 @@ function App() {
 
             {/* Route removed: ProjectReport */}
             <Route path="/projects/:id/report" element={<ExecutiveReport />} />
+            <Route path="/projects/:id/sprint-assignments" element={<SprintAssignmentsReport />} />
 
             {/* Scrum Module */}
             <Route path="/scrum" element={<ScrumProjects />} />

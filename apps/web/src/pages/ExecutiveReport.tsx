@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import { api } from '@/lib/api';
 import { useAuth } from '../context/AuthContext';
 import {
   FileText,
@@ -34,7 +34,7 @@ import {
 export const ExecutiveReport = () => {
   const { id } = useParams();
   const { token } = useAuth();
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
+  // API_URL handled by api instance
 
   // Filters
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
@@ -45,9 +45,7 @@ export const ExecutiveReport = () => {
   const { data: contractors } = useQuery({
     queryKey: ['contractors'],
     queryFn: async () => {
-      const res = await axios.get(`${API_URL}/contractors`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get('/contractors');
       return res.data;
     },
   });
@@ -64,12 +62,7 @@ export const ExecutiveReport = () => {
       if (dateRange.to) params.append('to', dateRange.to);
       if (contractorId) params.append('contractorId', contractorId);
 
-      const res = await axios.get(
-        `${API_URL}/reports/project/${id}/executive?${params.toString()}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      const res = await api.get(`/reports/project/${id}/executive?${params.toString()}`);
       return res.data;
     },
   });

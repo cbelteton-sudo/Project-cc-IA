@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import {
   Activity,
   CheckCircle2,
@@ -47,7 +47,7 @@ export const ScrumKPIs: React.FC<ScrumKPIsProps> = ({ projectId }) => {
   const { data: metrics, isLoading: isLoadingMetrics } = useQuery<DashboardMetrics>({
     queryKey: ['scrum-dashboard', projectId],
     queryFn: async () => {
-      const response = await axios.get(`${API_URL}/scrum/projects/${projectId}/dashboard`);
+      const response = await api.get(`/scrum/projects/${projectId}/dashboard`);
       return response.data;
     },
   });
@@ -56,7 +56,7 @@ export const ScrumKPIs: React.FC<ScrumKPIsProps> = ({ projectId }) => {
   // We keep this to show Retrospectives and specific finished tasks, which aren't in the summary DTO yet.
   const { data: sprints, isLoading: isLoadingSprints } = useQuery({
     queryKey: ['scrum', 'sprints', projectId],
-    queryFn: async () => (await axios.get(`${API_URL}/scrum/sprints/${projectId}`)).data,
+    queryFn: async () => (await api.get(`/scrum/sprints/${projectId}`)).data,
   });
 
   if (isLoadingMetrics || isLoadingSprints) {

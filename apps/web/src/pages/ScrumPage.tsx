@@ -1,16 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import { api } from '../lib/api';
 import { useParams, Link } from 'react-router-dom';
 import { ScrumDashboard } from '../components/scrum/ScrumDashboard';
 import { ChevronLeft } from 'lucide-react';
 
 export const ScrumPage = () => {
   const { projectId } = useParams();
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
-
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
-    queryFn: async () => (await axios.get(`${API_URL}/projects/${projectId}`)).data,
+    queryFn: async () => (await api.get(`/projects/${projectId}`)).data,
     enabled: !!projectId,
   });
 

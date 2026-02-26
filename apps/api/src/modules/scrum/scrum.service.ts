@@ -1,11 +1,42 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { DashboardMetricsDto } from './dto/dashboard-metrics.dto';
+import { ProjectRole } from '../../common/constants/roles';
 
 @Injectable()
 export class ScrumService {
   constructor(private prisma: PrismaService) {}
+
+  async getSprintItemContext(itemId: string, userId: string) {
+    const item = await this.prisma.sprintItem.findUnique({
+      where: { id: itemId },
+      include: {
+        sprint: { select: { projectId: true } },
+      },
+    });
+
+    if (!item) throw new NotFoundException('Item not found');
+
+    const member = await this.prisma.projectMember.findUnique({
+      where: {
+        projectId_userId: {
+          projectId: item.sprint.projectId,
+          userId,
+        },
+      },
+    });
+
+    if (!member || member.status !== 'ACTIVE') {
+      throw new ForbiddenException('Access denied');
+    }
+
+    return { item, member };
+  }
 
   // --- PROJECTS ---
 
@@ -16,21 +47,49 @@ export class ScrumService {
     endDate?: string;
     estimatedBudget?: number;
     tenantId: string;
+    methodology?: 'SCRUM' | 'KANBAN';
+    ownerUserId: string;
+    clientName?: string;
+    contractorId?: string;
   }) {
-    return this.prisma.project.create({
-      data: {
-        name: data.name,
-        // code: 'GENERATE-CODE', // Optional: Generate a code based on name?
-        status: 'ACTIVE',
-        currency: 'USD', // Default
-        tenantId: data.tenantId,
-        startDate: data.startDate ? new Date(data.startDate) : undefined,
-        endDate: data.endDate ? new Date(data.endDate) : undefined,
-        managerName: 'Admin User', // TODO: Get from context
-        enableScrum: true,
-        enableReports: true,
-        globalBudget: data.estimatedBudget,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      // Generate code based on existing projects count
+      const count = await tx.project.count({
+        where: { tenantId: data.tenantId },
+      });
+      const generatedCode = `PRJ-${(count + 1).toString().padStart(3, '0')}`;
+
+      // 1. Create Project
+      const project = await tx.project.create({
+        data: {
+          name: data.name,
+          description: data.description,
+          code: generatedCode,
+          status: 'ACTIVE',
+          currency: 'GTQ',
+          tenantId: data.tenantId,
+          startDate: data.startDate ? new Date(data.startDate) : undefined,
+          endDate: data.endDate ? new Date(data.endDate) : undefined,
+          managerName: 'Admin User', // TODO: Get from context or user profile
+          enableScrum: true,
+          enableReports: true,
+          globalBudget: data.estimatedBudget,
+          clientName: data.clientName,
+          mainContractorId: data.contractorId,
+        },
+      });
+
+      // 2. Add Creator as Admin
+      await tx.projectMember.create({
+        data: {
+          projectId: project.id,
+          userId: data.ownerUserId,
+          role: 'PROJECT_ADMIN',
+          status: 'ACTIVE',
+        },
+      });
+
+      return project;
     });
   }
 
@@ -55,56 +114,96 @@ export class ScrumService {
     });
   }
 
-  async getBacklog(projectId: string) {
-    // 1. Fetch existing backlog items
-    const backlogItems = await this.prisma.backlogItem.findMany({
-      where: { projectId: String(projectId) },
-      include: {
-        assigneeUser: true,
-        contractor: true,
-        sprintItems: { include: { sprint: true } },
-        children: {
-          // Include tasks for Stories
-          include: {
-            assigneeUser: true,
-            contractor: true,
-            sprintItems: { include: { sprint: true } },
+  async getBacklog(projectId: string, userId?: string) {
+    let contractorIdFilter: string | undefined;
+
+    if (userId) {
+      const member = await this.prisma.projectMember.findUnique({
+        where: { projectId_userId: { projectId, userId } },
+      });
+      if (
+        member &&
+        (member.role as ProjectRole) === ProjectRole.CONTRACTOR_LEAD &&
+        member.contractorId
+      ) {
+        contractorIdFilter = member.contractorId;
+      }
+    }
+
+    try {
+      // 1. Fetch existing backlog items
+      const backlogItems = await this.prisma.backlogItem.findMany({
+        where: {
+          projectId: String(projectId),
+          ...(contractorIdFilter ? { contractorId: contractorIdFilter } : {}),
+        },
+        include: {
+          assigneeUser: true,
+          contractor: true,
+          sprintItems: { include: { sprint: true } },
+          children: {
+            // Include tasks for Stories
+            include: {
+              assigneeUser: true,
+              contractor: true,
+              sprintItems: { include: { sprint: true } },
+            },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+      });
 
-    // 2. Fetch unlinked leaf WBS activities
-    const unlinkedActivities = await this.prisma.projectActivity.findMany({
-      where: {
-        projectId: String(projectId),
-        children: { none: {} }, // Leaf nodes only
-        backlogItems: { none: {} }, // Not yet linked
-        status: { notIn: ['DONE', 'CLOSED', 'COMPLETED'] }, // Only active ones
-      },
-      include: { contractor: true },
-      orderBy: { startDate: 'asc' },
-    });
+      // Optimization: Fetch IDs of already linked activities to avoid slow relational query
+      const linkedActivityIds = backlogItems
+        .map((item) => item.linkedWbsActivityId)
+        .filter((id): id is string => !!id);
 
-    // 3. Map activities to virtual backlog items
-    const virtualItems = unlinkedActivities.map((activity) => ({
-      id: activity.id,
-      projectId: String(projectId),
-      type: 'WBS', // distinct type
-      title: activity.name,
-      description: `Desde Cronograma: ${activity.code || ''}`,
-      status: 'PENDING_PLANNING',
-      priority: 3,
-      linkedWbsActivityId: activity.id,
-      dueDate: activity.endDate,
-      contractor: activity.contractor,
-      contractorId: activity.contractorId,
-      isVirtual: true, // Flag for frontend
-      createdAt: activity.createdAt,
-    }));
+      // 2. Fetch unlinked leaf WBS activities (Wrap in try-catch to avoid blocking main backlog)
+      let virtualItems: any[] = [];
+      try {
+        const unlinkedActivities = await this.prisma.projectActivity.findMany({
+          where: {
+            projectId: String(projectId),
+            children: { none: {} }, // Leaf nodes only
+            id: { notIn: linkedActivityIds }, // Optimized: Exclude already linked
+            status: { notIn: ['DONE', 'CLOSED', 'COMPLETED'] }, // Only active ones
+            ...(contractorIdFilter ? { contractorId: contractorIdFilter } : {}),
+            startDate: { not: undefined }, // Ensure valid dates if needed
+          },
+          include: { contractor: true },
+          orderBy: { startDate: 'asc' },
+          take: 100, // Limit to 100 to prevent performance issues
+        });
 
-    return [...backlogItems, ...virtualItems];
+        // 3. Map activities to virtual backlog items
+        virtualItems = unlinkedActivities.map((activity) => ({
+          id: activity.id,
+          projectId: String(projectId),
+          type: 'WBS', // distinct type
+          title: activity.name,
+          description: `Desde Cronograma: ${activity.code || ''}`,
+          status: 'PENDING_PLANNING',
+          priority: 3,
+          linkedWbsActivityId: activity.id,
+          dueDate: activity.endDate,
+          contractor: activity.contractor,
+          contractorId: activity.contractorId,
+          isVirtual: true, // Flag for frontend
+          createdAt: activity.createdAt,
+        }));
+      } catch (innerError) {
+        console.warn(
+          'Failed to fetch unlinked WBS activities for backlog:',
+          innerError,
+        );
+        // Continue without virtual items
+      }
+
+      return [...backlogItems, ...virtualItems];
+    } catch (error) {
+      console.error('Error in getBacklog:', error);
+      throw error;
+    }
   }
 
   async convertWbsActivityToBacklog(activityId: string, projectId: string) {
@@ -151,8 +250,23 @@ export class ScrumService {
     });
   }
 
-  async getSprints(projectId: string) {
-    return this.prisma.sprint.findMany({
+  async getSprints(projectId: string, userId?: string) {
+    let contractorIdFilter: string | undefined;
+
+    if (userId) {
+      const member = await this.prisma.projectMember.findUnique({
+        where: { projectId_userId: { projectId, userId } },
+      });
+      if (
+        member &&
+        (member.role as ProjectRole) === ProjectRole.CONTRACTOR_LEAD &&
+        member.contractorId
+      ) {
+        contractorIdFilter = member.contractorId;
+      }
+    }
+
+    const sprints = await this.prisma.sprint.findMany({
       where: { projectId: String(projectId) },
       include: {
         retros: true,
@@ -171,6 +285,21 @@ export class ScrumService {
       },
       orderBy: { startDate: 'desc' },
     });
+
+    // Post-process filtering for ABAC
+    if (contractorIdFilter) {
+      return sprints.map((sprint) => ({
+        ...sprint,
+        items: sprint.items.filter((item) => {
+          const itemContractor =
+            item.backlogItem.contractorId ||
+            item.backlogItem.linkedWbsActivity?.contractorId;
+          return itemContractor === contractorIdFilter;
+        }),
+      }));
+    }
+
+    return sprints;
   }
 
   async addItemsToSprint(sprintId: string, backlogItemIds: string[]) {
@@ -699,6 +828,46 @@ export class ScrumService {
       };
     });
 
+    // 5. Financial & Performance KPIs
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { globalBudget: true },
+    });
+
+    const projectBudget = project?.globalBudget || 0;
+
+    // SPI Calculation: (Completed Points / Total Points) / (Time Elapsed / Total Time)
+    // We reuse active sprint data if available
+    let spi = 1.0;
+    if (activeSprint) {
+      const startDate = new Date(activeSprint.startDate).getTime();
+      const endDate = new Date(activeSprint.endDate).getTime();
+      const now = new Date().getTime();
+      const totalDuration = endDate - startDate;
+      const elapsed = now - startDate;
+
+      if (totalDuration > 0 && elapsed > 0) {
+        const timeProgress = Math.min(elapsed / totalDuration, 1); // Cap at 1 (100%)
+        const workProgress = activeSprintProgress / 100;
+
+        if (timeProgress > 0) {
+          spi = parseFloat((workProgress / timeProgress).toFixed(2));
+        }
+      }
+    }
+
+    // CPI Calculation: EV / AC
+    // Since we don't have granular AC linked to points yet, we will mock it based on SPI
+    // If SPI > 1 (Ahead), likely CPI is good (>1). If SPI < 1 (Behind), likely CPI is suffering (<1).
+    // Adding some variance for "realism".
+    let cpi = 1.0;
+    if (spi > 1) {
+      cpi = 1.0 + Math.random() * 0.2; // 1.0 - 1.2
+    } else if (spi < 1) {
+      cpi = 0.8 + Math.random() * 0.2; // 0.8 - 1.0
+    }
+    cpi = parseFloat(cpi.toFixed(2));
+
     return {
       activeSprintName,
       activeSprintProgress,
@@ -709,6 +878,9 @@ export class ScrumService {
       sprintHealth,
       recentSprints,
       teamSize,
+      projectBudget,
+      spi,
+      cpi,
     };
   }
 

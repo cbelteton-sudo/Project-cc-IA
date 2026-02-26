@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import { api } from '@/lib/api';
 import { Link } from 'react-router-dom';
 import { FileText, Search, ArrowRight, Building2, Calendar } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -10,15 +10,13 @@ import { es } from 'date-fns/locale';
 export const ReportsHub = () => {
   const { token } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
+  // API_URL handled by api instance
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: async () => {
-      const res = await axios.get(`${API_URL}/projects`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return res.data;
+      const response = await api.get('/projects');
+      return response.data;
     },
   });
 

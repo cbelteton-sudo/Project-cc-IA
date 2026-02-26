@@ -1,0 +1,15 @@
+
+> api@0.0.1 test /Users/carlosbelteton/Project-CConstructions/apps/api
+> jest -- --runInBand
+
+No tests found, exiting with code 1
+Run with `--passWithNoTests` to exit with code 0
+In /Users/carlosbelteton/Project-CConstructions/apps/api/src
+  208 files checked.
+  testMatch:  - 0 matches
+  testPathIgnorePatterns: /node_modules/ - 208 matches
+  testRegex: .*\.spec\.ts$ - 9 matches
+Pattern: --runInBand - 0 matches
+/Users/carlosbelteton/Project-CConstructions/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  api@0.0.1 test: `jest -- --runInBand`
+Exit status 1

@@ -10,7 +10,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import { EisenhowerQuadrant } from './EisenhowerQuadrant';
 import { EisenhowerCard } from './EisenhowerCard';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -39,12 +39,11 @@ export const EisenhowerMatrix = () => {
   const { projectId } = useParams();
   const queryClient = useQueryClient();
   const [activeId, setActiveId] = useState<string | null>(null);
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4180/api';
 
   const { data, isLoading, error } = useQuery<MatrixData>({
     queryKey: ['eisenhower', projectId],
     queryFn: async () => {
-      const res = await axios.get(`${API_URL}/scrum/projects/${projectId}/eisenhower`);
+      const res = await api.get(`/scrum/projects/${projectId}/eisenhower`);
       return res.data;
     },
     enabled: !!projectId,
@@ -60,7 +59,7 @@ export const EisenhowerMatrix = () => {
       isUrgent: boolean;
       isImportant: boolean;
     }) => {
-      return axios.patch(`${API_URL}/scrum/backlog/${itemId}/eisenhower`, {
+      return api.patch(`/scrum/backlog/${itemId}/eisenhower`, {
         isUrgent,
         isImportant,
       });

@@ -38,23 +38,47 @@ describe('AuthController', () => {
   describe('login', () => {
     it('should throw UnauthorizedException if validation fails', async () => {
       mockAuthService.validateUser.mockResolvedValue(null);
-      await expect(
-        controller.login({ email: 'test@example.com', password: 'wrong' }),
-      ).rejects.toThrow(UnauthorizedException);
+      const req: any = {
+        ip: '127.0.0.1',
+        headers: { 'user-agent': 'test-agent' },
+      };
+      const res: any = { cookie: jest.fn(), clearCookie: jest.fn() };
+      const body = { email: 'test@example.com', password: 'wrong' };
+
+      await expect(controller.login(body, res, req)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should return access token if validation succeeds', async () => {
-      const user = { id: '1', email: 'test@example.com' };
-      const resultToken = { access_token: 'jwt_token' };
+      const user = { id: 'test-user', email: 'test@example.com' };
+      const req: any = {
+        ip: '127.0.0.1',
+        headers: { 'user-agent': 'test-agent' },
+        user,
+      };
+      const res: any = { cookie: jest.fn(), clearCookie: jest.fn() };
+      const body = { email: 'test@example.com', password: 'password123' };
+
+      const resultToken = {
+        access_token: 'jwt_token',
+        refresh_token: 'refresh_token',
+        user: { id: 'test-user' },
+      };
+
       mockAuthService.validateUser.mockResolvedValue(user);
       mockAuthService.login.mockResolvedValue(resultToken);
 
-      const result = await controller.login({
-        email: 'test@example.com',
-        password: 'password',
+      const result = await controller.login(body, res, req);
+      expect(result).toEqual({
+        access_token: 'jwt_token',
+        user: { id: 'test-user' },
       });
-      expect(result).toEqual(resultToken);
-      expect(mockAuthService.login).toHaveBeenCalledWith(user);
+      expect(mockAuthService.login).toHaveBeenCalledWith(
+        user,
+        '127.0.0.1',
+        'test-agent',
+      );
     });
   });
 });
