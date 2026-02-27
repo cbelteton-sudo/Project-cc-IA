@@ -9,6 +9,7 @@ import { KpiCardGroup } from './components/KpiCardGroup';
 import { FilterBar } from './components/FilterBar';
 import { RecordList } from './components/RecordList';
 import { QuickCreateModal } from './components/QuickCreateModal';
+import type { FieldRecordPayload } from '../../services/field-records';
 // Hooks
 import { useFieldRecordsV2 } from './hooks/useFieldRecordsV2';
 
@@ -66,33 +67,57 @@ export function FieldDashboardV2() {
     projectId: selectedProjectId,
   });
 
-  // Mock KPIs pending actual aggregation logic
+  // Dynamic KPI aggregation logic
+  const safeRecords = records || [];
+
+  const pendientesCount = safeRecords.filter(
+    (r: FieldRecordPayload) =>
+      r.status === 'PENDING' || r.status === 'Draft' || r.status === 'DRAFT',
+  ).length;
+
+  const urgentesCount = safeRecords.filter((r: FieldRecordPayload) => {
+    const content = r.content as Record<string, unknown>;
+    const isHighPriority = content?.priority === 'HIGH' || content?.priority === 'URGENT';
+    const isIssue = r.type === 'ISSUE';
+    // Consider urgents if they are issues or high priority and not yet closed/resolved
+    const isOpen = r.status !== 'CLOSED' && r.status !== 'RESOLVED';
+    return isOpen && (isHighPriority || isIssue);
+  }).length;
+
+  const enRevisionCount = safeRecords.filter(
+    (r: FieldRecordPayload) => r.status === 'IN_PROGRESS' || r.status === 'REVIEW',
+  ).length;
+
+  const completadasCount = safeRecords.filter(
+    (r: FieldRecordPayload) => r.status === 'CLOSED' || r.status === 'RESOLVED',
+  ).length;
+
   const kpis = [
     {
       id: 'open',
       title: 'Pendientes',
-      value: 12,
+      value: pendientesCount,
       color: 'blue' as const,
       iconType: 'pending' as const,
     },
     {
       id: 'urgent',
       title: 'Urgentes',
-      value: 3,
+      value: urgentesCount,
       color: 'red' as const,
       iconType: 'urgent' as const,
     },
     {
       id: 'progress',
       title: 'En Revisión',
-      value: 5,
+      value: enRevisionCount,
       color: 'purple' as const,
       iconType: 'progress' as const,
     },
     {
       id: 'closed',
       title: 'Completadas',
-      value: 45,
+      value: completadasCount,
       color: 'green' as const,
       iconType: 'done' as const,
     },
