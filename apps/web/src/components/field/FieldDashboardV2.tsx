@@ -16,7 +16,7 @@ import { useFieldRecordsV2 } from './hooks/useFieldRecordsV2';
 export function FieldDashboardV2() {
   const navigate = useNavigate();
   const { isOnline } = useNetwork();
-  const { logout } = useAuth(); // For 401 handling
+  const { user, logout } = useAuth(); // For 401 handling
 
   // Project State
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
@@ -191,6 +191,24 @@ export function FieldDashboardV2() {
     );
   }
 
+  // Determine effective permissions for the selected project
+  const projectMembership = user?.projectMembers?.find((m) => m.projectId === selectedProjectId);
+  const projectRole = projectMembership?.role;
+  const isGlobalAdmin = user?.role === 'ADMIN' || user?.role === 'ADMINISTRADOR';
+
+  const hasTaskCreatePermission =
+    isGlobalAdmin ||
+    [
+      'PROJECT_ADMIN',
+      'DIRECTOR',
+      'PM',
+      'PMO',
+      'PROJECT_MANAGER',
+      'SUPERVISOR',
+      'CONTRACTOR_LEAD',
+      'FIELD_OPERATOR',
+    ].includes(projectRole || '');
+
   return (
     <div className="flex flex-col h-full bg-slate-50 relative pb-20 md:pb-0">
       {/* Header Compacto Mobile con Dropdown */}
@@ -221,13 +239,13 @@ export function FieldDashboardV2() {
             </div>
           </div>
 
-          {selectedProjectId && (
+          {selectedProjectId && hasTaskCreatePermission && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition-colors shadow-sm"
+              className="hidden md:flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
             >
               <Plus className="w-4 h-4" />
-              <span>Nuevo Registro</span>
+              <span>Crear tarea</span>
             </button>
           )}
         </div>
@@ -281,7 +299,9 @@ export function FieldDashboardV2() {
                 </div>
                 <h3 className="text-lg font-bold text-slate-900 mb-1">Sin Registros</h3>
                 <p className="text-slate-500 text-center max-w-xs leading-relaxed">
-                  No hay reportes de campo para este proyecto todavía.
+                  {hasTaskCreatePermission
+                    ? "No hay reportes de campo disponibles. Puedes crear uno tocando en 'Crear tarea'."
+                    : 'No hay reportes de campo. Tu rol actual solo permite visualización.'}
                 </p>
               </div>
             ) : (
@@ -323,11 +343,11 @@ export function FieldDashboardV2() {
       </div>
 
       {/* Mobile-first Floating Action Button for Quick Create */}
-      {selectedProjectId && (
-        <div className="fixed bottom-6 right-6 md:hidden z-30">
+      {selectedProjectId && hasTaskCreatePermission && (
+        <div className="fixed bottom-24 right-5 md:hidden z-[99]">
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="w-14 h-14 bg-slate-900 rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition-transform"
+            className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-600/30 active:scale-95 transition-transform"
           >
             <Plus className="w-6 h-6" />
           </button>
