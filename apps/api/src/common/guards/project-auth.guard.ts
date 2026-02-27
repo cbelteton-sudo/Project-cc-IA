@@ -27,10 +27,12 @@ export class ProjectAuthGuard implements CanActivate {
       request.query.projectId ||
       request.body?.projectId;
 
-    if (!projectId) {
+    if (!projectId || projectId === 'undefined' || projectId === 'null') {
       // If not found in params/query, try body? Or just fail if guard is applied.
       // Assuming strict usage on routes with :id or :projectId
-      throw new ForbiddenException('Project Context Required');
+      throw new ForbiddenException(
+        'Project Context Required or Invalid Project ID',
+      );
     }
 
     const membership = await this.prisma.projectMember.findUnique({

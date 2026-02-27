@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, matchPath } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Settings } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Settings, LogOut } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useRegion } from '../../context/RegionContext';
@@ -254,7 +254,7 @@ export const Layout = () => {
                 className="text-sm font-medium text-slate-500 hover:text-red-600 transition-colors flex items-center gap-1"
                 title="Cerrar sesión"
               >
-                <Settings size={16} className="sm:hidden" />
+                <LogOut size={16} className="sm:hidden" />
                 <span className="hidden sm:inline">{t('common.logout')}</span>
               </button>
             </div>

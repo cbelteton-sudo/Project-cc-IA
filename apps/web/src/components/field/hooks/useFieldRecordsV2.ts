@@ -21,7 +21,7 @@ export function useFieldRecordsV2({ projectId, type, status }: UseFieldRecordsPa
       }
       return filtered;
     },
-    enabled: !!projectId,
+    enabled: !!projectId && projectId !== 'undefined' && projectId !== 'null',
     staleTime: 5 * 60 * 1000, // 5 min
     // Opt-in for suspense/error boundaries based on React 19 rules
     throwOnError: true,

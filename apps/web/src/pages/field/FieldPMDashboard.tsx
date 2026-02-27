@@ -50,7 +50,7 @@ export const FieldPMDashboard: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
-    if (!projectId || !user) return;
+    if (!projectId || projectId === 'undefined' || !user) return;
     localStorage.setItem('lastProjectId', projectId);
 
     setLoading(true);
