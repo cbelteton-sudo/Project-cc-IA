@@ -58,6 +58,58 @@ export function FieldDashboardV2() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline]);
 
+  // Generic Field Records Offline Sync
+  useEffect(() => {
+    const syncOfflineGenericRecords = async () => {
+      if (!isOnline || !selectedProjectId) return;
+
+      try {
+        const { getDB } = await import('@/services/db');
+        const db = await getDB();
+        const drafts = await db.getAllFromIndex('updates', 'by-project', selectedProjectId);
+
+        const genericDrafts = drafts.filter((d: { type: string }) => d.type === 'FIELD_RECORD_V2');
+        if (genericDrafts.length === 0) return;
+
+        console.log(
+          `[Field Sync] Encontrados ${genericDrafts.length} registros offline para sincronizar.`,
+        );
+
+        // Import canonical service dynamically to avoid circular dependency issues at the top
+        // (usually fine, but we'll import if needed or use api)
+        const { fieldRecordsService } = await import('../../services/field-records');
+        let successCount = 0;
+
+        for (const draft of genericDrafts) {
+          try {
+            // Strip the local-specific ID before sending
+            const payloadToSync = { ...draft.payload };
+            delete payloadToSync.id;
+            delete payloadToSync.createdAt;
+
+            payloadToSync.status = 'PENDING'; // Or standard default
+
+            await fieldRecordsService.createRecord(payloadToSync);
+            await db.delete('updates', draft.id);
+            successCount++;
+          } catch (e) {
+            console.error(`Error syncing draft ${draft.id}`, e);
+          }
+        }
+
+        if (successCount > 0) {
+          toast.success(`Se sincronizaron exitosamente ${successCount} registros creados offline.`);
+          // Trigger a window event or let user refresh manually for now since we can't easily access queryClient inside an isolated async effect without adding it to deps.
+          window.dispatchEvent(new Event('focus')); // This triggers windowFocus refetch in react-query
+        }
+      } catch (err) {
+        console.error('Error during generic offline sync', err);
+      }
+    };
+
+    syncOfflineGenericRecords();
+  }, [isOnline, selectedProjectId]);
+
   // Data Fetching
   const {
     data: records,

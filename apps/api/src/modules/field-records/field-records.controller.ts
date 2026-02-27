@@ -28,7 +28,7 @@ export class FieldRecordsController {
 
   @Post()
   @UseGuards(ProjectAuthGuard, PermissionsGuard)
-  @RequirePermissions(Permission.PROJECT_EDIT)
+  @RequirePermissions(Permission.TASK_CREATE)
   async createRecord(
     @Body() dto: CreateFieldRecordDto,
     @ActiveUser() user: ActiveUserData,
@@ -43,7 +43,7 @@ export class FieldRecordsController {
 
   @Post('sync')
   @UseGuards(ProjectAuthGuard, PermissionsGuard)
-  @RequirePermissions(Permission.PROJECT_EDIT)
+  @RequirePermissions(Permission.TASK_CREATE)
   async syncRecords(
     @Body() dto: SyncFieldRecordsDto,
     @ActiveUser() user: ActiveUserData,
