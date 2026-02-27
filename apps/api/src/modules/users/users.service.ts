@@ -55,7 +55,7 @@ export class UsersService {
   async findOne(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
-      include: { contractor: true },
+      include: { contractor: true, projectMemberships: true },
     });
   }
 
@@ -72,7 +72,7 @@ export class UsersService {
       where: {
         OR: [{ email: identifier }, { username: identifier }],
       },
-      include: { contractor: true },
+      include: { contractor: true, projectMemberships: true },
     });
   }
 

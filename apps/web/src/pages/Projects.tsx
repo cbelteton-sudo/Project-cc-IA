@@ -174,8 +174,8 @@ export const Projects = () => {
 
   if (isLoading)
     return (
-      <div className="container mx-auto max-w-7xl p-6">
-        <div className="flex justify-between items-center mb-8 animate-pulse">
+      <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 relative min-h-[calc(100vh-4rem)]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div className="h-8 w-48 bg-gray-200 rounded"></div>
           <div className="h-10 w-32 bg-gray-200 rounded"></div>
         </div>

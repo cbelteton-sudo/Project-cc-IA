@@ -142,6 +142,7 @@ const PortalOrders = React.lazy(() =>
 );
 
 import { QuickCaptureProvider } from './context/QuickCaptureContext';
+import { FieldOnlyGuard } from './components/auth/FieldOnlyGuard';
 
 const ProtectedRoute = () => {
   const { token, isLoading } = useAuth();
@@ -152,9 +153,11 @@ const ProtectedRoute = () => {
 
   if (!token) return <Navigate to="/login" replace />;
   return (
-    <QuickCaptureProvider>
-      <Layout />
-    </QuickCaptureProvider>
+    <FieldOnlyGuard>
+      <QuickCaptureProvider>
+        <Layout />
+      </QuickCaptureProvider>
+    </FieldOnlyGuard>
   );
 };
 

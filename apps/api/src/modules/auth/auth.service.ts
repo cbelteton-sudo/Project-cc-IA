@@ -35,6 +35,11 @@ export class AuthService {
       tenantId: user.tenantId,
       name: user.name,
       contractorId: user.contractorId,
+      projectMembers:
+        user.projectMemberships?.map((m: any) => ({
+          projectId: m.projectId,
+          role: m.role,
+        })) || [],
     };
 
     const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
@@ -90,6 +95,11 @@ export class AuthService {
         tenantId: user.tenantId,
         name: user.name,
         contractorId: user.contractorId,
+        projectMembers:
+          user.projectMemberships?.map((m: any) => ({
+            projectId: m.projectId,
+            role: m.role,
+          })) || [],
       };
       const newAccessToken = this.jwtService.sign(newPayload, {
         expiresIn: '15m',
