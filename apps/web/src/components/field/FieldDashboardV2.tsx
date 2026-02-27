@@ -68,7 +68,7 @@ export function FieldDashboardV2() {
         const db = await getDB();
         const drafts = await db.getAllFromIndex('updates', 'by-project', selectedProjectId);
 
-        const genericDrafts = drafts.filter((d: { type: string }) => d.type === 'FIELD_RECORD_V2');
+        const genericDrafts = drafts.filter((d) => (d as any).type === 'FIELD_RECORD_V2');
         if (genericDrafts.length === 0) return;
 
         console.log(
@@ -83,7 +83,7 @@ export function FieldDashboardV2() {
         for (const draft of genericDrafts) {
           try {
             // Strip the local-specific ID before sending
-            const payloadToSync = { ...draft.payload };
+            const payloadToSync = { ...(draft as any).payload };
             delete payloadToSync.id;
             delete payloadToSync.createdAt;
 
