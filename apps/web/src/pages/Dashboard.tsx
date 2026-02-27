@@ -86,7 +86,7 @@ export const Dashboard = () => {
   if (isLoading) return <div className="p-8 text-center text-gray-500">{t('common.loading')}</div>;
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 max-w-full overflow-hidden">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-800">
@@ -178,7 +178,7 @@ export const Dashboard = () => {
             </select>
           </div>
 
-          <div className="h-[300px] w-full">
+          <div className="h-[250px] sm:h-[300px] w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={stats?.chartData || []}>
                 <defs>

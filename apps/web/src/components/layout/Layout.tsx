@@ -259,10 +259,10 @@ export const Layout = () => {
                 EN
               </button>
             </div>
-            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+            <span className="hidden sm:inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium truncate max-w-[200px]">
               {t('common.tenant')}: Constructora Demo
             </span>
-            <div className="border-l pl-4 ml-2">
+            <div className="sm:border-l sm:pl-4 sm:ml-2">
               <NotificationBell />
             </div>
           </div>

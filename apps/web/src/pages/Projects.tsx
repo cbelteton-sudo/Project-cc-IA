@@ -188,7 +188,7 @@ export const Projects = () => {
     );
 
   return (
-    <div className="container mx-auto max-w-7xl p-6 min-h-screen bg-gray-50/30">
+    <div className="container mx-auto max-w-7xl p-4 sm:p-6 min-h-screen bg-gray-50/30">
       {/* Action Center Header */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6 mt-2">
         <div className="flex items-center gap-3">
@@ -278,7 +278,7 @@ export const Projects = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-6 border-b border-gray-200 mb-6">
+      <div className="flex items-center gap-4 sm:gap-6 border-b border-gray-200 mb-6 overflow-x-auto hide-scrollbar pb-1">
         <TabOption
           label="Todos"
           count={allCount}
@@ -322,78 +322,82 @@ export const Projects = () => {
           <p className="text-gray-500 mb-6">Prueba con otra búsqueda o crea uno nuevo.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] border border-gray-200 overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-50/80 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-sm font-bold text-gray-700 w-1/3">Proyecto</th>
-                <th className="px-6 py-3 text-sm font-bold text-gray-700">Responsable</th>
-                <th className="px-6 py-3 text-sm font-bold text-gray-700">Entrega</th>
-                <th className="px-6 py-3 text-sm font-bold text-gray-700">Estado</th>
-                <th className="px-6 py-3 text-center text-sm font-bold text-gray-700">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredProjects?.map((project: Project) => {
-                const status = getProjectStatus(project);
+        <div className="bg-white rounded-xl shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] border border-gray-200 w-full overflow-hidden">
+          <div className="overflow-x-auto w-full custom-scrollbar">
+            <table className="w-full text-left border-collapse min-w-[800px]">
+              <thead className="bg-gray-50/80 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-sm font-bold text-gray-700 w-1/3">Proyecto</th>
+                  <th className="px-6 py-3 text-sm font-bold text-gray-700">Responsable</th>
+                  <th className="px-6 py-3 text-sm font-bold text-gray-700">Entrega</th>
+                  <th className="px-6 py-3 text-sm font-bold text-gray-700">Estado</th>
+                  <th className="px-6 py-3 text-center text-sm font-bold text-gray-700">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredProjects?.map((project: Project) => {
+                  const status = getProjectStatus(project);
 
-                return (
-                  <tr key={project.id} className="hover:bg-gray-50 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <Building2 size={16} className="text-gray-400 shrink-0" />
-                        <span className="text-sm font-medium text-gray-800">{project.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600">
-                        {/* Mocking Manager for now if not available */}
-                        {project.managerName || (
-                          <span className="text-gray-400 italic">Sin asignar</span>
+                  return (
+                    <tr key={project.id} className="hover:bg-gray-50 transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <Building2 size={16} className="text-gray-400 shrink-0" />
+                          <span className="text-sm font-medium text-gray-800">{project.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-600">
+                          {/* Mocking Manager for now if not available */}
+                          {project.managerName || (
+                            <span className="text-gray-400 italic">Sin asignar</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {project.endDate ? (
+                          new Intl.DateTimeFormat('es-ES', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: '2-digit',
+                          }).format(new Date(project.endDate))
+                        ) : (
+                          <span className="text-gray-400 italic font-light">No definida</span>
                         )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {project.endDate ? (
-                        new Intl.DateTimeFormat('es-ES', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: '2-digit',
-                        }).format(new Date(project.endDate))
-                      ) : (
-                        <span className="text-gray-400 italic font-light">No definida</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${status.color}`}
-                        >
-                          {status.label}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex justify-center gap-2">
-                        <Link
-                          to={`/projects/${project.id}/plan`}
-                          className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 rounded-md transition-colors"
-                        >
-                          Plan
-                        </Link>
-                        <Link
-                          to={`/projects/${project.id}`}
-                          className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors border border-blue-100"
-                        >
-                          Detalle
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${status.color}`}
+                          >
+                            {status.label}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex justify-center gap-2">
+                          <Link
+                            to={`/projects/${project.id}/plan`}
+                            className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 rounded-md transition-colors"
+                          >
+                            Plan
+                          </Link>
+                          <Link
+                            to={`/projects/${project.id}`}
+                            className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors border border-blue-100"
+                          >
+                            Detalle
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
