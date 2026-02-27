@@ -16,6 +16,9 @@ export interface Project {
   managerName?: string;
   enablePMDashboard?: boolean;
   enablePunchListPro?: boolean;
+  enableScrum?: boolean;
+  enableBudget?: boolean;
+  enableFieldManagement?: boolean;
 }
 
 export interface CreateProjectDTO {
@@ -27,6 +30,9 @@ export interface CreateProjectDTO {
   globalBudget?: number;
   enablePMDashboard?: boolean;
   enablePunchListPro?: boolean;
+  enableScrum?: boolean;
+  enableBudget?: boolean;
+  enableFieldManagement?: boolean;
   currency?: string;
 }
 

@@ -7,12 +7,14 @@ export const isFieldRecordsV1Enabled = () =>
   import.meta.env.VITE_FIELD_RECORDS_V1_FRONTEND === 'true';
 
 export interface FieldRecordPayload {
+  id?: string;
   type: 'ISSUE' | 'INSPECTION' | 'RFI' | 'MATERIAL_REQUEST' | 'DAILY_ENTRY' | 'PHOTO';
   status: string;
   projectId: string;
   content: Record<string, unknown>;
   evidenceRefs?: string[];
   geo?: { lat: number; lng: number };
+  createdAt?: string;
 }
 
 export const fieldRecordsService = {

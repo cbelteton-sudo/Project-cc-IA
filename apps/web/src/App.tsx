@@ -86,6 +86,7 @@ const DailyLogView = React.lazy(() =>
 const SyncManagerPage = React.lazy(() =>
   import('./pages/field/SyncManagerPage').then((m) => ({ default: m.SyncManagerPage })),
 );
+const RecordDetailView = React.lazy(() => import('./pages/field/RecordDetailView'));
 
 // Reports & Others
 const ReportsHub = React.lazy(() =>
@@ -236,6 +237,7 @@ function App() {
               <Route path="daily" element={<FieldDailySummary />} />
               <Route path="logs" element={<DailyLogView />} />
               <Route path="sync" element={<SyncManagerPage />} />
+              <Route path="records/:id" element={<RecordDetailView />} />
             </Route>
 
             <Route path="/whatsapp" element={<WhatsappSimulator />} />
