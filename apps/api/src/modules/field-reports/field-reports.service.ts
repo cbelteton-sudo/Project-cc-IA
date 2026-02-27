@@ -489,7 +489,10 @@ export class FieldReportsService {
   ) {
     // Validation
     const projectAccess = await this.prisma.project.findFirst({
-      where: enforceScopeWhere(user, {}, projectId),
+      where: {
+        id: projectId,
+        tenantId: user.tenantId,
+      },
     });
     if (!projectAccess)
       throw new NotFoundException('Project not found or access denied');
