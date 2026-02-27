@@ -55,14 +55,17 @@ export const getNavItems = (
 
   const sections: NavSection[] = [];
 
-  // --- ORG CONTEXT (ALWAYS VISIBLE) ---
-  // 1. Dashboard & Projects (Common)
-  const mainItems: NavItem[] = [
-    { label: 'Inicio', to: '/', icon: Home, exact: true },
-    { label: 'Proyectos', to: '/projects', icon: FolderKanban },
-  ];
+  const isOperator = projectRole === 'FIELD_OPERATOR';
 
-  sections.push({ items: mainItems });
+  // --- ORG CONTEXT (ALWAYS VISIBLE UNLESS OPERATOR IN PROJECT) ---
+  // 1. Dashboard & Projects (Common)
+  if (!(isProjectContext && isOperator)) {
+    const mainItems: NavItem[] = [
+      { label: 'Inicio', to: '/', icon: Home, exact: true },
+      { label: 'Proyectos', to: '/projects', icon: FolderKanban },
+    ];
+    sections.push({ items: mainItems });
+  }
 
   // 2. Org Management (Admin/PM only)
   if (
@@ -95,7 +98,7 @@ export const getNavItems = (
     projectRole === 'PROJECT_MANAGER' ||
     projectRole === 'SUPERVISOR';
   const isExecutive = role === 'DIRECTOR' || projectRole === 'EXECUTIVE_VIEWER';
-  const isOperator = projectRole === 'FIELD_OPERATOR';
+  // isOperator is already defined above
 
   // 1. Overview & Schedule (Everyone excluding Operator usually, but Operator might see basic info)
   const commonItems: NavItem[] = [];

@@ -20,9 +20,17 @@ interface SidebarItemProps {
   active: boolean;
 }
 
-const SidebarItem = ({ to, icon: Icon, label, collapsed, active }: SidebarItemProps) => (
+const SidebarItem = ({
+  to,
+  icon: Icon,
+  label,
+  collapsed,
+  active,
+  onClick,
+}: SidebarItemProps & { onClick?: () => void }) => (
   <Link
     to={to}
+    onClick={onClick}
     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group ${
       active
         ? 'bg-blue-50 text-blue-700 font-semibold'
@@ -43,6 +51,7 @@ export const Layout = () => {
   const { country, setCountry } = useRegion();
   const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const match = matchPath({ path: '/projects/:id/*' }, location.pathname);
   const projectId = match?.params.id;
@@ -53,8 +62,13 @@ export const Layout = () => {
     return projects.find((p) => p.id === projectId);
   }, [projects, projectId]);
 
-  // Get dynamic nav items based on user role and context
   const navSections = getNavItems(user, projectId, currentProject);
+
+  // Check if current user is ONLY an operator in this project
+  const projectMembership = projectId
+    ? user?.projectMembers?.find((m) => m.projectId === projectId)
+    : null;
+  const isOperator = projectMembership?.role === 'FIELD_OPERATOR';
 
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
@@ -62,14 +76,24 @@ export const Layout = () => {
 
   return (
     <div className="flex h-screen w-full bg-slate-50 print:h-auto print:block">
+      {/* Mobile Sidebar Overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/50 z-30 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
-        className={`${collapsed ? 'w-20' : 'w-64'} bg-white border-r border-slate-200 flex flex-col print:hidden transition-all duration-300 relative z-20`}
+        className={`${
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        } ${collapsed ? 'w-20' : 'w-64'} fixed md:static inset-y-0 left-0 bg-white border-r border-slate-200 flex flex-col print:hidden transition-transform duration-300 relative z-40`}
       >
-        {/* Toggle Button */}
+        {/* Toggle Button (Desktop Only) */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="absolute -right-3 top-6 bg-white border border-slate-200 rounded-full p-1 text-slate-400 hover:text-slate-800 z-50 shadow-sm transition-colors hover:shadow"
+          className="hidden md:flex absolute -right-3 top-6 bg-white border border-slate-200 rounded-full p-1 text-slate-400 hover:text-slate-800 z-50 shadow-sm transition-colors hover:shadow"
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
@@ -103,10 +127,11 @@ export const Layout = () => {
         </div>
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
-          {projectId && (
+          {projectId && !isOperator && (
             <div className="mb-6">
               <Link
                 to="/"
+                onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium text-sm group ${collapsed ? 'justify-center' : ''}`}
                 title={collapsed ? 'Volver a Organización' : ''}
               >
@@ -139,6 +164,7 @@ export const Layout = () => {
                       label={item.label}
                       collapsed={collapsed}
                       active={isActive}
+                      onClick={() => setMobileMenuOpen(false)}
                     />
                   );
                 })}
@@ -176,18 +202,33 @@ export const Layout = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden print:overflow-visible print:h-auto">
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 print:hidden">
+      <main className="flex-1 flex flex-col overflow-hidden max-w-full print:overflow-visible print:h-auto">
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-8 shrink-0 print:hidden relative z-10 w-full overflow-hidden">
+          {/* Mobile Hamburger Menu */}
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="md:hidden shrink-0 mr-3 text-slate-500 hover:text-slate-800 focus:outline-none"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+            </svg>
+          </button>
+
           {/* LEFT: Context Switcher & Title */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 md:gap-6 min-w-0 flex-1">
             <ContextSwitcher />
-            <h1 className="text-xl font-semibold text-gray-800 hidden md:block">
+            <h1 className="text-xl font-semibold text-gray-800 hidden lg:block truncate pr-2">
               {projectId ? 'Panel de Proyecto' : t('dashboard.title')}
             </h1>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+          <div className="flex items-center gap-2 md:gap-4 shrink-0">
+            <div className="hidden sm:flex items-center gap-2 bg-gray-100 rounded-lg p-1">
               {/* Country Switcher */}
               <button
                 onClick={() => setCountry('GT')}
@@ -226,7 +267,7 @@ export const Layout = () => {
             </div>
           </div>
         </header>
-        <div className="flex-1 overflow-auto p-8 print:overflow-visible print:h-auto print:p-0">
+        <div className="flex-1 overflow-auto p-0 md:p-8 print:overflow-visible print:h-auto print:p-0 relative">
           <Outlet />
         </div>
       </main>

@@ -16,7 +16,7 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:3000', // Matches the API default port
+        target: 'http://127.0.0.1:4181', // Matches the API default port
         changeOrigin: true,
         secure: false,
       },
