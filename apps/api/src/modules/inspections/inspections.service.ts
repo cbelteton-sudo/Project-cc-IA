@@ -10,11 +10,7 @@ export class InspectionsService {
 
   async create(createDto: CreateInspectionDto, user: any) {
     const project = await this.prisma.project.findUnique({
-      where: enforceScopeWhere(
-        user,
-        { id: createDto.projectId },
-        createDto.projectId,
-      ),
+      where: enforceScopeWhere(user, { id: createDto.projectId }),
     });
     if (!project)
       throw new NotFoundException('Project not found or access denied');

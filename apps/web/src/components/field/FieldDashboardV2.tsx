@@ -115,6 +115,7 @@ export function FieldDashboardV2() {
     data: records,
     isLoading,
     isError,
+    refetch,
   } = useFieldRecordsV2({
     projectId: selectedProjectId,
   });
@@ -365,6 +366,7 @@ export function FieldDashboardV2() {
       <QuickCreateModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={refetch}
         projectId={selectedProjectId}
       />
     </div>

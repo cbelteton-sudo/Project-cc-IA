@@ -48,8 +48,11 @@ export class FieldRecordsService {
         return this.fieldReportsService.upsertEntry(
           {
             projectId,
-            ...content,
-            status: dto.status,
+            activityName: content.title || 'Reporte General',
+            note: content.description || '',
+            dateString: new Date().toISOString().split('T')[0], // ensure valid date format
+            status: content.status || 'ON_TRACK',
+            scheduleActivityId: null,
           },
           user,
         );

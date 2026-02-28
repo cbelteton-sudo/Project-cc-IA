@@ -7,6 +7,7 @@ import type { FieldRecordPayload } from '../../../services/field-records';
 interface QuickCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
   projectId: string;
 }
 
@@ -45,6 +46,7 @@ const typeOptions: Array<{
 export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
   isOpen,
   onClose,
+  onSuccess,
   projectId,
 }) => {
   const [selectedType, setSelectedType] = useState<FieldRecordPayload['type']>('ISSUE');
@@ -74,6 +76,7 @@ export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
       setTitle('');
       setDescription('');
       setSelectedType('ISSUE');
+      onSuccess?.();
       onClose();
     } catch {
       // Error is handled by the hook's toast

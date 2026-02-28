@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import { AlertTriangle, Clock, Camera, AlertCircle, ChevronRight, Plus } from 'lucide-react';
+import { AlertTriangle, Clock, AlertCircle, ChevronRight, Plus } from 'lucide-react';
 import { QuickCreateModal } from '../../components/field/components/QuickCreateModal';
 import { useNavigate } from 'react-router-dom';
 
@@ -34,6 +34,7 @@ export const FieldPMDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const navigate = useNavigate();
 
   // Define hasTaskCreatePermission exactly like FieldDashboardV2
@@ -84,7 +85,7 @@ export const FieldPMDashboard: React.FC = () => {
         setError(err.message || 'Error desconocido al cargar el dashboard');
       })
       .finally(() => setLoading(false));
-  }, [projectId, user]);
+  }, [projectId, user, refreshKey]);
 
   if (!projectId && projects.length === 0)
     return <div className="p-8 text-gray-400">Cargando proyectos...</div>;
@@ -323,6 +324,7 @@ export const FieldPMDashboard: React.FC = () => {
       <QuickCreateModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={() => setRefreshKey((prev) => prev + 1)}
         projectId={projectId}
       />
     </div>

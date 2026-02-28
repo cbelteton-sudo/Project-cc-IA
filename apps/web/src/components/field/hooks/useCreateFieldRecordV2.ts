@@ -48,6 +48,10 @@ export function useCreateFieldRecordV2() {
 
       if (!isOnline) {
         toast.success('Guardado localmente. Se sincronizará cuando haya conexión.');
+      } else if (variables.type === 'MATERIAL_REQUEST') {
+        toast.success('Solicitud enviada a Compras exitosamente', {
+          description: 'El dashboard solo muestra bloqueos y problemas.',
+        });
       } else {
         toast.success('Registro creado exitosamente');
       }
