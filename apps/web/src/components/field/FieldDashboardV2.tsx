@@ -191,7 +191,6 @@ export function FieldDashboardV2() {
     );
   }
 
-  // Determine effective permissions for the selected project
   const projectMembership = user?.projectMembers?.find((m) => m.projectId === selectedProjectId);
   const projectRole = projectMembership?.role;
   const isGlobalAdmin = user?.role === 'ADMIN' || user?.role === 'ADMINISTRADOR';
@@ -208,6 +207,14 @@ export function FieldDashboardV2() {
       'CONTRACTOR_LEAD',
       'FIELD_OPERATOR',
     ].includes(projectRole || '');
+
+  console.log('[DEBUG FieldDashboardV2 Permissions]', {
+    userRole: user?.role,
+    isGlobalAdmin,
+    projectRole,
+    selectedProjectId,
+    hasTaskCreatePermission,
+  });
 
   return (
     <div className="flex flex-col h-full bg-slate-50 relative pb-20 md:pb-0">

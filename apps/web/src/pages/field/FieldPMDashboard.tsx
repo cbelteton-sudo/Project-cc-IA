@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import { AlertTriangle, Clock, Camera, AlertCircle, ChevronRight } from 'lucide-react';
+import { AlertTriangle, Clock, Camera, AlertCircle, ChevronRight, Plus } from 'lucide-react';
+import { QuickCreateModal } from '../../components/field/components/QuickCreateModal';
 import { useNavigate } from 'react-router-dom';
 
 interface DashboardMetrics {
@@ -32,9 +33,26 @@ export const FieldPMDashboard: React.FC = () => {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const navigate = useNavigate();
 
-  // authAxios removed, using api instance which handles interceptors
+  // Define hasTaskCreatePermission exactly like FieldDashboardV2
+  const projectMembership = user?.projectMembers?.find((m) => m.projectId === projectId);
+  const projectRole = projectMembership?.role;
+  const isGlobalAdmin = user?.role === 'ADMIN' || user?.role === 'ADMINISTRADOR';
+
+  const hasTaskCreatePermission =
+    isGlobalAdmin ||
+    [
+      'PROJECT_ADMIN',
+      'DIRECTOR',
+      'PM',
+      'PMO',
+      'PROJECT_MANAGER',
+      'SUPERVISOR',
+      'CONTRACTOR_LEAD',
+      'FIELD_OPERATOR',
+    ].includes(projectRole || '');
 
   useEffect(() => {
     if (!user) return;
@@ -87,21 +105,33 @@ export const FieldPMDashboard: React.FC = () => {
           <p className="text-sm text-gray-500 capitalize">{today}</p>
         </div>
 
-        <div className="relative group">
-          <select
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-            className="appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium min-w-[240px]"
-          >
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-            <ChevronRight className="rotate-90 h-4 w-4" />
+        <div className="flex items-center gap-4">
+          <div className="relative group">
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              className="appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium min-w-[240px]"
+            >
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+              <ChevronRight className="rotate-90 h-4 w-4" />
+            </div>
           </div>
+
+          {projectId && hasTaskCreatePermission && (
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="hidden md:flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Crear tarea</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -276,6 +306,25 @@ export const FieldPMDashboard: React.FC = () => {
           </div>
         </>
       ) : null}
+
+      {/* Mobile-first Floating Action Button for Quick Create */}
+      {projectId && hasTaskCreatePermission && (
+        <div className="fixed bottom-24 right-5 md:hidden z-[99]">
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-600/30 active:scale-95 transition-transform"
+          >
+            <Plus className="w-6 h-6" />
+          </button>
+        </div>
+      )}
+
+      {/* Quick Create Modal */}
+      <QuickCreateModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        projectId={projectId}
+      />
     </div>
   );
 };
