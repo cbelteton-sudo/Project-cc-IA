@@ -46,19 +46,19 @@ async function main() {
   console.log('✅ User ready: admin@demo.com');
 
   // 2.5. Create Fluxori Admin User
-  const fluxoriAdminPassword = await bcrypt.hash('FluxoriAdmin2026!', 10);
+  const fluxoriAdminPassword = await bcrypt.hash('Vg45&5L-F.xE5M$', 10);
   await prisma.user.upsert({
-    where: { email: 'administrator@fluxori.com.gt' },
-    update: { password: fluxoriAdminPassword },
+    where: { email: 'administrator@fluxori.io' },
+    update: { password: fluxoriAdminPassword, name: 'Carlos Beltetón' },
     create: {
-      email: 'administrator@fluxori.com.gt',
+      email: 'administrator@fluxori.io',
       password: fluxoriAdminPassword,
-      name: 'Fluxori Admin',
+      name: 'Carlos Beltetón',
       role: 'ADMIN',
       tenantId: tenant.id,
     },
   });
-  console.log('✅ User ready: administrator@fluxori.com.gt');
+  console.log('✅ User ready: administrator@fluxori.io');
 
   // 3. Create Contractors (COMMENTED OUT FOR CLEAN SLATE)
   /*
