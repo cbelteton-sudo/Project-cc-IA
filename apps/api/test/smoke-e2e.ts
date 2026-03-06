@@ -8,6 +8,6 @@ import { PrismaService } from '../src/common/database/prisma.service';
 async function runSmokeTests() {
   const app = await NestFactory.create(AppModule);
   // Need to log in and get tokens for different roles and test the endpoints directly
-  // Instead of full nest app setup, let's just make direct API calls to the running server 
+  // Instead of full nest app setup, let's just make direct API calls to the running server
 }
 runSmokeTests();

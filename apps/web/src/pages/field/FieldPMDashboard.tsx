@@ -27,7 +27,7 @@ interface DashboardMetrics {
 
 export const FieldPMDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [projectId, setProjectId] = useState<string>(localStorage.getItem('lastProjectId') || '');
+  const [projectId, setProjectId] = useState<string>('');
   const [projects, setProjects] = useState<any[]>([]);
 
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -61,7 +61,12 @@ export const FieldPMDashboard: React.FC = () => {
       .get(`/projects`)
       .then((res) => {
         setProjects(res.data);
-        if (!projectId && res.data.length > 0) {
+        const lastProjectId = localStorage.getItem('lastProjectId') || '';
+        const isProjectAvailable = res.data.some((p: any) => p.id === lastProjectId);
+
+        if (isProjectAvailable) {
+          setProjectId(lastProjectId);
+        } else if (res.data.length > 0) {
           setProjectId(res.data[0].id);
         }
       })
@@ -98,26 +103,32 @@ export const FieldPMDashboard: React.FC = () => {
   });
 
   return (
-    <div className="bg-gray-50 min-h-screen max-w-[1600px] mx-auto flex flex-col">
-      {/* Header */}
-      <div className="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-sm p-4 md:p-6 border-b border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm">
+    <div className="bg-gray-50 min-h-full flex flex-col w-full overflow-x-hidden">
+      {/* Header Fijo */}
+      <div className="sticky top-0 z-20 bg-white px-4 py-4 md:px-6 md:py-4 border-b border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Centro de Comando</h1>
-          <p className="text-sm text-gray-500 capitalize">{today}</p>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight line-clamp-1">
+            Hola, {user?.name || user?.email || 'Usuario'}
+          </h1>
+          <p className="text-xs md:text-sm text-gray-500 capitalize">{today} - Centro de Comando</p>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="relative group">
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="relative group flex-1 md:flex-none">
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className="appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium min-w-[240px]"
+              className="appearance-none bg-gray-50 border border-gray-200 text-gray-800 py-2 px-4 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-sm w-full md:min-w-[240px]"
             >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
+              {projects.length === 0 ? (
+                <option value="">Cargando proyectos...</option>
+              ) : (
+                projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))
+              )}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
               <ChevronRight className="rotate-90 h-4 w-4" />
@@ -130,13 +141,13 @@ export const FieldPMDashboard: React.FC = () => {
               className="hidden md:flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
-              <span>Crear tarea</span>
+              <span>Nueva</span>
             </button>
           )}
         </div>
       </div>
 
-      <div className="p-4 md:p-6 space-y-6 flex-1">
+      <div className="p-4 md:p-6 space-y-6 flex-1 w-full max-w-[1600px] mx-auto">
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-pulse">
             {[1, 2, 3].map((i) => (
@@ -160,7 +171,7 @@ export const FieldPMDashboard: React.FC = () => {
         ) : metrics ? (
           <>
             {/* Top Stats Row - The "Pulse" */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <StatCard
                 label="Bloqueos"
                 value={metrics.blocked.count}
@@ -254,7 +265,7 @@ export const FieldPMDashboard: React.FC = () => {
                         <EmptyState message="El ritmo de obra es óptimo" />
                       </div>
                     ) : (
-                      metrics.stalled.items.map((item, idx) => (
+                      metrics.stalled.items.map((item) => (
                         <div
                           key={item.id}
                           onClick={() => navigate(`/field/entries/${projectId}/${item.id}`)}

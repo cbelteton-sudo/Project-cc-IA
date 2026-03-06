@@ -39,3 +39,4 @@ Este manual define la configuración servicio-a-servicio que debe mapearse dentr
 5. Ejecutar la semilla (Command Palette en Railway > Execute Command: `pnpm run seed:demo`).
 6. Añadir el servicio **WEB**, copiando la URL pública que arrojó el API y colocándola en `VITE_API_URL`.
 7. Disparar deploy de WEB.
+

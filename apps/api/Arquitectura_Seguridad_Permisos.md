@@ -1,4 +1,4 @@
-# Arquitectura de Seguridad y Permisos: TorreMawi
+# Arquitectura de Seguridad y Permisos: Toda la 
 
 A continuación se detalla el modelo de seguridad implementado en la aplicación, abarcando Modelo de Datos, Capa de Aplicación (Middlewares/Guards) y Políticas de Base de Datos.
 
