@@ -193,13 +193,7 @@ function App() {
   }
 
   return (
-    <ErrorBoundary
-      fallback={
-        <div className="p-20 text-red-600 font-bold border-4 border-red-600">
-          CRITICAL APP CRASH (App.tsx level)
-        </div>
-      }
-    >
+    <ErrorBoundary>
       <Suspense fallback={<Loading />}>
         <Routes>
           <Route path="/login" element={<Login />} />
