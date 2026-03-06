@@ -81,8 +81,9 @@ export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
     if (!backlogItems) return [];
     const tasks = (backlogItems as BacklogItem[]).filter(
       (item) =>
-        ['IN_SPRINT', 'IN_PROGRESS', 'READY', 'BACKLOG'].includes(item.status) &&
-        item.type !== 'EPIC',
+        ['IN_SPRINT', 'IN_PROGRESS', 'READY', 'BACKLOG', 'PENDING_PLANNING'].includes(
+          item.status,
+        ) && item.type !== 'EPIC',
     );
     const assignedTasks = tasks.filter((t) => t.assigneeUserId === user?.userId);
     return assignedTasks.length > 0 ? assignedTasks : tasks;
