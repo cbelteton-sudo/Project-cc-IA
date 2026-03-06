@@ -128,6 +128,9 @@ const AdminUsers = React.lazy(() =>
 const Contractors = React.lazy(() =>
   import('./pages/admin/Contractors').then((m) => ({ default: m.Contractors })),
 );
+const Settings = React.lazy(() =>
+  import('./pages/admin/Settings').then((m) => ({ default: m.Settings })),
+);
 
 // Portal
 const PortalDashboard = React.lazy(() =>
@@ -253,6 +256,7 @@ function App() {
             {/* Admin Routes */}
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/contractors" element={<Contractors />} />
+            <Route path="/settings" element={<Settings />} />
 
             {/* Reports Hub */}
             <Route path="/reports" element={<ReportsHub />} />

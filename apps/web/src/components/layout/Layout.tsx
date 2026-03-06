@@ -11,6 +11,8 @@ import { getNavItems } from '../../config/navigation';
 import { useProjects } from '../../hooks/useProjects';
 import { ContextSwitcher } from './ContextSwitcher';
 import { LogoIcon } from '../common/LogoIcon';
+import { useEffect } from 'react';
+import { api } from '../../lib/api';
 
 interface SidebarItemProps {
   to: string;
@@ -62,6 +64,26 @@ export const Layout = () => {
     return projects.find((p) => p.id === projectId);
   }, [projects, projectId]);
 
+  const [tenantLogo, setTenantLogo] = useState<string | null>(null);
+  const [tenantName, setTenantName] = useState<string>('');
+
+  useEffect(() => {
+    if (user?.tenantId) {
+      api
+        .get('/tenants/current')
+        .then((res) => {
+          const data = res.data;
+          if (data?.logoUrl) {
+            setTenantLogo(data.logoUrl);
+          }
+          if (data?.name) {
+            setTenantName(data.name);
+          }
+        })
+        .catch((err) => console.error('Error loading tenant details', err));
+    }
+  }, [user?.tenantId]);
+
   const navSections = getNavItems(user, projectId, currentProject);
 
   // Check if current user is ONLY an operator in this project
@@ -112,8 +134,12 @@ export const Layout = () => {
             className={`h-16 flex items-center ${collapsed ? 'justify-center px-0' : 'px-6'} border-b border-slate-100 bg-white transition-all shrink-0`}
           >
             <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <LogoIcon className="w-8 h-8 shrink-0" />
-              {!collapsed && (
+              {tenantLogo ? (
+                <img src={tenantLogo} alt="Logo" className="w-8 h-8 object-contain shrink-0" />
+              ) : (
+                <LogoIcon className="w-8 h-8 shrink-0" />
+              )}
+              {!collapsed && !tenantLogo && (
                 <span className="text-xl tracking-tight flex items-center">
                   <span
                     className="text-slate-800"
@@ -218,24 +244,30 @@ export const Layout = () => {
         {isStrictlyFieldUser ? (
           <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-8 shrink-0 print:hidden relative z-10 w-full overflow-hidden">
             <div className="flex items-center gap-2">
-              <LogoIcon className="w-8 h-8 shrink-0" />
-              <span className="text-xl tracking-tight hidden sm:flex items-center">
-                <span
-                  className="text-slate-800"
-                  style={{
-                    fontFamily: '"Century Gothic", CenturyGothic, AppleGothic, sans-serif',
-                    fontWeight: '400',
-                  }}
-                >
-                  Field
+              {tenantLogo ? (
+                <img src={tenantLogo} alt="Logo" className="w-8 h-8 object-contain shrink-0" />
+              ) : (
+                <LogoIcon className="w-8 h-8 shrink-0" />
+              )}
+              {!tenantLogo && (
+                <span className="text-xl tracking-tight hidden sm:flex items-center">
+                  <span
+                    className="text-slate-800"
+                    style={{
+                      fontFamily: '"Century Gothic", CenturyGothic, AppleGothic, sans-serif',
+                      fontWeight: '400',
+                    }}
+                  >
+                    Field
+                  </span>
+                  <span
+                    className="text-blue-600"
+                    style={{ fontFamily: '"Mangal Pro", Mangal, sans-serif', fontWeight: 'bold' }}
+                  >
+                    Close
+                  </span>
                 </span>
-                <span
-                  className="text-blue-600"
-                  style={{ fontFamily: '"Mangal Pro", Mangal, sans-serif', fontWeight: 'bold' }}
-                >
-                  Close
-                </span>
-              </span>
+              )}
             </div>
             <div className="flex items-center gap-4 shrink-0">
               <div className="flex items-center gap-2">
@@ -317,7 +349,7 @@ export const Layout = () => {
                 </button>
               </div>
               <span className="hidden sm:inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium truncate max-w-[200px]">
-                {t('common.tenant')}: Constructora Demo
+                {t('common.tenant')}: {tenantName || 'Constructora Demo'}
               </span>
               <div className="sm:border-l sm:pl-4 sm:ml-2">
                 <NotificationBell />
