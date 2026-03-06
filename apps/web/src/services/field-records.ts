@@ -48,8 +48,10 @@ export const fieldRecordsService = {
   /**
    * Universal Get by ID
    */
-  getRecord: async (id: string) => {
-    const response = await api.get(`/field-records/${id}`);
+  getRecord: async (id: string, projectId: string) => {
+    const params = new URLSearchParams();
+    if (projectId) params.append('projectId', projectId);
+    const response = await api.get(`/field-records/${id}?${params.toString()}`);
     return response.data;
   },
 };

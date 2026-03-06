@@ -142,6 +142,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // Attempt refresh using single-flight logic
             const { data } = await refreshSessionOnce();
             const newToken = data.access_token;
+            if (data.refresh_token) {
+              localStorage.setItem('fieldclose_refresh_token', data.refresh_token);
+            }
 
             setToken(newToken);
             if (data.user) setUser(data.user);
@@ -155,6 +158,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // Refresh failed - logout
             setToken(null);
             setUser(null);
+            localStorage.removeItem('fieldclose_refresh_token'); // Clear refresh token on refresh failure
             return Promise.reject(refreshError);
           }
         }
@@ -168,9 +172,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []); // Run only once on mount
 
-  const login = (newToken: string, newUser: User) => {
+  const login = (newToken: string, newUser: User, newRefreshToken?: string) => {
     setToken(newToken);
     setUser(newUser);
+    if (newRefreshToken) {
+      localStorage.setItem('fieldclose_refresh_token', newRefreshToken);
+    }
   };
 
   const logout = async () => {
@@ -178,9 +185,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await api.post('/auth/logout');
     } catch {
       // ignore
+    } finally {
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem('fieldclose_refresh_token');
     }
-    setToken(null);
-    setUser(null);
   };
 
   return (

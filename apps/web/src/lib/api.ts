@@ -8,22 +8,21 @@ export const api = axios.create({
 
 // Single-flight refresh logic
 let refreshPromise: Promise<any> | null = null;
+const isRefreshing = false;
 
 export const refreshSessionOnce = async () => {
-  // If a refresh is already in progress, return the existing promise
-  if (refreshPromise) {
-    return refreshPromise;
-  }
+  if (refreshPromise) return refreshPromise;
 
-  // Otherwise, start a new refresh request
+  const localRefreshToken = localStorage.getItem('fieldclose_refresh_token');
+
   refreshPromise = api
-    .post('/auth/refresh')
+    .post('/auth/refresh', { refreshToken: localRefreshToken })
     .then((res) => {
-      refreshPromise = null; // Clear promise on success
+      refreshPromise = null;
       return res;
     })
     .catch((err) => {
-      refreshPromise = null; // Clear promise on error
+      refreshPromise = null;
       throw err;
     });
 

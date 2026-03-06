@@ -8,7 +8,6 @@ export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loginType, setLoginType] = useState<'admin' | 'operator'>('admin');
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -122,45 +121,16 @@ export const Login = () => {
           </div>
         )}
 
-        <div className="flex mb-6 border-b border-gray-200">
-          <button
-            type="button"
-            className={`flex-1 pb-2 text-sm font-medium transition-colors duration-200 ${
-              loginType === 'admin'
-                ? 'border-b-2 border-field-blue text-field-blue'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setLoginType('admin')}
-          >
-            Administrador / PM
-          </button>
-          <button
-            type="button"
-            className={`flex-1 pb-2 text-sm font-medium transition-colors duration-200 ${
-              loginType === 'operator'
-                ? 'border-b-2 border-field-blue text-field-blue'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setLoginType('operator')}
-          >
-            Operador de Campo
-          </button>
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {loginType === 'admin' ? 'Email' : 'Usuario'}
-            </label>
-            <input
-              type={loginType === 'admin' ? 'email' : 'text'}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder={loginType === 'admin' ? 'ej. admin@demo.com' : 'ej. operador1'}
-              required
-            />
-          </div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Usuario o Correo</label>
+          <input
+            type="text"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="ej. operador1 o admin@correo.com"
+            required
+          />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <input
@@ -179,9 +149,7 @@ export const Login = () => {
           </button>
         </form>
         <div className="mt-4 text-center text-xs text-gray-500">
-          {loginType === 'admin'
-            ? 'Use: admin@demo.com / password123'
-            : 'Ingrese credenciales de operador'}
+          Usa tu correo o nombre de usuario de operador para ingresar.
         </div>
       </div>
     </div>

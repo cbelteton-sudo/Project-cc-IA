@@ -1,5 +1,5 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ChevronLeft,
   Clock,
@@ -21,7 +21,9 @@ export default function RecordDetailView() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const { data: record, isLoading, isError } = useFieldRecordV2(id || '');
+  const [searchParams] = useSearchParams();
+  const projectId = searchParams.get('projectId');
+  const { data: record, isLoading, isError } = useFieldRecordV2(id || '', projectId || '');
 
   if (isLoading) {
     return (

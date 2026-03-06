@@ -340,7 +340,9 @@ export function FieldDashboardV2() {
                 }
                 isLoading={false}
                 isError={false}
-                onRecordClick={(id) => navigate(`/field/records/${id}`)}
+                onRecordClick={(id) =>
+                  navigate(`/field/records/${id}?projectId=${selectedProjectId}`)
+                }
               />
             )}
           </div>

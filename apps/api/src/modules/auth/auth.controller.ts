@@ -94,7 +94,8 @@ export class AuthController {
         ' | Cookie set: fieldclose_sess_v6 | Prefix:',
         refresh_token.substring(0, 10),
       );
-      return { access_token, user: userData };
+      // Return refresh_token in body as fallback for environments blocking 3rd-party cookies (e.g., Safari on Railway domains)
+      return { access_token, refresh_token, user: userData };
     } catch (e) {
       console.error('❌ [LOGIN FATAL ERROR]', e);
       // Re-throw known HTTP exceptions
@@ -136,7 +137,7 @@ export class AuthController {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return { access_token, user };
+    return { access_token, refresh_token, user };
   }
 
   @Throttle({ default: { limit: 60, ttl: 60000 } })
@@ -144,6 +145,7 @@ export class AuthController {
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+    @Body() body: any,
   ) {
     console.log('🔄 [DEBUG-V6] /auth/refresh CALLED - PATH /api');
     const cookies = req.cookies || {};
@@ -153,10 +155,10 @@ export class AuthController {
       cookies['fieldclose_sess_v6']?.substring(0, 10),
     );
 
-    const refreshToken = cookies['fieldclose_sess_v6'];
+    const refreshToken = cookies['fieldclose_sess_v6'] || body?.refreshToken;
     if (!refreshToken) {
       console.warn(
-        '❌ [DEBUG-V6 FIX] No fieldclose_sess_v6 cookie found. Throwing Unauthorized.',
+        '❌ [DEBUG-V6 FIX] No fieldclose_sess_v6 cookie or body token found. Throwing Unauthorized.',
       );
       throw new UnauthorizedException('No Refresh Token');
     }
@@ -191,7 +193,7 @@ export class AuthController {
       });
 
       console.log('✅ Refresh successful for user:', user.email);
-      return { access_token, user };
+      return { access_token, refresh_token, user };
     } catch (e) {
       console.error('❌ Refresh failed:', e.message);
       throw e;

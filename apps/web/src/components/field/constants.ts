@@ -2,22 +2,27 @@ import { CheckCircle2, AlertTriangle, FileText, Wrench } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export const typeConfig: Record<string, { label: string; icon: LucideIcon; color: string }> = {
-  issue: {
+  ISSUE: {
     label: 'Problema',
     icon: AlertTriangle,
     color: 'text-rose-600 bg-rose-50 border-rose-100',
   },
-  daily_log: {
+  INCIDENT: {
+    label: 'Incidente',
+    icon: AlertTriangle,
+    color: 'text-orange-600 bg-orange-50 border-orange-100',
+  },
+  DAILY_ENTRY: {
     label: 'Bitácora',
     icon: FileText,
     color: 'text-indigo-600 bg-indigo-50 border-indigo-100',
   },
-  inspection: {
+  INSPECTION: {
     label: 'Inspección',
     icon: CheckCircle2,
     color: 'text-emerald-600 bg-emerald-50 border-emerald-100',
   },
-  material_request: {
+  MATERIAL_REQUEST: {
     label: 'Materiales',
     icon: Wrench,
     color: 'text-amber-600 bg-amber-50 border-amber-100',
