@@ -6,7 +6,10 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
-import { enforceScopeWhere, enforceProjectScopeWhere } from '../../common/database/prisma-scope.helper';
+import {
+  enforceScopeWhere,
+  enforceProjectScopeWhere,
+} from '../../common/database/prisma-scope.helper';
 
 @Injectable()
 export class IssuesService {

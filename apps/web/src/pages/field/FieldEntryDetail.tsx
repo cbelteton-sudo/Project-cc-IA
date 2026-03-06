@@ -216,6 +216,7 @@ export const FieldEntryDetail: React.FC = () => {
         const getImageUrl = (path: string) => {
           if (!path) return '';
           if (path.startsWith('http')) return path;
+          if (path.startsWith('data:')) return path;
 
           const cleanPath = path.startsWith('/') ? path : `/${path}`;
           const baseUrl = (api.defaults.baseURL || '').replace('/api', '');
