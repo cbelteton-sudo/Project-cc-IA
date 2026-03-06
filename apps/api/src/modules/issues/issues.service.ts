@@ -6,7 +6,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
-import { enforceScopeWhere } from '../../common/database/prisma-scope.helper';
+import { enforceScopeWhere, enforceProjectScopeWhere } from '../../common/database/prisma-scope.helper';
 
 @Injectable()
 export class IssuesService {
@@ -15,7 +15,7 @@ export class IssuesService {
   async create(dto: CreateIssueDto, user: any) {
     // Verify Access Context
     const project = await this.prisma.project.findFirst({
-      where: enforceScopeWhere(user, { id: dto.projectId }),
+      where: enforceProjectScopeWhere(user, { id: dto.projectId }),
       select: { enablePunchListPro: true },
     });
     if (!project)
@@ -56,7 +56,7 @@ export class IssuesService {
 
   async findAll(projectId: string, user: any) {
     const project = await this.prisma.project.findFirst({
-      where: enforceScopeWhere(user, { id: projectId }),
+      where: enforceProjectScopeWhere(user, { id: projectId }),
     });
     if (!project)
       throw new NotFoundException('Project not found or access denied');
@@ -74,7 +74,7 @@ export class IssuesService {
 
   async update(id: string, dto: UpdateIssueDto, user: any, projectId: string) {
     const project = await this.prisma.project.findFirst({
-      where: enforceScopeWhere(user, { id: projectId }),
+      where: enforceProjectScopeWhere(user, { id: projectId }),
     });
     if (!project)
       throw new NotFoundException('Project not found or access denied');
@@ -109,7 +109,7 @@ export class IssuesService {
 
   async updateStatus(id: string, status: string, user: any, projectId: string) {
     const project = await this.prisma.project.findFirst({
-      where: enforceScopeWhere(user, { id: projectId }),
+      where: enforceProjectScopeWhere(user, { id: projectId }),
     });
     if (!project)
       throw new NotFoundException('Project not found or access denied');
@@ -131,7 +131,7 @@ export class IssuesService {
     projectId: string,
   ) {
     const project = await this.prisma.project.findFirst({
-      where: enforceScopeWhere(user, { id: projectId }),
+      where: enforceProjectScopeWhere(user, { id: projectId }),
     });
     if (!project)
       throw new NotFoundException('Project not found or access denied');

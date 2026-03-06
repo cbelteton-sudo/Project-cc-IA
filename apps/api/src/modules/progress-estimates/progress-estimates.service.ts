@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateProgressEstimateDto } from './dto/create-progress-estimate.dto';
 import { UpdateProgressEstimateDto } from './dto/update-progress-estimate.dto';
 import { PrismaService } from '../../prisma/prisma.service';
-import { enforceScopeWhere } from '../../common/database/prisma-scope.helper';
+import { enforceProjectScopeWhere } from '../../common/database/prisma-scope.helper';
 
 @Injectable()
 export class ProgressEstimatesService {
@@ -16,7 +16,7 @@ export class ProgressEstimatesService {
     const subcontract = await (this.prisma as any).subcontract.findFirst({
       where: {
         id: createDto.subcontractId,
-        project: enforceScopeWhere(user, {}, projectId),
+        project: enforceProjectScopeWhere(user, {}, projectId),
       },
     });
     if (!subcontract) {
@@ -38,7 +38,7 @@ export class ProgressEstimatesService {
     return (this.prisma as any).progressEstimate.findMany({
       where: {
         subcontract: {
-          project: enforceScopeWhere(user),
+          project: enforceProjectScopeWhere(user),
         },
       },
       include: { subcontract: true },
@@ -51,7 +51,7 @@ export class ProgressEstimatesService {
       where: {
         id,
         subcontract: {
-          project: enforceScopeWhere(user, {}, projectId),
+          project: enforceProjectScopeWhere(user, {}, projectId),
         },
       },
       include: {

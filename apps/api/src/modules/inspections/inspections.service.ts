@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
 import { UpdateInspectionDto } from './dto/update-inspection.dto';
 import { PrismaService } from '../../prisma/prisma.service';
-import { enforceScopeWhere } from '../../common/database/prisma-scope.helper';
+import { enforceProjectScopeWhere } from '../../common/database/prisma-scope.helper';
 
 @Injectable()
 export class InspectionsService {
@@ -10,7 +10,7 @@ export class InspectionsService {
 
   async create(createDto: CreateInspectionDto, user: any) {
     const project = await this.prisma.project.findUnique({
-      where: enforceScopeWhere(user, { id: createDto.projectId }),
+      where: enforceProjectScopeWhere(user, { id: createDto.projectId }),
     });
     if (!project)
       throw new NotFoundException('Project not found or access denied');
@@ -28,7 +28,7 @@ export class InspectionsService {
 
   async findAll(user: any) {
     return (this.prisma as any).inspection.findMany({
-      where: enforceScopeWhere(user),
+      where: { project: enforceProjectScopeWhere(user) },
       include: { project: true },
       orderBy: { date: 'desc' },
     });
@@ -36,7 +36,10 @@ export class InspectionsService {
 
   async findOne(id: string, user: any, projectId?: string) {
     const inspection = await (this.prisma as any).inspection.findUnique({
-      where: enforceScopeWhere(user, { id }, projectId),
+      where: {
+        id,
+        project: enforceProjectScopeWhere(user, {}, projectId),
+      },
       include: { project: true },
     });
     if (!inspection)

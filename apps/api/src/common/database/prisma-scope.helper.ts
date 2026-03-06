@@ -68,3 +68,49 @@ export function enforceScopeWhere<T extends object>(
 
   return baseWhere;
 }
+
+/**
+ * Scope enforcement specifically for querying the Project model.
+ * Uses `id` instead of `projectId` to match the schema.
+ */
+export function enforceProjectScopeWhere<T extends object>(
+  currentUser: UserContext,
+  extraWhere: T = {} as T,
+  projectId?: string,
+): T & { tenantId: string; id?: string | { in: string[] }; OR?: any[] } {
+  if (!currentUser || !currentUser.tenantId) {
+    throw new Error(
+      'SISTEMA CRÍTICO: Contexto de usuario no definido para query!',
+    );
+  }
+
+  const sanitizedExtraWhere = { ...extraWhere } as Record<string, any>;
+  const sensitiveKeys = ['tenantId', 'id', 'portfolioId', 'userId'];
+  for (const key of sensitiveKeys) {
+    if (key in sanitizedExtraWhere) {
+      delete sanitizedExtraWhere[key];
+    }
+  }
+
+  const baseWhere: any = {
+    ...sanitizedExtraWhere,
+    tenantId: currentUser.tenantId,
+  };
+
+  if (projectId) {
+    baseWhere.id = projectId;
+  }
+
+  if (!projectId) {
+    const scope = currentUser.scope || AccessScope.ASSIGNED_PROJECTS;
+
+    if (
+      scope === AccessScope.ASSIGNED_PROJECTS &&
+      currentUser.assignedProjectIds
+    ) {
+      baseWhere.id = { in: currentUser.assignedProjectIds };
+    }
+  }
+
+  return baseWhere;
+}

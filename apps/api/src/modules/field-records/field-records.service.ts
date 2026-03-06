@@ -8,7 +8,7 @@ import { IssuesService } from '../issues/issues.service';
 import { FieldReportsService } from '../field-reports/field-reports.service';
 import { InspectionsService } from '../inspections/inspections.service';
 import { MaterialRequestsService } from '../material-requests/material-requests.service';
-import { enforceScopeWhere } from '../../common/database/prisma-scope.helper';
+import { enforceProjectScopeWhere } from '../../common/database/prisma-scope.helper';
 import {
   CreateFieldRecordDto,
   SyncFieldRecordsDto,
@@ -122,7 +122,7 @@ export class FieldRecordsService {
 
     // Verify Access Context
     const project = await this.prisma.project.findFirst({
-      where: enforceScopeWhere(user, { id: projectId }),
+      where: enforceProjectScopeWhere(user, { id: projectId }, projectId),
     });
     if (!project)
       throw new NotFoundException('Project not found or access denied');
@@ -298,7 +298,7 @@ export class FieldRecordsService {
   ) {
     if (type === 'ISSUE') {
       const issue = await this.prisma.issue.findFirst({
-        where: { id, project: enforceScopeWhere(user) },
+        where: { id, project: enforceProjectScopeWhere(user) },
       });
       if (!issue) throw new NotFoundException();
       return {

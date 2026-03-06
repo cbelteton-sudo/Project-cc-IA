@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { enforceScopeWhere } from '../../common/database/prisma-scope.helper';
+import {
+  enforceScopeWhere,
+  enforceProjectScopeWhere,
+} from '../../common/database/prisma-scope.helper';
 
 @Injectable()
 export class FieldReportsService {
@@ -15,7 +18,7 @@ export class FieldReportsService {
       where: {
         projectId,
         date: today,
-        project: enforceScopeWhere(user, {}, projectId),
+        project: enforceProjectScopeWhere(user, {}, projectId),
       },
       include: {
         entries: {
@@ -30,7 +33,7 @@ export class FieldReportsService {
     if (!report) {
       // Pre-flight check: User must be able to access project before creation!
       const canAccessProject = await this.prisma.project.findFirst({
-        where: enforceScopeWhere(user, {}, projectId),
+        where: enforceProjectScopeWhere(user, {}, projectId),
       });
       if (!canAccessProject) {
         throw new NotFoundException('Project not found or access denied');
@@ -81,7 +84,7 @@ export class FieldReportsService {
 
       // Verify Project Access First
       const projectAccess = await this.prisma.project.findFirst({
-        where: enforceScopeWhere(user, {}, projectId),
+        where: enforceProjectScopeWhere(user, {}, projectId),
       });
       if (!projectAccess) {
         throw new NotFoundException('Project not found or access denied');
@@ -92,7 +95,7 @@ export class FieldReportsService {
         where: {
           projectId,
           date,
-          project: enforceScopeWhere(user, {}, projectId),
+          project: enforceProjectScopeWhere(user, {}, projectId),
         },
       });
 
@@ -119,7 +122,7 @@ export class FieldReportsService {
               where: {
                 projectId,
                 date,
-                project: enforceScopeWhere(user, {}, projectId),
+                project: enforceProjectScopeWhere(user, {}, projectId),
               },
             });
           });
@@ -231,7 +234,7 @@ export class FieldReportsService {
 
   async submitReport(id: string, user: any, projectId: string) {
     const report = await this.prisma.fieldDailyReport.findFirst({
-      where: { id, project: enforceScopeWhere(user, {}, projectId) },
+      where: { id, project: enforceProjectScopeWhere(user, {}, projectId) },
     });
     if (!report) {
       throw new NotFoundException('Report not found or access denied');
@@ -330,7 +333,10 @@ export class FieldReportsService {
 
   async generatePdf(reportId: string, user: any, projectId: string) {
     const report = await this.prisma.fieldDailyReport.findFirst({
-      where: { id: reportId, project: enforceScopeWhere(user, {}, projectId) },
+      where: {
+        id: reportId,
+        project: enforceProjectScopeWhere(user, {}, projectId),
+      },
     });
     if (!report) {
       throw new NotFoundException('Report not found or access denied');
@@ -352,7 +358,7 @@ export class FieldReportsService {
   ) {
     // Verify Access
     const project = await this.prisma.project.findFirst({
-      where: enforceScopeWhere(user, {}, projectId),
+      where: enforceProjectScopeWhere(user, {}, projectId),
     });
     if (!project) throw new NotFoundException('Access denied to this project');
 
@@ -361,7 +367,7 @@ export class FieldReportsService {
       where: {
         scheduleActivityId: activityId,
         dailyReport: {
-          project: enforceScopeWhere(user),
+          project: enforceProjectScopeWhere(user),
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -380,7 +386,7 @@ export class FieldReportsService {
     const scrumUpdates = await this.prisma.dailyUpdate.findMany({
       where: {
         wbsActivityId: activityId,
-        project: enforceScopeWhere(user), // Ensure data isolation
+        project: enforceProjectScopeWhere(user), // Ensure data isolation
       },
       orderBy: { createdAt: 'desc' },
       take: Number(limit),

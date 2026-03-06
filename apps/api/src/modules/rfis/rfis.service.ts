@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateRfiDto } from './dto/create-rfi.dto';
 import { UpdateRfiDto } from './dto/update-rfi.dto';
 import { PrismaService } from '../../prisma/prisma.service';
-import { enforceScopeWhere } from '../../common/database/prisma-scope.helper';
+import { enforceProjectScopeWhere } from '../../common/database/prisma-scope.helper';
 
 @Injectable()
 export class RfisService {
@@ -10,7 +10,11 @@ export class RfisService {
 
   async create(createDto: CreateRfiDto, user: any, projectId?: string) {
     const project = await this.prisma.project.findFirst({
-      where: enforceScopeWhere(user, { id: createDto.projectId }, projectId),
+      where: enforceProjectScopeWhere(
+        user,
+        { id: createDto.projectId },
+        projectId,
+      ),
     });
     if (!project)
       throw new NotFoundException('Project not found or access denied');
@@ -29,7 +33,7 @@ export class RfisService {
 
   async findAll(user: any) {
     return (this.prisma as any).rFI.findMany({
-      where: enforceScopeWhere(user),
+      where: { project: enforceProjectScopeWhere(user) },
       include: { project: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -37,7 +41,10 @@ export class RfisService {
 
   async findOne(id: string, user: any, projectId?: string) {
     const rfi = await (this.prisma as any).rFI.findFirst({
-      where: enforceScopeWhere(user, { id }, projectId),
+      where: {
+        id,
+        project: enforceProjectScopeWhere(user, {}, projectId),
+      },
       include: { project: true },
     });
     if (!rfi) throw new NotFoundException('RFI not found or access denied');

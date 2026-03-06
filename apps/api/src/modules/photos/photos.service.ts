@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { enforceScopeWhere } from '../../common/database/prisma-scope.helper';
+import { enforceProjectScopeWhere } from '../../common/database/prisma-scope.helper';
 import sharp from 'sharp';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -28,7 +28,7 @@ export class PhotosService {
   ) {
     // SECURITY: Verify project access and tenant bound
     const project = await this.prisma.project.findUnique({
-      where: enforceScopeWhere(
+      where: enforceProjectScopeWhere(
         user,
         { id: metadata.projectId },
         metadata.projectId,
