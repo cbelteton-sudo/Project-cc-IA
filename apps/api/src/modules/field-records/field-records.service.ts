@@ -127,6 +127,40 @@ export class FieldRecordsService {
     if (!project)
       throw new NotFoundException('Project not found or access denied');
 
+    if (!type || type === 'All') {
+      const issues = (await this.listRecords(
+        projectId,
+        'ISSUE',
+        user,
+      )) as any[];
+      const dailyEntries = (await this.listRecords(
+        projectId,
+        'DAILY_ENTRY',
+        user,
+      )) as any[];
+      const inspections = (await this.listRecords(
+        projectId,
+        'INSPECTION',
+        user,
+      )) as any[];
+      const materialRequests = (await this.listRecords(
+        projectId,
+        'MATERIAL_REQUEST',
+        user,
+      )) as any[];
+
+      const allRecords = [
+        ...issues,
+        ...dailyEntries,
+        ...inspections,
+        ...materialRequests,
+      ];
+      return allRecords.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+    }
+
     // If type is omitted, we could return diverse records, but usually the frontend explicitly asks for a type.
     switch (type) {
       case 'ISSUE': {
