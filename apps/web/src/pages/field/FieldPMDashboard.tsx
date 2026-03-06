@@ -73,6 +73,24 @@ export const FieldPMDashboard: React.FC = () => {
       .catch(console.error);
   }, [user]);
 
+  // Navigate to standard operator dashboard if the user is strict operator without PM roles
+  useEffect(() => {
+    if (!user) return;
+    const isHighLevel = ['ADMIN', 'ORG_ADMIN', 'PLATFORM_ADMIN', 'PM', 'DIRECTOR_PMO'].includes(
+      user.role,
+    );
+    const isPMProjectRole = user.projectMembers?.some((m: any) =>
+      ['PM', 'PROJECT_MANAGER', 'SUPERVISOR'].includes(m.role),
+    );
+    const isOperator = user.projectMembers?.some((m: any) =>
+      ['FIELD_OPERATOR', 'RESIDENTE'].includes(m.role),
+    );
+
+    if (!isHighLevel && !isPMProjectRole && isOperator) {
+      navigate('/field/operator', { replace: true });
+    }
+  }, [user, navigate]);
+
   useEffect(() => {
     if (!projectId || projectId === 'undefined' || !user) return;
     localStorage.setItem('lastProjectId', projectId);
