@@ -47,19 +47,23 @@ export class FieldRecordsService {
           },
           user,
         );
-      case 'DAILY_ENTRY':
+      case 'DAILY_ENTRY': {
+        const todayLocal = new Date();
+        todayLocal.setHours(0, 0, 0, 0);
+
         return this.fieldReportsService.upsertEntry(
           {
             projectId,
             activityName: content.title || 'Reporte General',
             note: content.description || '',
-            dateString: new Date().toISOString().split('T')[0], // ensure valid date format
+            dateString: todayLocal.toISOString(), // matches getTodayReport EXACT date
             status: content.status || 'ON_TRACK',
             scheduleActivityId: (content.scheduleActivityId ||
               content.activityId) as string | null,
           },
           user,
         );
+      }
       case 'INSPECTION':
         return this.inspectionsService.create(
           {

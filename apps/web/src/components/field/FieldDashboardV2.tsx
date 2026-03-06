@@ -351,7 +351,7 @@ export function FieldDashboardV2() {
       </div>
 
       {/* Mobile-first Floating Action Button for Quick Create */}
-      {selectedProjectId && hasTaskCreatePermission && (
+      {selectedProjectId && hasTaskCreatePermission && !isCreateModalOpen && (
         <div className="fixed bottom-24 right-5 md:hidden z-[99]">
           <button
             onClick={() => setIsCreateModalOpen(true)}

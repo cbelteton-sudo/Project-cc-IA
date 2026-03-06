@@ -325,7 +325,7 @@ export const FieldPMDashboard: React.FC = () => {
         ) : null}
 
         {/* Mobile-first Floating Action Button for Quick Create */}
-        {projectId && hasTaskCreatePermission && (
+        {projectId && hasTaskCreatePermission && !isCreateModalOpen && (
           <div className="fixed bottom-24 right-5 md:hidden z-[99]">
             <button
               onClick={() => setIsCreateModalOpen(true)}

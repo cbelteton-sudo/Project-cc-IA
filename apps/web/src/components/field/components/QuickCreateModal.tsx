@@ -66,6 +66,7 @@ export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [selectedBacklogItem, setSelectedBacklogItem] = useState('');
+  const [status, setStatus] = useState('ON_TRACK');
 
   const { data: backlogItems } = useQuery({
     queryKey: ['scrum', 'backlog', projectId],
@@ -106,6 +107,7 @@ export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
           title: title.trim(),
           description: description.trim(),
           activityId: selectedTask?.linkedWbsActivityId || undefined,
+          status: selectedType === 'DAILY_ENTRY' ? status : undefined,
         },
       });
 
@@ -114,6 +116,7 @@ export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
       setDescription('');
       setSelectedType('ISSUE');
       setSelectedBacklogItem('');
+      setStatus('ON_TRACK');
       onSuccess?.();
       onClose();
     } catch {
@@ -200,6 +203,23 @@ export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
               ))}
             </select>
           </div>
+
+          {selectedType === 'DAILY_ENTRY' && (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                Estado de este Registro
+              </label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all text-sm font-medium text-slate-900"
+              >
+                <option value="ON_TRACK">En Curso / A Tiempo</option>
+                <option value="DONE">Completado</option>
+                <option value="BLOCKED">Bloqueado (Registrar Bloqueo)</option>
+              </select>
+            </div>
+          )}
 
           <div>
             <label
