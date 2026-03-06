@@ -112,11 +112,14 @@ interface FieldDB extends DBSchema {
       localId: string; // uuid v4
       projectId: string;
       payload: {
-        activityId: string;
-        activityName: string;
-        status: string; // 'IN_PROGRESS', 'BLOCKED', 'DONE'
+        activityId?: string;
+        activityName?: string;
+        status?: string; // 'IN_PROGRESS', 'BLOCKED', 'DONE'
         note?: string;
-        date: string; // ISO date target
+        date?: string; // ISO date target
+        type?: string; // e.g. 'ISSUE', 'DAILY_ENTRY', 'MATERIAL_REQUEST'
+        title?: string; // Used by V2 records
+        description?: string; // Used by V2 records
       };
 
       photos: {

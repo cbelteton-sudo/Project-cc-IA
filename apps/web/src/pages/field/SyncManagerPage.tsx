@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useBackgroundSync } from '../../hooks/useBackgroundSync';
 import { OfflineManager, type QueueItem } from '../../services/offline-manager';
 import { getDB } from '../../services/db';
-import { ArrowLeft, RefreshCw, Trash2, AlertTriangle, CheckCircle2, WifiOff } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const SyncManagerPage: React.FC = () => {
@@ -93,8 +93,19 @@ export const SyncManagerPage: React.FC = () => {
                 {/* Header */}
                 <div className="flex justify-between items-start">
                   <div>
-                    <div className="font-bold text-gray-900">{item.payload.activityName}</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="flex items-center gap-2">
+                      {item.payload.type && (
+                        <span className="text-[10px] uppercase font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-sm tracking-wide">
+                          {item.payload.type}
+                        </span>
+                      )}
+                      <div className="font-bold text-gray-900">
+                        {item.payload.type
+                          ? item.payload.title || 'Registro General'
+                          : item.payload.activityName || 'Avance Diario'}
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
                       {new Date(item.createdAt).toLocaleString()}
                     </div>
                   </div>
@@ -114,20 +125,27 @@ export const SyncManagerPage: React.FC = () => {
                     {item.photos.map((p) => (
                       <div
                         key={p.id}
-                        className="w-12 h-12 rounded-lg bg-gray-100 shrink-0 overflow-hidden"
+                        className="w-12 h-12 rounded-lg bg-gray-100 shrink-0 overflow-hidden relative"
                       >
-                        {/* In a real app we'd convert blob back to URL. For simplicity, just showing placeholder count if complex */}
-                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 bg-gray-100">
-                          IMG
-                        </div>
+                        {p.previewUrl ? (
+                          <img
+                            src={p.previewUrl}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 bg-gray-100">
+                            IMG
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
 
-                {item.payload.note && (
-                  <div className="text-sm text-gray-600 italic bg-gray-50 p-2 rounded-lg">
-                    "{item.payload.note}"
+                {(item.payload.note || item.payload.description) && (
+                  <div className="text-sm text-gray-600 italic bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    "{item.payload.note || item.payload.description}"
                   </div>
                 )}
 

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { fieldRecordsService } from '../../../services/field-records';
 import type { FieldRecordPayload } from '../../../services/field-records';
-import { getDB } from '../../../services/db';
+import { OfflineManager } from '../../../services/offline-manager';
 import { useNetwork } from '@/context/NetworkContext';
 import { toast } from 'sonner';
 
@@ -13,8 +13,6 @@ export function useCreateFieldRecordV2() {
     mutationFn: async (payload: FieldRecordPayload) => {
       if (!isOnline) {
         // Fallback to offline storage if currently offline
-        const db = await getDB();
-
         // Add a temporary local ID if none exists for offline optimistic UI
         const localPayload = {
           ...payload,
@@ -23,16 +21,7 @@ export function useCreateFieldRecordV2() {
           createdAt: new Date().toISOString(),
         };
 
-        // Store in a generic offline table, or we can use the existing 'updates' queue
-        // For MVP, we'll store it in Dexie 'updates' table
-        await db.add('updates', {
-          id: localPayload.id,
-          projectId: payload.projectId,
-          type: 'FIELD_RECORD_V2',
-          payload: localPayload,
-          status: 'DRAFT',
-          timestamp: Date.now(),
-        } as any);
+        await OfflineManager.addV2ToQueue(localPayload);
 
         return localPayload;
       }

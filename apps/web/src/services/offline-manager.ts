@@ -18,19 +18,34 @@ export interface QuickCapturePayload {
   date?: string; // Target date (defaults to today)
 }
 
+// Ensure base64ToBlob helper is available
+function base64ToBlob(base64: string, mimeType = 'image/jpeg'): Blob {
+  const byteString = atob(base64.split(',')[1] || base64);
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  return new Blob([ab], { type: mimeType });
+}
+
 export interface QueueItem {
   localId: string;
   projectId: string;
   payload: {
-    activityId: string;
-    activityName: string;
-    status: string;
+    activityId?: string;
+    activityName?: string;
+    status?: string;
     note?: string;
-    date: string;
+    date?: string;
+    type?: string;
+    title?: string;
+    description?: string;
   };
   photos: {
     id: string; // UUID
     blob: Blob;
+    previewUrl?: string; // Storing original base64 for fast optimistic UI loading when offline
   }[];
   createdAt: number;
   retries: number;
@@ -83,6 +98,56 @@ class OfflineManagerService {
       return localId;
     } catch (error) {
       console.error('Failed to add to offline queue', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add V2 record to offline queue.
+   * Photos are already compressed as base64 in payload.content.photos
+   */
+  async addV2ToQueue(payload: import('./field-records').FieldRecordPayload) {
+    try {
+      const db = await getDB();
+      const localId = payload.id || crypto.randomUUID();
+      const now = Date.now();
+
+      // Extract and convert photos from base64 to Blob if needed
+      const photosArray = (payload.content?.photos as any[]) || [];
+      const processedPhotos = photosArray.map((p) => {
+        return {
+          id: p.id || crypto.randomUUID(),
+          blob: base64ToBlob(p.urlMain || p.urlThumb),
+          previewUrl: p.urlThumb || p.urlMain, // Keep original base64 to restore preview easily
+        };
+      });
+
+      const item: QueueItem = {
+        localId,
+        projectId: payload.projectId,
+        payload: {
+          type: payload.type,
+          title: payload.content?.title as string,
+          description: payload.content?.description as string,
+          activityId: (payload.content?.activityId as string) || '',
+          activityName: '',
+          status: payload.status,
+          date: payload.createdAt || new Date().toISOString(),
+        },
+        photos: processedPhotos,
+        createdAt: now,
+        retries: 0,
+      };
+
+      await db.put('offline_queue', item);
+
+      if (navigator.onLine) {
+        this.processQueue();
+      }
+
+      return localId;
+    } catch (error) {
+      console.error('Failed to add V2 to offline queue', error);
       throw error;
     }
   }
@@ -149,6 +214,51 @@ class OfflineManagerService {
    * Sync a single item: Upsert Entry -> Upload Photos
    */
   private async syncItem(item: QueueItem) {
+    // Check if it's a V2 Item
+    if (item.payload.type) {
+      console.log(`[OfflineManager] Syncing item ${item.localId} via Canonical V2 endpoint...`);
+
+      // Reconstruct payload without raw base64 photos to save bandwidth if uploading separately
+      // or keep them if backend expects inline base64
+      const recordPayload: import('./field-records').FieldRecordPayload = {
+        type: item.payload.type as any,
+        projectId: item.projectId,
+        status: item.payload.status || 'PENDING',
+        content: {
+          title: item.payload.title,
+          description: item.payload.description,
+          activityId: item.payload.activityId,
+          // Convert blobs back to base64 if needed, or pass empty and rely on formData upload below
+          photos: item.photos.map((p) => ({
+            id: p.id,
+            urlMain: p.previewUrl, // We attach original previewUrl which is base64 for optimistic UI reconstruction
+            urlThumb: p.previewUrl,
+          })),
+        },
+      };
+
+      const record = await fieldRecordsService.createRecord(recordPayload);
+
+      // Photos upload natively missing in V2 backend but using `/photos/upload` for now works.
+      // We upload the blobs.
+      if (item.photos && item.photos.length > 0) {
+        for (const photo of item.photos) {
+          const formData = new FormData();
+          formData.append('file', photo.blob, `photo-${photo.id}.jpg`);
+          formData.append('projectId', item.projectId);
+          formData.append('recordId', record.id);
+          formData.append('fieldUpdateId', record.id); // fallback
+          if (item.payload.activityId) {
+            formData.append('activityId', item.payload.activityId);
+          }
+          await api.post('/photos/upload', formData);
+        }
+      }
+
+      console.log(`[OfflineManager] Synced item ${item.localId} successfully (V2).`);
+      return;
+    }
+
     if (isFieldRecordsV1Enabled()) {
       console.log(`[OfflineManager] Syncing item ${item.localId} via Canonical V1 endpoint...`);
       // 1. Submit Entry (Canonical V1)
@@ -206,7 +316,7 @@ class OfflineManagerService {
           const formData = new FormData();
           formData.append('file', photo.blob, `photo-${photo.id}.jpg`);
           formData.append('projectId', item.projectId);
-          formData.append('activityId', item.payload.activityId);
+          formData.append('activityId', item.payload.activityId || '');
           formData.append('fieldUpdateId', entry.id); // Valid Entry ID
 
           await api.post('/photos/upload', formData);
