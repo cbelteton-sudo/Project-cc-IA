@@ -11,7 +11,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "npx prisma db push --force-reset && pnpm run seed || true && node dist/src/main",
+    "start:prod": "npx prisma db push --accept-data-loss && pnpm run seed || true && node dist/src/main",
     "seed": "npx -y tsx prisma/seed.ts",
     "seed:scrum": "ts-node prisma/seed-scrum.ts",
     "seed:demo": "npx -y tsx prisma/seed-demo.ts",
