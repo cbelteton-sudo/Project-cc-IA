@@ -35,6 +35,23 @@ export class ProjectAuthGuard implements CanActivate {
       );
     }
 
+    // Bypass for Global Admin
+    if (user.role === 'ADMIN') {
+      const project = await this.prisma.project.findUnique({
+        where: { id: projectId },
+      });
+      if (!project || project.tenantId !== user.tenantId) {
+        throw new ForbiddenException('Access to this project is denied');
+      }
+      request.projectMember = {
+        role: 'DIRECTOR', // Pseudo-role to pass permissions guard
+        status: 'ACTIVE',
+        projectId,
+        userId: user.id || user.userId,
+      };
+      return true;
+    }
+
     const membership = await this.prisma.projectMember.findUnique({
       where: {
         projectId_userId: {

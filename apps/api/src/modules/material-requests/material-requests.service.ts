@@ -6,7 +6,7 @@ import {
 import { CreateMaterialRequestDto } from './dto/create-material-request.dto';
 import { UpdateMaterialRequestDto } from './dto/update-material-request.dto';
 import { PrismaService } from '../../prisma/prisma.service';
-import { enforceScopeWhere } from '../../common/database/prisma-scope.helper';
+import { enforceProjectScopeWhere } from '../../common/database/prisma-scope.helper';
 
 @Injectable()
 export class MaterialRequestsService {
@@ -14,7 +14,7 @@ export class MaterialRequestsService {
 
   async create(createDto: CreateMaterialRequestDto, user: any) {
     const project = await this.prisma.project.findFirst({
-      where: enforceScopeWhere(user, { id: createDto.projectId }),
+      where: enforceProjectScopeWhere(user, { id: createDto.projectId }),
     });
 
     if (!project) {
@@ -34,7 +34,7 @@ export class MaterialRequestsService {
   async findAll(projectId: string, user: any) {
     if (projectId) {
       const project = await this.prisma.project.findFirst({
-        where: enforceScopeWhere(user, { id: projectId }),
+        where: enforceProjectScopeWhere(user, { id: projectId }),
       });
       if (!project)
         throw new NotFoundException('Project not found or access denied');
@@ -43,7 +43,7 @@ export class MaterialRequestsService {
     return this.prisma.materialRequest.findMany({
       where: projectId
         ? { projectId }
-        : { project: enforceScopeWhere(user, {}) },
+        : { project: enforceProjectScopeWhere(user, {}) },
       include: {
         project: true,
       },
@@ -54,7 +54,7 @@ export class MaterialRequestsService {
   async findOne(id: string, projectId: string, user: any) {
     if (projectId) {
       const project = await this.prisma.project.findFirst({
-        where: enforceScopeWhere(user, { id: projectId }),
+        where: enforceProjectScopeWhere(user, { id: projectId }),
       });
       if (!project)
         throw new NotFoundException('Project not found or access denied');
@@ -74,7 +74,7 @@ export class MaterialRequestsService {
     }
 
     const projectAccess = await this.prisma.project.findFirst({
-      where: enforceScopeWhere(user, { id: req.projectId }),
+      where: enforceProjectScopeWhere(user, { id: req.projectId }),
     });
     if (!projectAccess)
       throw new NotFoundException(
