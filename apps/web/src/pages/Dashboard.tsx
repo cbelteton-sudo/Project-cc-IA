@@ -65,10 +65,18 @@ export const Dashboard = () => {
   const { formatCurrency } = useRegion();
   const navigate = useNavigate();
 
-  // Redirect PMs who land here by accident (e.g. direct URL)
+  // Redirect PMs and Operators who land here by accident (e.g. direct URL)
   useEffect(() => {
     if (user?.role === 'PM') {
       navigate('/field/dashboard', { replace: true });
+    } else if (
+      user?.projectMembers?.some((m: { role: string }) =>
+        ['FIELD_OPERATOR', 'RESIDENTE'].includes(m.role),
+      )
+    ) {
+      if (!['ADMIN', 'ORG_ADMIN', 'PLATFORM_ADMIN'].includes(user.role)) {
+        navigate('/field/operator', { replace: true });
+      }
     }
   }, [user, navigate]);
 

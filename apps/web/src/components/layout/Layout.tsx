@@ -98,7 +98,7 @@ export const Layout = () => {
         <aside
           className={`${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-          } ${collapsed ? 'w-20' : 'w-64'} fixed md:static inset-y-0 left-0 bg-white border-r border-slate-200 flex flex-col print:hidden transition-transform duration-300 relative z-40`}
+          } ${collapsed ? 'w-20' : 'w-64'} fixed md:relative inset-y-0 left-0 bg-white border-r border-slate-200 flex flex-col print:hidden transition-transform duration-300 z-40`}
         >
           {/* Toggle Button (Desktop Only) */}
           <button
