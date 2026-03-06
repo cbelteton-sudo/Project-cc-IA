@@ -61,9 +61,11 @@ const ChangeOrders = React.lazy(() =>
   import('./pages/ChangeOrders').then((m) => ({ default: m.ChangeOrders })),
 );
 
-// Field Pages
 const FieldPMDashboard = React.lazy(() =>
   import('./pages/field/FieldPMDashboard').then((m) => ({ default: m.FieldPMDashboard })),
+);
+const FieldDashboard = React.lazy(() =>
+  import('./pages/field/FieldDashboard').then((m) => ({ default: m.FieldDashboard })),
 );
 const FieldToday = React.lazy(() =>
   import('./pages/field/FieldToday').then((m) => ({ default: m.FieldToday })),
@@ -232,6 +234,7 @@ function App() {
             <Route path="/field" element={<FieldLayout />}>
               <Route index element={<Navigate to="today" replace />} />
               <Route path="dashboard" element={<FieldPMDashboard />} />
+              <Route path="operator" element={<FieldDashboard />} />
               <Route path="today" element={<FieldToday />} />
               <Route path="entry/:id" element={<FieldEntryDetail />} />
               <Route path="activity/:id/update" element={<ActivityUpdate />} />

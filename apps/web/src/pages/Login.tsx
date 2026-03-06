@@ -18,7 +18,8 @@ export const Login = () => {
       console.log('Login: Posting to /auth/login');
       const res = await api.post('/auth/login', { email, password });
       console.log('Login: Response data:', res.data);
-      let { access_token, user } = res.data;
+      const { access_token } = res.data;
+      let { user } = res.data;
 
       if (!access_token) {
         console.error('Login: Missing access_token in response', res.data);
@@ -53,12 +54,13 @@ export const Login = () => {
 
       if (user.role === 'CONTRATISTA') {
         navigate('/portal/dashboard');
-      } else if (
-        user.role === 'PM' ||
-        // Check for Field Operator logic (if coming from Operator Login or having the role)
-        (user.projectMembers && user.projectMembers.some((m: any) => m.role === 'FIELD_OPERATOR'))
-      ) {
+      } else if (user.role === 'PM') {
         navigate('/field/dashboard');
+      } else if (
+        user.projectMembers &&
+        user.projectMembers.some((m: { role: string }) => m.role === 'FIELD_OPERATOR')
+      ) {
+        navigate('/field/operator');
       } else {
         navigate('/');
       }
