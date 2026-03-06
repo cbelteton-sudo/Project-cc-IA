@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../src/app.module';
 import * as request from 'supertest';
 import { INestApplication } from '@nestjs/common';
-import { PrismaService } from '../src/common/database/prisma.service';
+import { PrismaService } from '../src/prisma/prisma.service';
 
 // Script to run E2E Smoke Tests
 async function runSmokeTests() {
@@ -10,4 +10,4 @@ async function runSmokeTests() {
   // Need to log in and get tokens for different roles and test the endpoints directly
   // Instead of full nest app setup, let's just make direct API calls to the running server
 }
-runSmokeTests();
+runSmokeTests().catch(console.error);
