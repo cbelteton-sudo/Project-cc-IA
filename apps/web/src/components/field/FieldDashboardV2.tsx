@@ -223,9 +223,28 @@ export function FieldDashboardV2() {
       <div className="bg-white border-b px-4 py-3 sm:px-6 shrink-0 relative z-10">
         <div className="flex justify-between items-center">
           <div className="flex flex-col">
-            <h1 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">
-              Módulo de Campo
-            </h1>
+            <div className="flex items-center gap-3 mb-0.5">
+              <h1 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Módulo de Campo
+              </h1>
+              <div
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-slate-50 border-slate-200"
+                title={isOnline ? 'Sincronizado' : 'Cambios locales pendientes'}
+              >
+                {!isOnline && (
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                  </span>
+                )}
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                />
+                <span className="text-[9px] font-medium text-slate-600 uppercase tracking-wide">
+                  {isOnline ? 'Online' : 'Offline'}
+                </span>
+              </div>
+            </div>
             <div className="relative flex items-center">
               <select
                 value={selectedProjectId}
@@ -270,7 +289,7 @@ export function FieldDashboardV2() {
               { label: 'Todos', value: 'All' },
               { label: 'Issues', value: 'ISSUE' },
               { label: 'Incidentes', value: 'INCIDENT' },
-              { label: 'Bitácora', value: 'LOG' },
+              { label: 'Bitácora', value: 'DAILY_ENTRY' },
             ]}
           />
 
@@ -314,38 +333,16 @@ export function FieldDashboardV2() {
               </div>
             ) : (
               <RecordList
-                records={records || []}
+                records={
+                  activeFilter === 'All'
+                    ? records || []
+                    : (records || []).filter((r: FieldRecordPayload) => r.type === activeFilter)
+                }
                 isLoading={false}
                 isError={false}
                 onRecordClick={(id) => navigate(`/field/records/${id}`)}
               />
             )}
-          </div>
-        </div>
-
-        {/* Sidebar (1 column on desktop) */}
-        <div className="space-y-6">
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-5">
-            <h3 className="font-bold text-blue-900 mb-2">Clima (Placeholder)</h3>
-            <p className="text-sm text-blue-800">24°C, Soleado. Condiciones óptimas para colado.</p>
-          </div>
-
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-            <h3 className="font-bold text-slate-800 mb-2 flex items-center justify-between">
-              Estado Sincronización
-              {!isOnline && (
-                <span className="flex h-2 w-2 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                </span>
-              )}
-            </h3>
-            <p className="text-sm text-slate-600 flex items-center gap-2">
-              <span
-                className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-slate-300'}`}
-              />
-              {isOnline ? 'Online (Sincronizado)' : 'Offline (Cambios locales pendientes)'}
-            </p>
           </div>
         </div>
       </div>
