@@ -15,21 +15,8 @@ async function main() {
   await prisma.contractorProjectAssignment.deleteMany();
   await prisma.contractor.deleteMany();
 
-  // Clean Projects if needed to avoid dupes (optional, but safer for demo)
-  await prisma.fieldDailyReport.deleteMany({
-    where: { project: { code: 'T-MAWI' } },
-  });
-  await prisma.projectMember.deleteMany({
-    where: { project: { code: 'T-MAWI' } },
-  });
-  await prisma.backlogItem.deleteMany({
-    where: { project: { code: 'T-MAWI' } },
-  });
-  await prisma.sprint.deleteMany({
-    where: { project: { code: 'T-MAWI' } },
-  });
-  await prisma.project.deleteMany({ where: { code: 'T-MAWI' } });
-
+  // Eliminated destructive deleteMany blocks for T-MAWI to avoid FK errors (e.g. MaterialRequests)
+  // We will use an idempotent approach (find and update/create) for projects instead.
   console.log('🧹 Cleaned existing Phase 9 data');
 
   // 1. Create Tenant (Upsert)
@@ -82,48 +69,75 @@ async function main() {
   const endDate = new Date(today);
   endDate.setDate(endDate.getDate() + 120); // 120 days future
 
-  const project = await prisma.project.create({
-    data: {
-      name: 'TORRE MAWI DEMO',
-      code: 'T-MAWI',
-      status: 'ACTIVE',
-      currency: 'GTQ',
-      tenantId: tenant.id,
-      startDate,
-      endDate,
-      globalBudget: 2500000,
-    },
+  const projectData1 = {
+    name: 'TORRE MAWI DEMO',
+    code: 'T-MAWI',
+    status: 'ACTIVE',
+    currency: 'GTQ',
+    tenantId: tenant.id,
+    startDate,
+    endDate,
+    globalBudget: 2500000,
+  };
+  let project = await prisma.project.findFirst({
+    where: { code: 'T-MAWI', tenantId: tenant.id },
   });
-  console.log('🏗️ Created Project: TORRE MAWI DEMO');
+  if (!project) {
+    project = await prisma.project.create({ data: projectData1 });
+  } else {
+    project = await prisma.project.update({
+      where: { id: project.id },
+      data: projectData1,
+    });
+  }
+  console.log('🏗️ Upserted Project: TORRE MAWI DEMO');
 
   // Create additional projects
-  const project2 = await prisma.project.create({
-    data: {
-      name: 'TORRE VISTA',
-      code: 'T-VIST',
-      status: 'ACTIVE',
-      currency: 'GTQ',
-      tenantId: tenant.id,
-      startDate,
-      endDate,
-      globalBudget: 1800000,
-    },
+  const projectData2 = {
+    name: 'TORRE VISTA',
+    code: 'T-VIST',
+    status: 'ACTIVE',
+    currency: 'GTQ',
+    tenantId: tenant.id,
+    startDate,
+    endDate,
+    globalBudget: 1800000,
+  };
+  let project2 = await prisma.project.findFirst({
+    where: { code: 'T-VIST', tenantId: tenant.id },
   });
-  console.log('🏗️ Created Project: TORRE VISTA');
+  if (!project2) {
+    project2 = await prisma.project.create({ data: projectData2 });
+  } else {
+    project2 = await prisma.project.update({
+      where: { id: project2.id },
+      data: projectData2,
+    });
+  }
+  console.log('🏗️ Upserted Project: TORRE VISTA');
 
-  const project3 = await prisma.project.create({
-    data: {
-      name: 'CONDADO ALTO',
-      code: 'C-ALTO',
-      status: 'ACTIVE',
-      currency: 'GTQ',
-      tenantId: tenant.id,
-      startDate,
-      endDate,
-      globalBudget: 3200000,
-    },
+  const projectData3 = {
+    name: 'CONDADO ALTO',
+    code: 'C-ALTO',
+    status: 'ACTIVE',
+    currency: 'GTQ',
+    tenantId: tenant.id,
+    startDate,
+    endDate,
+    globalBudget: 3200000,
+  };
+  let project3 = await prisma.project.findFirst({
+    where: { code: 'C-ALTO', tenantId: tenant.id },
   });
-  console.log('🏗️ Created Project: CONDADO ALTO');
+  if (!project3) {
+    project3 = await prisma.project.create({ data: projectData3 });
+  } else {
+    project3 = await prisma.project.update({
+      where: { id: project3.id },
+      data: projectData3,
+    });
+  }
+  console.log('🏗️ Upserted Project: CONDADO ALTO');
 
   // 5. Helper to create activities
   const createActivity = async (
