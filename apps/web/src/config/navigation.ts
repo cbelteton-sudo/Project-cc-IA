@@ -63,6 +63,7 @@ export const getNavItems = (
     const mainItems: NavItem[] = [
       { label: 'Inicio', to: '/', icon: Home, exact: true },
       { label: 'Proyectos', to: '/projects', icon: FolderKanban },
+      { label: 'Gestión de Campo', to: '/field/dashboard', icon: HardHat },
     ];
     sections.push({ items: mainItems });
   }

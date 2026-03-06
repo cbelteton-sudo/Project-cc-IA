@@ -452,7 +452,7 @@ async function main() {
   // Helper to assign
   const assignMember = async (
     email: string,
-    role: 'DIRECTOR' | 'PM' | 'SUPERVISOR' | 'USER',
+    role: 'DIRECTOR' | 'PM' | 'SUPERVISOR' | 'FIELD_OPERATOR' | 'USER',
     targetProjectId: string,
   ) => {
     const u = await prisma.user.findUnique({ where: { email } });
@@ -480,13 +480,13 @@ async function main() {
   await assignMember('admin@demo.com', 'DIRECTOR', project.id);
   await assignMember('director@demo.com', 'DIRECTOR', project.id);
   await assignMember('supervisor@demo.com', 'SUPERVISOR', project.id);
-  await assignMember('operador@demo.com', 'USER', project.id);
+  await assignMember('operador@demo.com', 'FIELD_OPERATOR', project.id);
   await assignMember('contratista1@demo.com', 'USER', project.id);
 
   // Assign our 3 Operators to different projects to simulate data
-  await assignMember('operador1@demo.com', 'USER', project.id);
-  await assignMember('operador2@demo.com', 'USER', project2.id);
-  await assignMember('operador3@demo.com', 'USER', project3.id);
+  await assignMember('operador1@demo.com', 'FIELD_OPERATOR', project.id);
+  await assignMember('operador2@demo.com', 'FIELD_OPERATOR', project2.id);
+  await assignMember('operador3@demo.com', 'FIELD_OPERATOR', project3.id);
 
   console.log('✅ Project Members Assigned');
   console.log('✅ MATERIALS Seeded');
