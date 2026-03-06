@@ -41,6 +41,9 @@ export class FieldRecordsService {
             title: content.title || 'Untitled Issue',
             description: content.description || '',
             severity: content.severity || 'LOW',
+            activityId: (content.activityId || content.scheduleActivityId) as
+              | string
+              | undefined,
           },
           user,
         );
@@ -52,7 +55,8 @@ export class FieldRecordsService {
             note: content.description || '',
             dateString: new Date().toISOString().split('T')[0], // ensure valid date format
             status: content.status || 'ON_TRACK',
-            scheduleActivityId: null,
+            scheduleActivityId: (content.scheduleActivityId ||
+              content.activityId) as string | null,
           },
           user,
         );

@@ -3,12 +3,24 @@ import { X, AlertTriangle, FileText, CheckCircle2, Wrench, Loader2 } from 'lucid
 import type { LucideIcon } from 'lucide-react';
 import { useCreateFieldRecordV2 } from '../hooks/useCreateFieldRecordV2';
 import type { FieldRecordPayload } from '../../../services/field-records';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../../../lib/api';
+import { useAuth } from '../../../context/AuthContext';
 
 interface QuickCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
   projectId: string;
+}
+
+interface BacklogItem {
+  id: string;
+  title: string;
+  status: string;
+  type: string;
+  assigneeUserId?: string;
+  linkedWbsActivityId?: string;
 }
 
 const typeOptions: Array<{
@@ -49,9 +61,31 @@ export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
   onSuccess,
   projectId,
 }) => {
+  const { user } = useAuth();
   const [selectedType, setSelectedType] = useState<FieldRecordPayload['type']>('ISSUE');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [selectedBacklogItem, setSelectedBacklogItem] = useState('');
+
+  const { data: backlogItems } = useQuery({
+    queryKey: ['scrum', 'backlog', projectId],
+    queryFn: async () => {
+      const res = await api.get(`/scrum/backlog/${projectId}`);
+      return res.data;
+    },
+    enabled: isOpen && !!projectId,
+  });
+
+  const activeUserTasks = React.useMemo(() => {
+    if (!backlogItems) return [];
+    const tasks = (backlogItems as BacklogItem[]).filter(
+      (item) =>
+        ['IN_SPRINT', 'IN_PROGRESS', 'READY', 'BACKLOG'].includes(item.status) &&
+        item.type !== 'EPIC',
+    );
+    const assignedTasks = tasks.filter((t) => t.assigneeUserId === user?.userId);
+    return assignedTasks.length > 0 ? assignedTasks : tasks;
+  }, [backlogItems, user?.userId]);
 
   const { mutateAsync: createRecord, isPending } = useCreateFieldRecordV2();
 
@@ -62,6 +96,8 @@ export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
     if (!title.trim() || !projectId) return;
 
     try {
+      const selectedTask = activeUserTasks?.find((t) => t.id === selectedBacklogItem);
+
       await createRecord({
         projectId,
         type: selectedType,
@@ -69,6 +105,7 @@ export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
         content: {
           title: title.trim(),
           description: description.trim(),
+          activityId: selectedTask?.linkedWbsActivityId || undefined,
         },
       });
 
@@ -76,6 +113,7 @@ export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
       setTitle('');
       setDescription('');
       setSelectedType('ISSUE');
+      setSelectedBacklogItem('');
       onSuccess?.();
       onClose();
     } catch {
@@ -143,6 +181,24 @@ export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+              Tarea Asociada
+            </label>
+            <select
+              value={selectedBacklogItem}
+              onChange={(e) => setSelectedBacklogItem(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all text-sm font-medium text-slate-900"
+            >
+              <option value="">Seleccione una tarea (Opcional)</option>
+              {activeUserTasks.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.title}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
