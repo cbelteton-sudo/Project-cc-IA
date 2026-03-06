@@ -44,7 +44,7 @@ async function main() {
   console.log('✅ Tenant ready: Constructora Demo');
 
   // 2. Create Admin User (Upsert)
-  const password = await bcrypt.hash('password123', 10);
+  const password = await bcrypt.hash('Developer1!', 10);
   const user = await prisma.user.upsert({
     where: { email: 'admin@demo.com' },
     update: { password }, // Update password just in case
@@ -95,6 +95,35 @@ async function main() {
     },
   });
   console.log('🏗️ Created Project: TORRE MAWI DEMO');
+
+  // Create additional projects
+  const project2 = await prisma.project.create({
+    data: {
+      name: 'TORRE VISTA',
+      code: 'T-VIST',
+      status: 'ACTIVE',
+      currency: 'GTQ',
+      tenantId: tenant.id,
+      startDate,
+      endDate,
+      globalBudget: 1800000,
+    },
+  });
+  console.log('🏗️ Created Project: TORRE VISTA');
+
+  const project3 = await prisma.project.create({
+    data: {
+      name: 'CONDADO ALTO',
+      code: 'C-ALTO',
+      status: 'ACTIVE',
+      currency: 'GTQ',
+      tenantId: tenant.id,
+      startDate,
+      endDate,
+      globalBudget: 3200000,
+    },
+  });
+  console.log('🏗️ Created Project: CONDADO ALTO');
 
   // 5. Helper to create activities
   const createActivity = async (
@@ -297,12 +326,33 @@ async function main() {
     const email = `${role.toLowerCase()}@demo.com`;
     await prisma.user.upsert({
       where: { email },
-      update: { role },
+      update: { role, password },
       create: {
         email,
         name: `${role} User`,
-        password, // same 'password123' hash from above
+        password, // same 'Developer1!' hash from above
         role,
+        tenantId: tenant.id,
+      },
+    });
+  }
+
+  // Create 3 specific Field Operators for demo
+  const operatorsData = [
+    { email: 'operador1@demo.com', name: 'Operador Uno' },
+    { email: 'operador2@demo.com', name: 'Operador Dos' },
+    { email: 'operador3@demo.com', name: 'Operador Tres' },
+  ];
+
+  for (const op of operatorsData) {
+    await prisma.user.upsert({
+      where: { email: op.email },
+      update: { role: 'USER', password },
+      create: {
+        email: op.email,
+        name: op.name,
+        password,
+        role: 'USER',
         tenantId: tenant.id,
       },
     });
@@ -312,7 +362,7 @@ async function main() {
   const contractorEmail = 'contratista1@demo.com';
   await prisma.user.upsert({
     where: { email: contractorEmail },
-    update: { contractorId: contractors[0].id },
+    update: { contractorId: contractors[0].id, password },
     create: {
       email: contractorEmail,
       name: 'Juan Perez (Alfa)',
@@ -403,32 +453,40 @@ async function main() {
   const assignMember = async (
     email: string,
     role: 'DIRECTOR' | 'PM' | 'SUPERVISOR' | 'USER',
+    targetProjectId: string,
   ) => {
     const u = await prisma.user.findUnique({ where: { email } });
     if (u) {
       await prisma.projectMember.upsert({
         where: {
           projectId_userId: {
-            projectId: project.id,
+            projectId: targetProjectId,
             userId: u.id,
           },
         },
         update: { role },
         create: {
-          projectId: project.id,
+          projectId: targetProjectId,
           userId: u.id,
           role,
         },
       });
-      console.log(`   - Assigned ${u.name} as ${role}`);
+      console.log(
+        `   - Assigned ${u.name} as ${role} to Project ${targetProjectId}`,
+      );
     }
   };
 
-  await assignMember('admin@demo.com', 'DIRECTOR');
-  await assignMember('director@demo.com', 'DIRECTOR');
-  await assignMember('supervisor@demo.com', 'SUPERVISOR');
-  await assignMember('operador@demo.com', 'USER');
-  await assignMember('contratista1@demo.com', 'USER');
+  await assignMember('admin@demo.com', 'DIRECTOR', project.id);
+  await assignMember('director@demo.com', 'DIRECTOR', project.id);
+  await assignMember('supervisor@demo.com', 'SUPERVISOR', project.id);
+  await assignMember('operador@demo.com', 'USER', project.id);
+  await assignMember('contratista1@demo.com', 'USER', project.id);
+
+  // Assign our 3 Operators to different projects to simulate data
+  await assignMember('operador1@demo.com', 'USER', project.id);
+  await assignMember('operador2@demo.com', 'USER', project2.id);
+  await assignMember('operador3@demo.com', 'USER', project3.id);
 
   console.log('✅ Project Members Assigned');
   console.log('✅ MATERIALS Seeded');
