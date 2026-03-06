@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Edit, Trash2, Shield, User as UserIcon, Briefcase } from 'lucide-react';
+import { Plus, Edit, Shield, Briefcase } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -21,11 +21,26 @@ type UserForm = z.infer<typeof userSchema>;
 
 const ROLES = ['ADMINISTRADOR', 'DIRECTOR', 'SUPERVISOR', 'RESIDENTE', 'OPERADOR', 'CONTRATISTA'];
 
+interface Contractor {
+  id: string;
+  name: string;
+}
+
+interface User {
+  id: string;
+  name: string | null;
+  email: string;
+  role: string;
+  status: string;
+  contractorId?: string | null;
+  contractor?: Contractor | null;
+}
+
 export const AdminUsers = () => {
   const { token } = useAuth();
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<any>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   // Form
   const {
@@ -45,7 +60,7 @@ export const AdminUsers = () => {
   const selectedRole = watch('role');
 
   // Fetch Users
-  const { data: users, isLoading } = useQuery({
+  const { data: users } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
       const res = await api.get(`/admin/users`);
@@ -96,8 +111,9 @@ export const AdminUsers = () => {
       setEditingUser(null);
       reset();
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Error saving user');
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || 'Error saving user');
     },
   });
 
@@ -109,7 +125,7 @@ export const AdminUsers = () => {
     mutation.mutate(data);
   };
 
-  const handleEdit = (user: any) => {
+  const handleEdit = (user: User) => {
     setEditingUser(user);
     setValue('name', user.name || '');
     setValue('email', user.email);
@@ -154,7 +170,7 @@ export const AdminUsers = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {users?.map((user: any) => (
+            {users?.map((user: User) => (
               <tr key={user.id} className="hover:bg-gray-50">
                 <td className="px-6 py-3">
                   <div className="flex items-center gap-3">
@@ -264,7 +280,7 @@ export const AdminUsers = () => {
                   </label>
                   <select {...register('contractorId')} className="w-full border rounded px-3 py-2">
                     <option value="">Seleccionar Contratista...</option>
-                    {contractors?.map((c: any) => (
+                    {contractors?.map((c: Contractor) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
                       </option>

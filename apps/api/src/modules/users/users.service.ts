@@ -52,9 +52,12 @@ export class UsersService {
     });
   }
 
-  async findOne(id: string) {
-    return this.prisma.user.findUnique({
-      where: { id },
+  async findOne(id: string, tenantId?: string) {
+    const whereClause: any = { id };
+    if (tenantId) whereClause.tenantId = tenantId;
+
+    return this.prisma.user.findFirst({
+      where: whereClause,
       include: { contractor: true, projectMemberships: true },
     });
   }

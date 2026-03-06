@@ -8,40 +8,37 @@ import {
   Delete,
   Query,
   UseGuards,
-  Request,
+  UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-// Assuming existing guards based on Phase 1 plan - if not I will use just Controller
-// Plan said: JwtAuthGuard, PermissionsGuard. Let's try to assume they exist or check common folder later.
-// For now, I'll build the logic and add decorators if I find them.
-// Wait, I should find them first to be robust.
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { ActiveUser } from '../../common/decorators/active-user.decorator';
 
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN', 'DIRECTOR')
 @Controller('admin/users')
 export class AdminUsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  async create(@Request() req: any, @Body() createUserDto: CreateUserDto) {
+  async create(@ActiveUser() user: any, @Body() createUserDto: CreateUserDto) {
     console.log('AdminUsersController.create called');
-    let tenantId = req.user?.tenantId;
+    const tenantId = user.tenantId;
 
     if (!tenantId) {
-      const tenant = await this.usersService.findTenantBySlug('demo');
-      if (tenant) tenantId = tenant.id;
-    }
-
-    if (!tenantId) {
-      console.error('Tenant ID missing and demo tenant not found');
-      throw new Error('Tenant context required');
+      console.error('Tenant ID missing in token');
+      throw new UnauthorizedException('Tenant context required');
     }
 
     try {
       return await this.usersService.create({ ...createUserDto, tenantId });
     } catch (error: any) {
       console.error('Controller Catch:', error);
-      // Check for Prisma unique constraint error (P2002)
       if (error.code === 'P2002') {
         const target = error.meta?.target;
         throw new Error(`User with this ${target} already exists`);
@@ -51,35 +48,45 @@ export class AdminUsersController {
   }
 
   @Get()
-  async findAll(@Request() req: any, @Query('role') role?: string) {
-    let tenantId = req.user?.tenantId;
-
-    if (!tenantId) {
-      const tenant = await this.usersService.findTenantBySlug('demo');
-      if (tenant) tenantId = tenant.id;
-    }
-
-    return this.usersService.findAll(tenantId || 'demo');
+  async findAll(@ActiveUser() user: any, @Query('role') role?: string) {
+    const tenantId = user.tenantId;
+    if (!tenantId) throw new UnauthorizedException('Tenant context required');
+    return this.usersService.findAll(tenantId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+  async findOne(@ActiveUser() user: any, @Param('id') id: string) {
+    const tenantId = user.tenantId;
+    const foundUser = await this.usersService.findOne(id, tenantId);
+    if (!foundUser) throw new NotFoundException('User not found');
+    return foundUser;
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  async update(
+    @ActiveUser() user: any,
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    const tenantId = user.tenantId;
+    const existingUser = await this.usersService.findOne(id, tenantId);
+    if (!existingUser) throw new NotFoundException('User not found');
     return this.usersService.update(id, updateUserDto);
   }
 
   @Post(':id/reset-password')
-  async resetPassword(@Param('id') id: string) {
-    // Dev feature
+  async resetPassword(@ActiveUser() user: any, @Param('id') id: string) {
+    const tenantId = user.tenantId;
+    const existingUser = await this.usersService.findOne(id, tenantId);
+    if (!existingUser) throw new NotFoundException('User not found');
     return this.usersService.update(id, { password: 'password123' });
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  async remove(@ActiveUser() user: any, @Param('id') id: string) {
+    const tenantId = user.tenantId;
+    const existingUser = await this.usersService.findOne(id, tenantId);
+    if (!existingUser) throw new NotFoundException('User not found');
     return this.usersService.remove(id);
   }
 }
