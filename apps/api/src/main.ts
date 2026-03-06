@@ -11,6 +11,8 @@ declare const module: any; // Webpack HMR
 
 const BOOT_KEY = '__fieldclose_api_booted__';
 
+import { urlencoded, json } from 'express';
+
 async function bootstrap() {
   // 1. Global Guard: Prevent double-bootstrap in same process
   if ((globalThis as any)[BOOT_KEY]) {
@@ -23,6 +25,10 @@ async function bootstrap() {
 
   try {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+    // Increase JSON payload limits for base64 photo uploads
+    app.use(json({ limit: '50mb' }));
+    app.use(urlencoded({ extended: true, limit: '50mb' }));
 
     // 2. Enable Shutdown Hooks (SIGTERM/SIGINT)
     app.enableShutdownHooks();
