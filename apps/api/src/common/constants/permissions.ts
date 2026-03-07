@@ -55,38 +55,36 @@ export const ROLE_PERMISSIONS: Record<ProjectRole, Permission[]> = {
     Permission.BUDGET_VIEW,
   ],
 
-  [ProjectRole.PMO]: [
-    Permission.PROJECT_VIEW,
-    Permission.PROJECT_EDIT,
-    Permission.TASK_VIEW,
-    Permission.TASK_CREATE,
-    Permission.TASK_UPDATE,
-    Permission.TASK_DELETE,
-    Permission.TASK_MARK_DONE,
-    Permission.TASK_APPROVE,
-    Permission.TASK_REOPEN,
-    Permission.RFI_VIEW,
-    Permission.RFI_CREATE,
-    Permission.RFI_UPDATE,
-    Permission.MEMBER_VIEW,
-    Permission.MEMBER_INVITE,
-    Permission.MEMBER_UPDATE,
-    Permission.OPERATOR_CREATE,
-    Permission.BUDGET_VIEW,
-  ],
-
   [ProjectRole.FINANCIERO]: [
     Permission.PROJECT_VIEW,
     Permission.MEMBER_VIEW,
     Permission.BUDGET_VIEW,
   ],
 
-  [ProjectRole.EXECUTIVE_VIEWER]: [
+  [ProjectRole.SUPERVISOR]: [
     Permission.PROJECT_VIEW,
     Permission.TASK_VIEW,
+    Permission.TASK_CREATE,
+    Permission.TASK_UPDATE,
+    Permission.TASK_DELETE,
+    Permission.TASK_MARK_DONE,
+    Permission.TASK_APPROVE,
     Permission.RFI_VIEW,
+    Permission.RFI_CREATE,
+    Permission.RFI_UPDATE,
     Permission.MEMBER_VIEW,
-    Permission.BUDGET_VIEW,
+    Permission.OPERATOR_CREATE,
+  ],
+
+  [ProjectRole.RESIDENTE_OBRA]: [
+    Permission.PROJECT_VIEW,
+    Permission.TASK_VIEW,
+    Permission.TASK_CREATE,
+    Permission.TASK_UPDATE,
+    Permission.TASK_MARK_DONE,
+    Permission.RFI_VIEW,
+    Permission.RFI_CREATE,
+    Permission.MEMBER_VIEW,
   ],
 
   [ProjectRole.CONTRACTOR_LEAD]: [

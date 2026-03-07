@@ -176,9 +176,9 @@ export class ScrumController {
       }
     }
 
-    // ABAC Rule: Executive Viewer is Read Only
-    if ((member.role as ProjectRole) === ProjectRole.EXECUTIVE_VIEWER) {
-      throw new ForbiddenException('Executive Viewers cannot update items.');
+    // ABAC Rule: Viewer is Read Only
+    if ((member.role as ProjectRole) === ProjectRole.VIEWER) {
+      throw new ForbiddenException('Viewers cannot update items.');
     }
 
     return this.scrumService.updateSprintItemStatus(itemId, body.status);

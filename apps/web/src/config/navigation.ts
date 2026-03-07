@@ -58,9 +58,9 @@ export const getNavItems = (
   const isOperator = projectRole === 'FIELD_OPERATOR';
   const isGlobalOperator = user.projectMembers?.some((m) => m.role === 'FIELD_OPERATOR');
 
-  // --- ORG CONTEXT (ALWAYS VISIBLE UNLESS OPERATOR IN PROJECT) ---
-  // 1. Dashboard & Projects (Common)
-  if (!(isProjectContext && isOperator)) {
+  // --- ORG CONTEXT ---
+  // 1. Dashboard & Projects (Common) - Hide when in a specific project
+  if (!isProjectContext) {
     const mainItems: NavItem[] = [
       { label: 'Inicio', to: '/', icon: Home, exact: true },
       { label: 'Proyectos', to: '/projects', icon: FolderKanban },

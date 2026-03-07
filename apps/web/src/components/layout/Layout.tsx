@@ -3,7 +3,6 @@ import { Outlet, Link, useLocation, matchPath } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Settings, LogOut } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useTranslation } from 'react-i18next';
-import { useRegion } from '../../context/RegionContext';
 import { useAuth } from '../../context/AuthContext';
 import { NotificationBell } from '../common/NotificationBell';
 import { QuickCaptureModal } from '../field/QuickCaptureModal';
@@ -49,8 +48,7 @@ const SidebarItem = ({
 );
 
 export const Layout = () => {
-  const { t, i18n } = useTranslation();
-  const { country, setCountry } = useRegion();
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -100,10 +98,6 @@ export const Layout = () => {
     user.projectMembers &&
     user.projectMembers.length > 0 &&
     user.projectMembers.every((m) => ['FIELD_OPERATOR', 'RESIDENTE'].includes(m.role));
-
-  const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng);
-  };
 
   return (
     <div className="flex min-h-[100dvh] bg-slate-50 overflow-hidden relative">
@@ -166,16 +160,16 @@ export const Layout = () => {
             {projectId && !isOperator && (
               <div className="mb-6">
                 <Link
-                  to="/"
+                  to="/projects"
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium text-sm group ${collapsed ? 'justify-center' : ''}`}
-                  title={collapsed ? 'Volver a Organización' : ''}
+                  title={collapsed ? 'Todos los Proyectos' : ''}
                 >
                   <ChevronLeft
                     size={20}
                     className="shrink-0 text-slate-400 group-hover:text-slate-600"
                   />
-                  {!collapsed && <span className="truncate">Volver a Org</span>}
+                  {!collapsed && <span className="truncate">Volver a Todos los Proyectos</span>}
                 </Link>
               </div>
             )}
@@ -317,37 +311,6 @@ export const Layout = () => {
             </div>
 
             <div className="flex items-center gap-2 md:gap-4 shrink-0">
-              <div className="hidden sm:flex items-center gap-2 bg-gray-100 rounded-lg p-1">
-                {/* Country Switcher */}
-                <button
-                  onClick={() => setCountry('GT')}
-                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition ${country === 'GT' ? 'bg-white shadow-sm text-blue-800' : 'text-gray-500 hover:text-gray-700'}`}
-                  title="Guatemala (Quetzales)"
-                >
-                  🇬🇹 GTQ
-                </button>
-                <button
-                  onClick={() => setCountry('SV')}
-                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition ${country === 'SV' ? 'bg-white shadow-sm text-blue-800' : 'text-gray-500 hover:text-gray-700'}`}
-                  title="El Salvador (USD)"
-                >
-                  🇸🇻 USD
-                </button>
-                <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                {/* Language Switcher */}
-                <button
-                  onClick={() => changeLanguage('es')}
-                  className={`text-xs px-2 py-1 rounded font-semibold transition ${i18n.language === 'es' ? 'bg-white shadow-sm text-blue-800' : 'text-gray-500'}`}
-                >
-                  ES
-                </button>
-                <button
-                  onClick={() => changeLanguage('en')}
-                  className={`text-xs px-2 py-1 rounded font-semibold transition ${i18n.language === 'en' ? 'bg-white shadow-sm text-blue-800' : 'text-gray-500'}`}
-                >
-                  EN
-                </button>
-              </div>
               <span className="hidden sm:inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium truncate max-w-[200px]">
                 {t('common.tenant')}: {tenantName || 'Constructora Demo'}
               </span>

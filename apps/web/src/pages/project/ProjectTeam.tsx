@@ -9,13 +9,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
 
-// Schema
 const memberSchema = z.object({
   name: z.string().optional(),
   email: z.string().email('Email inválido'),
   phone: z.string().optional(),
   role: z.string().min(1, 'El rol es requerido'),
-  contractorId: z.string().optional(),
+  contractorId: z.string().min(1, 'El contratista es requerido'),
 });
 
 type MemberForm = z.infer<typeof memberSchema>;
@@ -24,13 +23,48 @@ const PROJECT_ROLES = [
   'PROJECT_ADMIN',
   'DIRECTOR',
   'PM',
-  'PMO',
   'FINANCIERO',
-  'EXECUTIVE_VIEWER',
+  'SUPERVISOR',
+  'RESIDENTE_OBRA',
   'CONTRACTOR_LEAD',
   'FIELD_OPERATOR',
   'VIEWER',
 ];
+
+const ROLE_LABELS: Record<string, string> = {
+  PROJECT_ADMIN: 'Administrador de Configuraciones del Proyecto',
+  DIRECTOR: 'Director',
+  PM: 'Project Manager',
+  FINANCIERO: 'Administrador Financiero',
+  SUPERVISOR: 'Supervisor',
+  RESIDENTE_OBRA: 'Residente de Obra',
+  CONTRACTOR_LEAD: 'Constructor Principal',
+  FIELD_OPERATOR: 'Operador de Campo',
+  VIEWER: 'Espectador',
+};
+
+interface ProjectMember {
+  id: string;
+  role: string;
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+    phone: string | null;
+    contractorId: string | null;
+  };
+}
+
+interface ContractInfo {
+  id: string;
+  name: string;
+}
+
+interface OrgUser {
+  id: string;
+  name: string | null;
+  email: string;
+}
 
 export const ProjectTeam = () => {
   const { id: projectId } = useParams<{ id: string }>();
@@ -107,7 +141,7 @@ export const ProjectTeam = () => {
         editingUserId ? 'Rol actualizado correctamente' : 'Miembro agregado exitosamente',
       );
     },
-    onError: (err: any) => {
+    onError: (err: { response?: { data?: { message?: string } } }) => {
       toast.error(err.response?.data?.message || 'Error al guardar el miembro');
     },
   });
@@ -120,7 +154,7 @@ export const ProjectTeam = () => {
       queryClient.invalidateQueries({ queryKey: ['project-members', projectId] });
       toast.success('Miembro removido exitosamente');
     },
-    onError: (err: any) => {
+    onError: (err: { response?: { data?: { message?: string } } }) => {
       toast.error(err.response?.data?.message || 'Error al remover el miembro');
     },
   });
@@ -129,7 +163,7 @@ export const ProjectTeam = () => {
     saveMutation.mutate(data);
   };
 
-  const handleEdit = (m: any) => {
+  const handleEdit = (m: ProjectMember) => {
     setEditingUserId(m.user.id);
     setValue('name', m.user.name || '');
     setValue('email', m.user.email || '');
@@ -184,7 +218,7 @@ export const ProjectTeam = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {members.map((m: any) => (
+            {members.map((m: ProjectMember) => (
               <tr key={m.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
@@ -211,12 +245,14 @@ export const ProjectTeam = () => {
                     className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
                       m.role === 'PROJECT_ADMIN' || m.role === 'DIRECTOR'
                         ? 'bg-purple-50 text-purple-700 border-purple-100'
-                        : m.role === 'PM' || m.role === 'PMO'
+                        : m.role === 'PM' || m.role === 'SUPERVISOR'
                           ? 'bg-blue-50 text-blue-700 border-blue-100'
-                          : 'bg-gray-50 text-gray-700 border-gray-200'
+                          : m.role === 'RESIDENTE_OBRA' || m.role === 'CONTRACTOR_LEAD'
+                            ? 'bg-orange-50 text-orange-700 border-orange-100'
+                            : 'bg-gray-50 text-gray-700 border-gray-200'
                     }`}
                   >
-                    {m.role}
+                    {ROLE_LABELS[m.role] || m.role}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right">
@@ -291,7 +327,7 @@ export const ProjectTeam = () => {
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     />
                     <datalist id="org-users-list">
-                      {orgUsers.map((u: any) => (
+                      {orgUsers.map((u: OrgUser) => (
                         <option key={u.id} value={u.email}>
                           {u.name || 'Sin nombre'}
                         </option>
@@ -328,7 +364,7 @@ export const ProjectTeam = () => {
                 >
                   {PROJECT_ROLES.map((r) => (
                     <option key={r} value={r}>
-                      {r}
+                      {ROLE_LABELS[r]}
                     </option>
                   ))}
                 </select>
@@ -337,19 +373,22 @@ export const ProjectTeam = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Contratista (Opcional)
+                  Contratista responsable *
                 </label>
                 <select
                   {...register('contractorId')}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 >
-                  <option value="">Ninguno</option>
-                  {projectContractors.map((c: any) => (
+                  <option value="">-- Seleccione contratista --</option>
+                  {projectContractors.map((c: ContractInfo) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
                   ))}
                 </select>
+                {errors.contractorId && (
+                  <p className="text-xs text-red-500 mt-1">{errors.contractorId.message}</p>
+                )}
                 <p className="text-xs text-gray-500 mt-1">
                   Asocia a este miembro a un contratista del proyecto.
                 </p>

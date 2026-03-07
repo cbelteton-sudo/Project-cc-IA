@@ -75,7 +75,7 @@ export class ScrumService {
           enableReports: true,
           globalBudget: data.estimatedBudget,
           clientName: data.clientName,
-          mainContractorId: data.contractorId,
+          mainContractorId: data.contractorId || undefined,
         },
       });
 

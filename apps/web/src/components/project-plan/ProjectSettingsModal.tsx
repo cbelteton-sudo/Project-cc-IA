@@ -52,16 +52,17 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
           : '$';
 
   // Fetch lists
-  const { data: users } = useQuery({
-    queryKey: ['users'],
-    queryFn: async () => (await api.get('/users')).data,
-    enabled: isOpen,
+  const { data: projectMembers } = useQuery({
+    queryKey: ['project-members', project?.id],
+    queryFn: async () => (await api.get(`/admin/projects/${project?.id}/members`)).data,
+    enabled: isOpen && !!project?.id,
   });
 
   const { data: contractors } = useQuery({
-    queryKey: ['contractors'],
-    queryFn: async () => (await api.get('/contractors')).data,
-    enabled: isOpen,
+    queryKey: ['project-contractors', project?.id],
+    queryFn: async () =>
+      (await api.get('/contractors', { params: { projectId: project?.id } })).data,
+    enabled: isOpen && !!project?.id,
   });
 
   useEffect(() => {
@@ -90,7 +91,7 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
         enableFieldManagement: project.enableFieldManagement || false,
       });
     }
-  }, [project, reset, isOpen, users, contractors]);
+  }, [project, reset, isOpen, projectMembers, contractors]);
 
   const mutation = useMutation({
     mutationFn: async (data: SettingsForm) => {
@@ -270,13 +271,14 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Constructora responsable:
+                  Contratista responsable *
                 </label>
                 <select
-                  {...register('mainContractorId')}
+                  {...register('mainContractorId', { required: true })}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                  required
                 >
-                  <option value="">-- Sin asignar --</option>
+                  <option value="">-- Seleccione contratista --</option>
                   {contractors?.map((c: { id: string; name: string }) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -293,11 +295,13 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                 >
                   <option value="">-- Sin asignar --</option>
-                  {users?.map((u: { id: string; name: string; email: string }) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name || u.email}
-                    </option>
-                  ))}
+                  {projectMembers?.map(
+                    (m: { userId: string; user: { name: string; email: string } }) => (
+                      <option key={m.userId} value={m.userId}>
+                        {m.user?.name || m.user?.email}
+                      </option>
+                    ),
+                  )}
                 </select>
               </div>
             </div>

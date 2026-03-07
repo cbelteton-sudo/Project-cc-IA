@@ -193,9 +193,7 @@ export const Projects = () => {
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6 mt-2">
         <div className="flex items-center gap-3">
           <Briefcase className="text-gray-700" size={28} />
-          <h2 className="text-2xl font-bold text-gray-800 tracking-tight">
-            Resumen General de Proyectos
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Gestión de Proyectos</h2>
         </div>
 
         {/* Filters, Search and New Project Button */}

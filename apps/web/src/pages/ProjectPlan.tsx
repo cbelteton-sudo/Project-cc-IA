@@ -107,12 +107,12 @@ export const ProjectPlan = () => {
     isLoading: isLoadingContractors,
     isError: isErrorContractors,
   } = useQuery({
-    queryKey: ['contractors'],
+    queryKey: ['contractors', projectId],
     queryFn: async () => {
-      const res = await api.get('/contractors');
+      const res = await api.get('/contractors', { params: { projectId } });
       return res.data;
     },
-    enabled: !!token,
+    enabled: !!token && !!projectId,
   });
 
   // Assign Contractor Mutation

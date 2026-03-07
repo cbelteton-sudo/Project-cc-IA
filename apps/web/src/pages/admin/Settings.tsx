@@ -3,15 +3,23 @@ import { toast } from 'sonner';
 import { Building2, Save, Upload, Loader2, Image as ImageIcon } from 'lucide-react';
 import { compressImage } from '../../lib/image-compression';
 import { api } from '../../lib/api';
+import { useTranslation } from 'react-i18next';
+import { useRegion } from '../../context/RegionContext';
 
 export function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { i18n } = useTranslation();
+  const { country, setCountry } = useRegion();
 
   const [formData, setFormData] = useState({
     name: '',
     logoUrl: '',
   });
+
+  const changeLanguage = (lng: string) => {
+    i18n.changeLanguage(lng);
+  };
 
   useEffect(() => {
     const fetchTenant = async () => {
@@ -174,6 +182,58 @@ export function Settings() {
                     className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
                     placeholder="https://ejemplo.com/logo.png"
                   />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 mt-8 pt-6 border-t border-gray-200">
+            <div className="sm:col-span-2">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Preferencias Globales</h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Currency */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Moneda Principal
+                  </label>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCountry('GT')}
+                      className={`flex-1 py-2 px-4 border rounded-md shadow-sm text-sm font-medium transition-colors ${country === 'GT' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      🇬🇹 Quetzales (GTQ)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCountry('SV')}
+                      className={`flex-1 py-2 px-4 border rounded-md shadow-sm text-sm font-medium transition-colors ${country === 'SV' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      🇸🇻 Dólares (USD)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Language */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Idioma</label>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => changeLanguage('es')}
+                      className={`flex-1 py-2 px-4 border rounded-md shadow-sm text-sm font-medium transition-colors ${(i18n.language || 'es').startsWith('es') ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      Español
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => changeLanguage('en')}
+                      className={`flex-1 py-2 px-4 border rounded-md shadow-sm text-sm font-medium transition-colors ${(i18n.language || 'es').startsWith('en') ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      English
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

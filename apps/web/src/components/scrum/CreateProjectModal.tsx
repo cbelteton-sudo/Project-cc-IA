@@ -73,8 +73,8 @@ export function CreateProjectModal({ customTrigger }: CreateProjectModalProps = 
       toast.success('Proyecto creado exitosamente');
       // Invalidate projects list
       queryClient.invalidateQueries({ queryKey: ['projects'] });
-      // Redirect to new project
-      navigate(`/scrum/${newProject.id}`);
+      // Redirect to new project directly to Planning tab
+      navigate(`/projects/${newProject.id}/plan`);
     },
     onError: (error: any) => {
       console.error(error);

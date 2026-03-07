@@ -9,19 +9,19 @@ export enum AccessScope {
 
 export const roleHierarchy: Record<string, string[]> = {
   [ProjectRole.PROJECT_ADMIN]: [ProjectRole.DIRECTOR, ProjectRole.PM],
-  [ProjectRole.DIRECTOR]: [ProjectRole.PMO],
+  [ProjectRole.DIRECTOR]: [ProjectRole.PM],
   [ProjectRole.PM]: [
     ProjectRole.FINANCIERO,
     ProjectRole.CONTRACTOR_LEAD,
-    ProjectRole.EXECUTIVE_VIEWER,
+    ProjectRole.SUPERVISOR,
   ],
-  [ProjectRole.PMO]: [ProjectRole.FINANCIERO, ProjectRole.CONTRACTOR_LEAD],
-  [ProjectRole.EXECUTIVE_VIEWER]: [ProjectRole.VIEWER],
   [ProjectRole.FINANCIERO]: [ProjectRole.VIEWER],
-  [ProjectRole.CONTRACTOR_LEAD]: [ProjectRole.FIELD_OPERATOR],
+  [ProjectRole.CONTRACTOR_LEAD]: [ProjectRole.SUPERVISOR],
+  [ProjectRole.SUPERVISOR]: [ProjectRole.RESIDENTE_OBRA],
+  [ProjectRole.RESIDENTE_OBRA]: [ProjectRole.FIELD_OPERATOR],
   [ProjectRole.FIELD_OPERATOR]: [ProjectRole.VIEWER],
   [ProjectRole.VIEWER]: [],
   // Roles a nivel Tenant que abarcan más cosas
   PLATFORM_ADMIN: [ProjectRole.PROJECT_ADMIN, ProjectRole.DIRECTOR],
-  DIRECTOR_PMO: [ProjectRole.PMO, ProjectRole.PM],
+  DIRECTOR_PMO: [ProjectRole.PM],
 };
