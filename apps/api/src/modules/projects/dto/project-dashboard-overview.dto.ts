@@ -9,11 +9,16 @@ export class ProjectDashboardOverview {
     percentage: number;
     color: string;
   }[];
-  time: {
+  activeSprint?: {
+    id: string;
     name: string;
-    planned: number;
-    actual: number;
-  }[];
+    goal: string;
+    startDate: string;
+    endDate: string;
+    completedTasks: number;
+    totalTasks: number;
+    blockedTasks: number;
+  } | null;
   costs: {
     name: string;
     planned: number;
