@@ -12,19 +12,47 @@ export class ContractorsService {
   constructor(private prisma: PrismaService) {}
 
   async create(tenantId: string, dto: CreateContractorDto) {
-    return this.prisma.contractor.create({
+    const { projectId, ...contractorData } = dto;
+
+    const contractor = await this.prisma.contractor.create({
       data: {
-        ...dto,
+        ...contractorData,
         tenantId,
+        projectId, // Keep for backward compatibility if used directly
       },
     });
+
+    if (projectId) {
+      await this.prisma.contractorProjectAssignment.create({
+        data: {
+          tenantId,
+          contractorId: contractor.id,
+          projectId,
+          roleInProject: 'Registered in Project',
+          status: 'ACTIVE',
+        },
+      });
+    }
+
+    return contractor;
   }
 
   async findAll(tenantId: string, projectId?: string) {
+    if (projectId) {
+      // If projectId is provided, return contractors explicitly assigned to this project
+      const assignments =
+        await this.prisma.contractorProjectAssignment.findMany({
+          where: { tenantId, projectId },
+          include: { contractor: true },
+          orderBy: { createdAt: 'desc' },
+        });
+      return assignments.map((a) => a.contractor);
+    }
+
+    // Otherwise, return all contractors for the tenant
     return this.prisma.contractor.findMany({
       where: {
         tenantId,
-        projectId: projectId ? projectId : null, // If projectId is provided, filter by it. Otherwise, return only global contractors (projectId: null).
       },
       orderBy: { createdAt: 'desc' },
     });

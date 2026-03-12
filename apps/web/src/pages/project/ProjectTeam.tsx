@@ -115,6 +115,7 @@ export const ProjectTeam = () => {
   const { data: projectContractors = [] } = useQuery({
     queryKey: ['project-contractors', projectId],
     queryFn: async () => {
+      // The backend expects /contractors with a projectId query param to filter for the project
       const res = await api.get(`/contractors`, { params: { projectId } });
       return res.data;
     },

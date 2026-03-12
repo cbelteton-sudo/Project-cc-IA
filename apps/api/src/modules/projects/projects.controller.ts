@@ -47,6 +47,13 @@ export class ProjectsController {
     return this.projectsService.findOne(id, user.tenantId);
   }
 
+  @Get(':id/members')
+  @UseGuards(ProjectAuthGuard, PermissionsGuard)
+  @RequirePermissions(Permission.PROJECT_VIEW)
+  getMembers(@Param('id') id: string, @ActiveUser() user: ActiveUserData) {
+    return this.projectsService.getMembers(id, user.tenantId);
+  }
+
   @Get(':id/dashboard-overview')
   @UseGuards(ProjectAuthGuard, PermissionsGuard)
   @RequirePermissions(Permission.PROJECT_VIEW)

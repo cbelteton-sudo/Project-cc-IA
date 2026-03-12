@@ -1,14 +1,30 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
-  --color-field-blue: #1A2B49;
-  --color-field-orange: #E65100;
-  --color-field-green: #2E7D32;
-  --color-field-gray: #F5F7FA;
+  --color-field-blue: #1a2b49;
+  --color-field-orange: #e65100;
+  --color-field-green: #2e7d32;
+  --color-field-gray: #f5f7fa;
+
+  /* FieldClose Premium Brand Palette */
+  --color-brand-ambar: #f5920a;
+  --color-brand-oro: #ffc040;
+  --color-brand-pizarra: #1c2b3a;
+  --color-brand-acero: #2a3f56;
 }
 
 @layer base {
   body {
     @apply bg-gray-50 text-gray-900;
+  }
+
+  /* Hide number input arrows globally */
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
   }
 }

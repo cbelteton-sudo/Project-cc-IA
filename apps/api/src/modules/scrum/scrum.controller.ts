@@ -111,7 +111,11 @@ export class ScrumController {
     @Param('id') id: string,
     @Body() body: AssignBacklogItemDto,
   ) {
-    return this.scrumService.assignBacklogItem(id, body.userId);
+    return this.scrumService.assignBacklogItem(
+      id,
+      body.assigneeId,
+      body.assigneeType,
+    );
   }
 
   @Post('sprints')

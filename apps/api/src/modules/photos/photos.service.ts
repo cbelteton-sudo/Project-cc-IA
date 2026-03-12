@@ -38,32 +38,43 @@ export class PhotosService {
       throw new NotFoundException('Project not found or access denied');
 
     const fileId = uuidv4();
+    const isPdf = file.mimetype === 'application/pdf';
+    const ext = isPdf ? '.pdf' : '.webp';
     const filenameBase = `${metadata.projectId}_${fileId}`;
 
     // Paths
-    const mainPath = path.join(this.uploadDir, `${filenameBase}_main.webp`);
-    const thumbPath = path.join(this.uploadDir, `${filenameBase}_thumb.webp`);
+    const mainPath = path.join(this.uploadDir, `${filenameBase}_main${ext}`);
+    const thumbPath = path.join(this.uploadDir, `${filenameBase}_thumb${ext}`);
 
-    // Process Main Image
-    const mainBuffer = await sharp(file.buffer)
-      .resize(2048, 2048, { fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: 80 })
-      .withMetadata({ density: undefined }) // Strip metadata
-      .toBuffer();
+    let mainBuffer = file.buffer;
+    let width = 0;
+    let height = 0;
 
+    if (!isPdf) {
+      // Process Main Image
+      mainBuffer = await sharp(file.buffer)
+        .resize(2048, 2048, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .withMetadata({ density: undefined }) // Strip metadata
+        .toBuffer();
+
+      // Process Thumbnail
+      const thumbBuffer = await sharp(file.buffer)
+        .resize(480, 480, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 70 })
+        .withMetadata({ density: undefined })
+        .toBuffer();
+
+      fs.writeFileSync(thumbPath, thumbBuffer);
+
+      // Get Dimensions
+      const mainMeta = await sharp(mainBuffer).metadata();
+      width = mainMeta.width || 0;
+      height = mainMeta.height || 0;
+    }
+
+    // Save main file (both PDF and image)
     fs.writeFileSync(mainPath, mainBuffer);
-
-    // Process Thumbnail
-    const thumbBuffer = await sharp(file.buffer)
-      .resize(480, 480, { fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: 70 })
-      .withMetadata({ density: undefined })
-      .toBuffer();
-
-    fs.writeFileSync(thumbPath, thumbBuffer);
-
-    // Get Dimensions & Hash
-    const mainMeta = await sharp(mainBuffer).metadata();
 
     // Save to DB
     const photo = await this.prisma.photo.create({
@@ -71,10 +82,10 @@ export class PhotosService {
         projectId: metadata.projectId,
         activityId: metadata.activityId,
         fieldUpdateId: metadata.fieldUpdateId,
-        urlMain: `/uploads/${filenameBase}_main.webp`,
-        urlThumb: `/uploads/${filenameBase}_thumb.webp`,
-        width: mainMeta.width,
-        height: mainMeta.height,
+        urlMain: `/uploads/${filenameBase}_main${ext}`,
+        urlThumb: isPdf ? null : `/uploads/${filenameBase}_thumb${ext}`,
+        width: width,
+        height: height,
         sizeBytes: mainBuffer.length,
         createdBy: user.id,
         capturedAt: new Date(), // Ideally parsed from original EXIF before stripping, but MVP

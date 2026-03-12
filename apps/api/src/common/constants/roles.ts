@@ -2,6 +2,7 @@ export enum ProjectRole {
   PROJECT_ADMIN = 'PROJECT_ADMIN',
   DIRECTOR = 'DIRECTOR',
   PM = 'PM',
+  PROJECT_MANAGER = 'PROJECT_MANAGER', // Align with frontend and seed
   FINANCIERO = 'FINANCIERO',
   CONTRACTOR_LEAD = 'CONTRACTOR_LEAD',
   SUPERVISOR = 'SUPERVISOR',
@@ -14,6 +15,7 @@ export const ROLE_HIERARCHY = {
   [ProjectRole.PROJECT_ADMIN]: 100,
   [ProjectRole.DIRECTOR]: 90,
   [ProjectRole.PM]: 80,
+  [ProjectRole.PROJECT_MANAGER]: 80,
   [ProjectRole.FINANCIERO]: 60,
   [ProjectRole.CONTRACTOR_LEAD]: 50,
   [ProjectRole.SUPERVISOR]: 40,

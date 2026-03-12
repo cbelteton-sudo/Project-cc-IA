@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
 import { ContractorResourcesModal } from '../admin/ContractorResourcesModal';
+import { useTranslation } from 'react-i18next';
 
 // Schema
 const contractorSchema = z.object({
@@ -28,6 +29,7 @@ type ContractorForm = z.infer<typeof contractorSchema>;
 type TabValue = 'all' | 'active' | 'inactive';
 
 export const ProjectContractors = () => {
+  const { t } = useTranslation();
   const { id: projectId } = useParams<{ id: string }>();
   const { token } = useAuth();
   const queryClient = useQueryClient();
@@ -84,10 +86,14 @@ export const ProjectContractors = () => {
       setIsModalOpen(false);
       setEditingId(null);
       reset();
-      toast.success('Contractor saved successfully');
+      toast.success(t('contractors.saveSuccess'));
     },
     onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Error saving contractor');
+      const message = err.response?.data?.message;
+      const errorMsg = Array.isArray(message)
+        ? message.join(', ')
+        : message || t('contractors.saveError');
+      toast.error(errorMsg);
     },
   });
 

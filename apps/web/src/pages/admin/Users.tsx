@@ -19,7 +19,7 @@ const userSchema = z.object({
 
 type UserForm = z.infer<typeof userSchema>;
 
-const ROLES = ['ADMINISTRADOR', 'DIRECTOR', 'SUPERVISOR', 'RESIDENTE', 'OPERADOR', 'CONTRATISTA'];
+const ROLES = ['ADMINISTRADOR', 'DIRECTOR', 'PROJECT_MANAGER', 'SUPERVISOR', 'RESIDENTE', 'OPERADOR', 'CONTRATISTA'];
 
 interface Contractor {
   id: string;

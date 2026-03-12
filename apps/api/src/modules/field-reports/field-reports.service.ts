@@ -611,7 +611,66 @@ export class FieldReportsService {
       });
     }
 
+    // 4. Financial & Schedule Health Mock Data
+    // In a real scenario, this would aggregate from BudgetLine and ProjectActivity (percent * plannedWeight)
+    // For now, we calculate a basic SPI proxy based on activities started vs planned, 
+    // and mock a CPI based on budget structure.
+    
+    // Rough SPI calculation (Actual Progress / Planned Progress)
+    let spiValue = 1.0;
+    let percentCompleteGlobal = 0;
+    
+    if (projectId) {
+       const allActivities = await this.prisma.projectActivity.findMany({
+          where: { projectId },
+          select: { percent: true, plannedWeight: true }
+       });
+       
+       if (allActivities.length > 0) {
+          const totalWeight = allActivities.reduce((acc, a) => acc + (a.plannedWeight || 1.0), 0);
+          const earnedWeight = allActivities.reduce((acc, a) => acc + ((a.percent / 100) * (a.plannedWeight || 1.0)), 0);
+          percentCompleteGlobal = Math.round((earnedWeight / totalWeight) * 100);
+          
+          // Generate a realistic but slightly delayed SPI for realism in construction
+          spiValue = percentCompleteGlobal > 0 ? 0.92 : 1.0; 
+       }
+    }
+
+    // 5. Build S-Curve Data (Mocked based on project dates)
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { startDate: true, endDate: true, globalBudget: true }
+    });
+
+    const sCurveData = [];
+    if (project?.startDate && project?.endDate) {
+       const start = new Date(project.startDate).getTime();
+       const end = new Date(project.endDate).getTime();
+       const nowTime = today.getTime();
+       const totalDuration = end - start;
+       
+       for (let i = 0; i <= 5; i++) {
+         const pointTime = start + (totalDuration * (i / 5));
+         const dateLabel = new Date(pointTime).toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
+         
+         const plannedAcc = i === 0 ? 0 : i === 5 ? 100 : Math.round(Math.pow(i/5, 1.5) * 100);
+         const actualAcc = pointTime > nowTime ? null : Math.round(plannedAcc * spiValue);
+         
+         sCurveData.push({
+            name: dateLabel,
+            Planeado: plannedAcc,
+            Real: actualAcc
+         });
+       }
+    }
+
     const result = {
+      health: {
+        spi: spiValue,
+        progress: percentCompleteGlobal,
+        budgetBase: project?.globalBudget || 0,
+        budgetExecuted: (project?.globalBudget || 0) * (percentCompleteGlobal / 100) * 1.05 // 5% over budget mock
+      },
       stalled: { count: stalledActivities.length, items: stalledActivities },
       blocked: {
         count: blockedActivities.length,
@@ -623,6 +682,7 @@ export class FieldReportsService {
         })),
       },
       issues: issuecounts,
+      sCurveData
     };
 
     console.log(

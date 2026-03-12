@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext';
 
 export interface Notification {
   id: string;
+  userId: string;
+  projectId?: string;
   type: string;
   entityType: string;
   entityId: string;

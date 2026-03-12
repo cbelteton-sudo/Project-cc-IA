@@ -35,8 +35,15 @@ export class ProjectAuthGuard implements CanActivate {
       );
     }
 
+    const isGlobalAdmin = [
+      'ADMIN',
+      'ADMINISTRADOR',
+      'PLATFORM_ADMIN',
+      'DIRECTOR_PMO',
+    ].includes(user.role);
+
     // Bypass for Global Admin
-    if (user.role === 'ADMIN') {
+    if (isGlobalAdmin) {
       const project = await this.prisma.project.findUnique({
         where: { id: projectId },
       });
@@ -45,6 +52,42 @@ export class ProjectAuthGuard implements CanActivate {
       }
       request.projectMember = {
         role: 'DIRECTOR', // Pseudo-role to pass permissions guard
+        status: 'ACTIVE',
+        projectId,
+        userId: user.id || user.userId,
+      };
+      return true;
+    }
+
+    // Explicit check for Global Project Manager
+    if (user.role === 'PROJECT_MANAGER') {
+      const project = await this.prisma.project.findUnique({
+        where: { id: projectId },
+      });
+      if (!project || project.tenantId !== user.tenantId) {
+        throw new ForbiddenException('Access to this project is denied');
+      }
+
+      // Must be the assigned project manager (Construye)
+      if (project.projectManagerId !== (user.id || user.userId)) {
+        this.logger.warn(
+          JSON.stringify({
+            event: 'access_denied',
+            reason: 'not_the_assigned_project_manager',
+            userId: user.id || user.userId,
+            tenantId: user.tenantId,
+            projectId,
+            endpoint: request.url,
+            timestamp: new Date().toISOString(),
+          }),
+        );
+        throw new ForbiddenException(
+          'Access to this project is denied. You are not the assigned Project Manager.',
+        );
+      }
+
+      request.projectMember = {
+        role: 'PROJECT_MANAGER',
         status: 'ACTIVE',
         projectId,
         userId: user.id || user.userId,

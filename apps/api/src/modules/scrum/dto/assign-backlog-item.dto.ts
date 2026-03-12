@@ -1,6 +1,11 @@
-import { IsUUID } from 'class-validator';
+import { IsUUID, IsOptional, IsEnum } from 'class-validator';
 
 export class AssignBacklogItemDto {
+  @IsOptional()
   @IsUUID()
-  userId: string;
+  assigneeId?: string;
+
+  @IsOptional()
+  @IsEnum(['USER', 'CONTRACTOR_RESOURCE'])
+  assigneeType?: 'USER' | 'CONTRACTOR_RESOURCE';
 }

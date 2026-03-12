@@ -63,4 +63,8 @@ export class CreateProjectDto {
   @IsOptional()
   @IsBoolean()
   enableFieldManagement?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  enableMaterials?: boolean;
 }

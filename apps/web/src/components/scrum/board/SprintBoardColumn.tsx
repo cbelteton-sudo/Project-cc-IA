@@ -11,7 +11,6 @@ interface SprintBoardColumnProps {
   };
   items: any[];
   users: any[];
-  onAssign: (itemId: string, userId: string) => void;
   onReport: (item: any) => void;
   onViewLog: (item: any) => void;
   onMoveUpdated: (itemId: string, status: string) => void;
@@ -21,7 +20,6 @@ export const SprintBoardColumn = ({
   column,
   items,
   users,
-  onAssign,
   onReport,
   onViewLog,
   onMoveUpdated,
@@ -33,10 +31,10 @@ export const SprintBoardColumn = ({
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col rounded-xl border ${column.color} h-full overflow-hidden`}
+      className={`flex flex-col rounded-xl border ${column.color} h-full min-h-0 overflow-hidden`}
     >
       <div
-        className={`px-4 py-3 border-b border-gray-200 flex items-center justify-between ${column.color.replace('bg-', 'bg-opacity-40 bg-')} border-t-4 backdrop-blur-sm`}
+        className={`px-4 py-3 border-b border-gray-200 flex items-center justify-between ${column.color.replace('bg-', 'bg-opacity-40 bg-')} border-t-4 backdrop-blur-sm shrink-0`}
       >
         <div className="flex items-center gap-2.5">
           <div className={`p-1.5 rounded-md bg-white shadow-sm text-gray-600`}>{column.icon}</div>
@@ -49,7 +47,7 @@ export const SprintBoardColumn = ({
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+      <div className="flex-1 overflow-y-auto overscroll-contain p-2 pb-4 space-y-2 relative min-h-0">
         <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
           {items.map((item) => (
             <SprintBoardCard
@@ -57,7 +55,6 @@ export const SprintBoardColumn = ({
               item={item}
               users={users}
               columnId={column.id}
-              onAssign={(userId) => onAssign(item.backlogItem.id, userId)}
               onReport={onReport}
               onViewLog={onViewLog}
               onMoveUpdated={onMoveUpdated}

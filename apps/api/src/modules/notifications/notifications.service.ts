@@ -11,10 +11,12 @@ export class NotificationsService {
     entityType: string,
     entityId: string,
     message: string,
+    projectId?: string,
   ) {
     return this.prisma.notification.create({
       data: {
         userId,
+        projectId,
         type, // DUE_SOON, OVERDUE, NO_UPDATE, MENTION, REQUEST_UPDATE
         entityType, // ACTIVITY, ISSUE
         entityId,

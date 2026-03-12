@@ -62,12 +62,12 @@ export const ContextSwitcher = () => {
   const currentProject = projects.find((p) => p.id === currentProjectId);
 
   return (
-    <div className="flex items-center text-sm font-medium text-gray-500">
+    <div className="flex items-center text-lg font-medium text-gray-500">
       <button
         onClick={handleOrgClick}
-        className="hover:text-blue-600 transition-colors flex items-center gap-1"
+        className="hover:text-blue-600 transition-colors flex items-center gap-1.5"
       >
-        <Building2 size={16} />
+        <Building2 size={20} />
         <span className="hidden sm:inline">Inicio</span>
       </button>
 
@@ -86,7 +86,7 @@ export const ContextSwitcher = () => {
                 {currentProject ? currentProject.name : 'Cargando...'}
               </span>
               <ChevronDown
-                size={14}
+                size={20}
                 className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
               />
             </button>

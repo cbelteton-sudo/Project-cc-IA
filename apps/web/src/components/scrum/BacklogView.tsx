@@ -2,16 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import {
-  Plus,
-  Filter,
-  ArrowRight,
-  ClipboardList,
-  ChevronDown,
-  ChevronRight,
-  Hash,
-  Clock,
-} from 'lucide-react';
+import { Plus, ArrowRight, ClipboardList, Clock, AlertCircle, User, Building2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useContractors } from '../../hooks/useContractors';
@@ -25,17 +17,324 @@ interface BacklogItem {
   type: string;
   contractor?: { name: string };
   contractorId?: string | null;
+  assigneeUserId?: string | null;
+  assigneeContractorResourceId?: string | null;
 
+  endDate?: string;
   dueDate?: string;
   isVirtual?: boolean;
   linkedWbsActivityId?: string;
+  linkedWbsActivity?: any;
 
   // New fields
+  parent?: { contractor?: { id: string; name: string } };
   parentId?: string | null;
   children?: BacklogItem[];
   storyPoints?: number | null;
   estimatedHours?: number | null;
 }
+
+interface BacklogItemRowProps {
+  item: BacklogItem;
+  level: number;
+  isViewer: boolean;
+  expandedStories: Record<string, boolean>;
+  toggleStory: (storyId: string) => void;
+  onAddSubtask: (itemId: string) => void;
+  onImport: (wbsId: string) => void;
+  isImporting: boolean;
+  users: any[];
+  projectId: string;
+}
+
+const BacklogItemRow = ({
+  item,
+  level = 0,
+  isViewer,
+  expandedStories,
+  toggleStory,
+  onAddSubtask,
+  onImport,
+  isImporting,
+  users,
+  projectId,
+}: BacklogItemRowProps) => {
+  const [isAssigning, setIsAssigning] = useState(false);
+  const queryClient = useQueryClient();
+
+  const hasChildren = item.children && item.children.length > 0;
+  const isExpanded = expandedStories[item.id];
+
+  const contractor =
+    item.contractor ||
+    item.linkedWbsActivity?.contractor ||
+    item.linkedWbsActivity?.parent?.contractor ||
+    item.parent?.contractor;
+
+  const { data: resources, isFetching: isFetchingResources } = useQuery({
+    queryKey: ['contractors', contractor?.id, 'resources'],
+    queryFn: async () => (await api.get(`/contractors/${contractor?.id}/resources`)).data,
+    enabled: !!contractor?.id,
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: async ({
+      assigneeId,
+      assigneeType,
+    }: {
+      assigneeId: string;
+      assigneeType: 'USER' | 'CONTRACTOR_RESOURCE';
+    }) => {
+      return api.patch(`/scrum/backlog/${item.id}/assign`, { assigneeId, assigneeType });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['scrum', 'backlog', projectId] });
+      setIsAssigning(false);
+    },
+  });
+
+  const onAssign = (assigneeId: string, assigneeType: 'USER' | 'CONTRACTOR_RESOURCE') => {
+    setIsAssigning(false);
+    assignMutation.mutate({ assigneeId, assigneeType });
+  };
+
+  return (
+    <div key={item.id} className={`group`}>
+      <div
+        className={`
+          relative transition-shadow 
+          ${
+            item.isVirtual
+              ? 'p-4 border rounded-lg bg-slate-50 border-slate-200 border-dashed hover:shadow-md mb-2'
+              : level === 0
+                ? `p-4 border border-gray-200 bg-white hover:shadow-md ${isExpanded && hasChildren ? 'rounded-t-lg border-b-0' : 'rounded-lg mb-2'}`
+                : 'p-3 pl-12 border-t border-gray-100 bg-gray-50/30 hover:bg-gray-50'
+          }
+        `}
+      >
+        <div className="flex justify-between items-start">
+          <div className="flex items-start gap-3">
+            <div
+              className={`mt-1 w-2 h-2 min-w-[8px] rounded-full ${
+                item.isVirtual
+                  ? 'bg-slate-400'
+                  : item.status === 'READY'
+                    ? 'bg-green-500'
+                    : 'bg-gray-300'
+              }`}
+            />
+
+            <div>
+              <div className="flex items-center gap-2">
+                <h3
+                  className={`font-medium ${item.isVirtual ? 'text-slate-700 italic' : 'text-gray-900'}`}
+                >
+                  {item.title}
+                </h3>
+                {(item.dueDate || item.endDate || item.linkedWbsActivity?.endDate) && (
+                  <span className="flex items-center gap-1 text-xs text-gray-500 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-200">
+                    📅 Fecha límite de fin:{' '}
+                    {format(
+                      new Date(
+                        (item.dueDate || item.endDate || item.linkedWbsActivity?.endDate) as string,
+                      ),
+                      'd MMM yyyy',
+                      { locale: es },
+                    )}
+                  </span>
+                )}
+                {item.estimatedHours && (
+                  <span
+                    className="flex items-center gap-1 text-xs bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded border border-cyan-100"
+                    title="Horas Estimadas"
+                  >
+                    <Clock size={10} /> {item.estimatedHours}h
+                  </span>
+                )}
+              </div>
+              {item.description && (
+                <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
+              )}
+
+              <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                {contractor && (
+                  <span className="flex items-center gap-1 bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">
+                    <Building2 size={12} /> {contractor.name}
+                  </span>
+                )}
+
+                {/* ASSIGNMENT DROPDOWN */}
+                {!item.isVirtual && !isViewer && (
+                  <div className="relative group/assignee flex items-center" title="Responsable">
+                    <Popover open={isAssigning} onOpenChange={setIsAssigning} modal={false}>
+                      <PopoverTrigger asChild>
+                        <button className="focus:outline-none">
+                          {item.assigneeUserId ? (
+                            <div
+                              className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 flex items-center gap-1.5 text-xs font-medium border border-blue-100 hover:bg-blue-100 transition-colors"
+                              title="Cambiar responsable (Usuario)"
+                            >
+                              <User size={12} />
+                              <span className="truncate max-w-[120px]">
+                                {users?.find((u: any) => u.id === item.assigneeUserId)?.name ||
+                                  'Usuario'}
+                              </span>
+                            </div>
+                          ) : item.assigneeContractorResourceId ? (
+                            <div
+                              className="px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 flex items-center gap-1.5 text-xs font-medium border border-orange-100 hover:bg-orange-100 transition-colors"
+                              title="Cambiar responsable (Contratista)"
+                            >
+                              <Building2 size={12} />
+                              <span className="truncate max-w-[120px]">
+                                {resources?.find(
+                                  (r: any) => r.id === item.assigneeContractorResourceId,
+                                )?.name || 'Recurso'}
+                              </span>
+                            </div>
+                          ) : (
+                            <div
+                              className="w-6 h-6 rounded-full bg-gray-50 text-gray-400 flex items-center justify-center hover:bg-gray-100 border border-gray-200 border-dashed transition-colors"
+                              title="Asignar responsable"
+                            >
+                              <User size={12} />
+                            </div>
+                          )}
+                        </button>
+                      </PopoverTrigger>
+
+                      <PopoverContent
+                        className="w-56 p-1 bg-white rounded-lg shadow-xl border border-gray-200 z-[100]"
+                        align="start"
+                        onOpenAutoFocus={(e: Event) => e.preventDefault()}
+                        onCloseAutoFocus={(e: Event) => e.preventDefault()}
+                      >
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-2 py-1.5 mb-1">
+                          Miembros del Proyecto
+                        </div>
+                        <div className="max-h-40 overflow-y-auto space-y-0.5">
+                          {users?.map((u: any) => (
+                            <button
+                              key={u.id}
+                              onPointerDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onAssign(u.id, 'USER');
+                              }}
+                              className="w-full text-left px-2 py-1.5 hover:bg-blue-50 focus:bg-blue-50 rounded text-sm font-medium text-gray-700 transition-colors focus:outline-none"
+                            >
+                              {u.name}
+                            </button>
+                          ))}
+                        </div>
+
+                        {contractor && (
+                          <>
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-2 py-1.5 mt-2 mb-1 border-t border-gray-100 flex items-center justify-between">
+                              <span className="truncate pr-2">Recursos: {contractor.name}</span>
+                              <Building2 size={10} className="text-gray-300 shrink-0" />
+                            </div>
+
+                            {isFetchingResources ? (
+                              <div className="text-xs text-gray-400 p-2 text-center animate-pulse">
+                                Cargando recursos...
+                              </div>
+                            ) : resources && resources.length > 0 ? (
+                              <div className="max-h-40 overflow-y-auto space-y-0.5 pb-1">
+                                {resources.map((r: any) => (
+                                  <button
+                                    key={r.id}
+                                    onPointerDown={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      onAssign(
+                                        r.id,
+                                        r.source === 'USER' ? 'USER' : 'CONTRACTOR_RESOURCE',
+                                      );
+                                    }}
+                                    className="w-full text-left px-2 py-1.5 hover:bg-orange-50 focus:bg-orange-50 rounded text-sm font-medium text-gray-700 transition-colors focus:outline-none"
+                                  >
+                                    {r.name}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-[11px] text-gray-400 px-2 py-2 text-center italic bg-gray-50 rounded border border-gray-100 mx-1 mb-1">
+                                No hay recursos asignados a este contratista.
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 transition-opacity">
+            {!item.isVirtual && !isViewer && level === 0 && (
+              <button
+                onClick={() => onAddSubtask(item.id)}
+                className="px-2 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs rounded border border-gray-200"
+                title="Añadir Sub-tarea a este ítem"
+              >
+                + Tarea
+              </button>
+            )}
+
+            {item.isVirtual ? (
+              <button
+                onClick={() => onImport(item.linkedWbsActivityId!)}
+                disabled={isImporting || isViewer}
+                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${
+                  isViewer
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                }`}
+              >
+                {isImporting ? '...' : 'Añadir al Backlog'}
+              </button>
+            ) : level === 0 ? (
+              <button
+                onClick={() => toggleStory(item.id)}
+                className={`p-2 rounded-full transition-colors ${hasChildren ? 'text-gray-400 hover:text-blue-600 hover:bg-blue-50' : 'text-transparent cursor-default'}`}
+                title={hasChildren ? 'Ver subtareas' : ''}
+                disabled={!hasChildren}
+              >
+                <ArrowRight
+                  size={18}
+                  className={`transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''} ${!hasChildren && 'opacity-0'}`}
+                />
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {isExpanded && hasChildren && (
+        <div className="border-x border-b border-gray-200 rounded-b-lg mb-2 overflow-hidden bg-gray-50/10">
+          {item.children?.map((child) => (
+            <BacklogItemRow
+              key={child.id}
+              item={child}
+              level={level + 1}
+              isViewer={isViewer}
+              expandedStories={expandedStories}
+              toggleStory={toggleStory}
+              onAddSubtask={onAddSubtask}
+              onImport={onImport}
+              isImporting={isImporting}
+              users={users}
+              projectId={projectId}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const BacklogView = ({ projectId }: { projectId: string }) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -49,6 +348,12 @@ export const BacklogView = ({ projectId }: { projectId: string }) => {
   const projectMember = user?.projectMembers?.find((m: any) => m.projectId === projectId);
   const isViewer =
     projectMember?.role === 'EXECUTIVE_VIEWER' || projectMember?.role === 'FIELD_OPERATOR';
+
+  const { data: members } = useQuery({
+    queryKey: ['project', 'members', projectId],
+    queryFn: async () => (await api.get(`/admin/projects/${projectId}/members`)).data,
+    enabled: !!projectId,
+  });
 
   const {
     data: backlogItems,
@@ -76,6 +381,11 @@ export const BacklogView = ({ projectId }: { projectId: string }) => {
       queryClient.invalidateQueries({ queryKey: ['scrum', 'backlog', projectId] });
       setIsCreateModalOpen(false);
       setNewItemParentId(null);
+    },
+    onError: (error: any) => {
+      const msg = error?.response?.data?.message;
+      alert(typeof msg === 'object' ? JSON.stringify(msg) : msg || 'Ocurrió un error al guardar');
+      console.error('MUTATION ERROR', error?.response?.data || error);
     },
   });
 
@@ -122,158 +432,35 @@ export const BacklogView = ({ projectId }: { projectId: string }) => {
       if (!contractorFilter) return true;
 
       // Match if item or any of its children has the contractor
-      const matchesSelf =
-        item.contractorId === contractorFilter || (item.contractor as any)?.id === contractorFilter;
+      const getContractorId = (it: any) =>
+        it.contractorId ||
+        it.contractor?.id ||
+        it.linkedWbsActivity?.contractor?.id ||
+        it.linkedWbsActivity?.parent?.contractor?.id ||
+        it.parent?.contractor?.id;
+
+      const matchesSelf = getContractorId(item) === contractorFilter;
       const matchesChildren = item.children?.some(
-        (child: any) =>
-          child.contractorId === contractorFilter ||
-          (child.contractor as any)?.id === contractorFilter,
+        (child: any) => getContractorId(child) === contractorFilter,
       );
 
       return matchesSelf || matchesChildren;
     });
 
-  const renderItem = (item: BacklogItem, level = 0) => {
-    const isStory = item.type === 'STORY';
-    const hasChildren = item.children && item.children.length > 0;
-    const isExpanded = expandedStories[item.id];
+  const users =
+    members?.map((pm: any) => ({
+      id: pm.user?.id || pm.id,
+      name: pm.user?.name || pm.name,
+      role: pm.role,
+    })) || [];
 
-    return (
-      <div key={item.id} className={`group`}>
-        <div
-          className={`
-                    relative p-4 border rounded-lg hover:shadow-md transition-shadow 
-                    ${item.isVirtual ? 'bg-slate-50 border-slate-200 border-dashed' : 'bg-white border-gray-200'}
-                    ${level > 0 ? 'ml-8 mt-2 border-l-4 border-l-gray-300' : ''}
-                `}
-        >
-          <div className="flex justify-between items-start">
-            <div className="flex items-start gap-3">
-              {/* Expand Toggle for Stories */}
-              {isStory && (
-                <button
-                  onClick={() => toggleStory(item.id)}
-                  className="mt-1 text-gray-400 hover:text-gray-600 focus:outline-none"
-                >
-                  {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                </button>
-              )}
+  const handleAddSubtask = (itemId: string) => {
+    setNewItemParentId(itemId);
+    setIsCreateModalOpen(true);
+  };
 
-              <div
-                className={`mt-1 w-2 h-2 rounded-full ${
-                  item.isVirtual
-                    ? 'bg-slate-400'
-                    : item.status === 'READY'
-                      ? 'bg-green-500'
-                      : 'bg-gray-300'
-                }`}
-              />
-
-              <div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-xs font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                      item.isVirtual ? 'bg-slate-200 text-slate-600' : 'bg-gray-100 text-gray-500'
-                    }`}
-                  >
-                    {item.type}
-                  </span>
-                  <h3
-                    className={`font-medium ${item.isVirtual ? 'text-slate-700 italic' : 'text-gray-900'}`}
-                  >
-                    {item.title}
-                  </h3>
-
-                  {/* Estimation Badges */}
-                  {item.storyPoints && (
-                    <span
-                      className="flex items-center gap-1 text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded border border-purple-100"
-                      title="Story Points"
-                    >
-                      <Hash size={10} /> {item.storyPoints} pts
-                    </span>
-                  )}
-                  {item.estimatedHours && (
-                    <span
-                      className="flex items-center gap-1 text-xs bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded border border-cyan-100"
-                      title="Horas Estimadas"
-                    >
-                      <Clock size={10} /> {item.estimatedHours}h
-                    </span>
-                  )}
-                </div>
-                {item.description && (
-                  <p className="text-sm text-gray-500 mt-1 line-clamp-2">{item.description}</p>
-                )}
-                <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
-                  {item.isVirtual && (
-                    <span className="text-orange-600 font-bold bg-orange-50 px-2 py-0.5 rounded">
-                      Sugerido del Cronograma
-                    </span>
-                  )}
-                  {item.contractor && (
-                    <span className="flex items-center gap-1 bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">
-                      🏢 {item.contractor.name}
-                    </span>
-                  )}
-                  {item.dueDate && (
-                    <span className="flex items-center gap-1">
-                      📅 {format(new Date(item.dueDate), 'd MMM', { locale: es })}
-                    </span>
-                  )}
-                  {!item.isVirtual && (
-                    <span
-                      className={`priority-badge ${item.priority >= 4 ? 'text-red-600 font-bold' : ''}`}
-                    >
-                      Prioridad: {item.priority}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              {isStory && !item.isVirtual && !isViewer && (
-                <button
-                  onClick={() => {
-                    setNewItemParentId(item.id);
-                    setIsCreateModalOpen(true);
-                  }}
-                  className="px-2 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs rounded border border-gray-200"
-                  title="Añadir Tarea a esta Historia"
-                >
-                  + Tarea
-                </button>
-              )}
-
-              {item.isVirtual ? (
-                <button
-                  onClick={() => importMutation.mutate(item.linkedWbsActivityId!)}
-                  disabled={importMutation.isPending || isViewer}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${
-                    isViewer
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                  }`}
-                >
-                  {importMutation.isPending ? '...' : 'Añadir al Backlog'}
-                </button>
-              ) : (
-                <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full">
-                  <ArrowRight size={18} />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Render Children */}
-        {isExpanded && hasChildren && (
-          <div className="bg-gray-50/50 rounded-b-lg border-x border-b border-gray-100 mb-4 pb-2">
-            {item.children?.map((child) => renderItem(child, level + 1))}
-          </div>
-        )}
-      </div>
-    );
+  const handleImport = (wbsId: string) => {
+    importMutation.mutate(wbsId);
   };
 
   return (
@@ -317,7 +504,7 @@ export const BacklogView = ({ projectId }: { projectId: string }) => {
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      <div className="flex-1 overflow-y-auto p-4 space-y-2 pb-24">
         {rootItems.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
             <p>No hay ítems en el backlog {contractorFilter ? 'para este contratista' : ''}.</p>
@@ -329,7 +516,21 @@ export const BacklogView = ({ projectId }: { projectId: string }) => {
             </button>
           </div>
         ) : (
-          rootItems.map((item: BacklogItem) => renderItem(item))
+          rootItems.map((item: BacklogItem) => (
+            <BacklogItemRow
+              key={item.id}
+              item={item}
+              level={0}
+              isViewer={isViewer}
+              expandedStories={expandedStories}
+              toggleStory={toggleStory}
+              onAddSubtask={handleAddSubtask}
+              onImport={handleImport}
+              isImporting={importMutation.isPending}
+              users={users}
+              projectId={projectId}
+            />
+          ))
         )}
       </div>
 
@@ -343,8 +544,9 @@ export const BacklogView = ({ projectId }: { projectId: string }) => {
           }}
           onSave={(data) => createMutation.mutate(data)}
           isLoading={createMutation.isPending}
-          stories={(backlogItems || []).filter((i: BacklogItem) => i.type === 'STORY')}
+          stories={backlogItems || []}
           initialParentId={newItemParentId}
+          members={members}
         />
       )}
     </div>
@@ -359,6 +561,7 @@ interface CreateItemModalProps {
   isLoading: boolean;
   stories: BacklogItem[];
   initialParentId: string | null;
+  members?: any[];
 }
 
 const CreateItemModal = ({
@@ -367,13 +570,17 @@ const CreateItemModal = ({
   isLoading,
   stories,
   initialParentId,
+  members = [],
 }: CreateItemModalProps) => {
   const [type, setType] = useState(initialParentId ? 'TASK' : 'STORY');
-  const { contractors } = useContractors();
+  const [localError, setLocalError] = useState<string | null>(null);
 
-  // If initialParentId is set, lock to TASK and that parent
-  const isTaskMode = type === 'TASK';
-  const isStoryMode = type === 'STORY';
+  const parentItem = initialParentId ? stories.find((s) => s.id === initialParentId) : null;
+
+  const parentMaxDateRaw = parentItem
+    ? parentItem.endDate || parentItem.dueDate || parentItem.linkedWbsActivity?.endDate
+    : null;
+  const parentMinDateRaw = parentItem ? parentItem.linkedWbsActivity?.startDate : null;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
@@ -387,27 +594,106 @@ const CreateItemModal = ({
           </button>
         </div>
         <div className="p-6">
+          {localError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-start gap-2 text-sm">
+              <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
+              <p>{localError}</p>
+            </div>
+          )}
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              setLocalError(null);
               const formData = new FormData(e.target as HTMLFormElement);
+              const submittedDueDate = formData.get('dueDate') as string;
+
+              // Validation for sub-tasks
+              if (initialParentId && parentItem && submittedDueDate) {
+                if (parentMaxDateRaw) {
+                  const maxDateStr = new Date(parentMaxDateRaw as string)
+                    .toISOString()
+                    .split('T')[0];
+                  if (submittedDueDate > maxDateStr) {
+                    setLocalError(
+                      'La fecha límite de la sub-tarea no puede exceder la fecha de finalización de su tarea principal.',
+                    );
+                    return;
+                  }
+                }
+
+                if (parentMinDateRaw) {
+                  const minDateStr = new Date(parentMinDateRaw as string)
+                    .toISOString()
+                    .split('T')[0];
+                  if (submittedDueDate < minDateStr) {
+                    setLocalError(
+                      'La fecha límite de la sub-tarea no puede ser anterior a la fecha de inicio de la tarea principal.',
+                    );
+                    return;
+                  }
+                }
+              }
+
               onSave({
                 title: formData.get('title') as string,
                 type: formData.get('type') as string,
                 priority: Number(formData.get('priority')),
-                parentId: (formData.get('parentId') as string) || null,
-                storyPoints: formData.get('storyPoints')
-                  ? Number(formData.get('storyPoints'))
-                  : null,
-                estimatedHours: formData.get('estimatedHours')
-                  ? Number(formData.get('estimatedHours'))
-                  : null,
-                contractorId: (formData.get('contractorId') as string) || null,
+                parentId: (formData.get('parentId') as string) || initialParentId || undefined,
+                assigneeUserId: (formData.get('assigneeUserId') as string) || undefined,
+                dueDate: submittedDueDate ? `${submittedDueDate}T12:00:00.000Z` : undefined,
                 status: 'BACKLOG',
               });
             }}
           >
             <div className="space-y-4">
+              {initialParentId && parentItem && (
+                <div className="text-[12px] text-gray-500 bg-gray-50/80 p-3.5 rounded-lg border border-gray-100 flex flex-col gap-2 shadow-sm">
+                  <div className="flex items-center gap-1.5 text-gray-700">
+                    <span className="font-semibold whitespace-nowrap text-gray-600">
+                      Tarea Principal:
+                    </span>
+                    <span
+                      className="truncate flex-1 font-medium bg-white px-2 py-0.5 rounded shadow-sm border border-gray-200/50 text-gray-800"
+                      title={parentItem.title}
+                    >
+                      {parentItem.title}
+                    </span>
+                  </div>
+                  {(parentMinDateRaw || parentMaxDateRaw) && (
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200/60 mt-0.5">
+                      {parentMinDateRaw ? (
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-gray-500 mb-0.5">
+                            Inicio Validado
+                          </span>
+                          <span className="text-gray-800 font-medium">
+                            {format(new Date(parentMinDateRaw as string), "d 'de' MMMM yyyy", {
+                              locale: es,
+                            })}
+                          </span>
+                        </div>
+                      ) : (
+                        <div />
+                      )}
+                      {parentMaxDateRaw ? (
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-gray-500 mb-0.5">
+                            Límite Permitido
+                          </span>
+                          <span className="text-gray-800 font-medium">
+                            {format(new Date(parentMaxDateRaw as string), "d 'de' MMMM yyyy", {
+                              locale: es,
+                            })}
+                          </span>
+                        </div>
+                      ) : (
+                        <div />
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
                 <input
@@ -449,19 +735,35 @@ const CreateItemModal = ({
                 </div>
               </div>
 
-              {/* Contractor Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Contratista / Recurso (Opcional)
-                </label>
-                <select name="contractorId" className="w-full px-3 py-2 border rounded-md bg-white">
-                  <option value="">-- Sin asignar --</option>
-                  {contractors.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.type})
-                    </option>
-                  ))}
-                </select>
+              {/* Assignee and Date Selection */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Responsable
+                  </label>
+                  <select
+                    name="assigneeUserId"
+                    className="w-full px-3 py-2 border rounded-md bg-white"
+                  >
+                    <option value="">-- Sin asignar --</option>
+                    {members?.map((m: any) => (
+                      <option key={m.userId} value={m.userId}>
+                        {m.user?.name || m.user?.email} ({m.role})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Fecha Límite
+                  </label>
+                  <input
+                    type="date"
+                    name="dueDate"
+                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none bg-white mb-1"
+                  />
+                </div>
               </div>
 
               {/* Conditional Fields */}
@@ -470,12 +772,15 @@ const CreateItemModal = ({
               {type === 'TASK' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Historia Padre (Opcional)
+                    {initialParentId ? 'Tarea padre' : 'Tarea padre (Opcional)'}
                   </label>
                   <select
                     name="parentId"
                     defaultValue={initialParentId || ''}
-                    className="w-full px-3 py-2 border rounded-md bg-gray-50"
+                    disabled={!!initialParentId}
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      initialParentId ? 'bg-gray-100 cursor-not-allowed opacity-80' : 'bg-gray-50'
+                    }`}
                   >
                     <option value="">-- Sin padre --</option>
                     {stories.map((s) => (
@@ -487,55 +792,12 @@ const CreateItemModal = ({
                 </div>
               )}
 
-              {/* Estimation */}
-              <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
-                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
-                  Estimación
-                </h4>
-                <div className="grid grid-cols-2 gap-4">
-                  {isStoryMode && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Story Points
-                      </label>
-                      <input
-                        type="number"
-                        name="storyPoints"
-                        min="1"
-                        className="w-full px-3 py-2 border rounded-md"
-                        placeholder="1, 2, 3, 5, 8..."
-                      />
-                    </div>
-                  )}
-                  {isTaskMode && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Horas Estimadas
-                      </label>
-                      <input
-                        type="number"
-                        name="estimatedHours"
-                        step="0.5"
-                        min="0"
-                        className="w-full px-3 py-2 border rounded-md"
-                        placeholder="Ej: 4.5"
-                      />
-                    </div>
-                  )}
-                  {!isStoryMode && !isTaskMode && (
-                    <div className="col-span-2 text-xs text-gray-400 italic">
-                      Selecciona Historia o Tarea para estimar.
-                    </div>
-                  )}
-                </div>
-              </div>
-
               <button
                 type="submit"
                 disabled={isLoading}
                 className="w-full py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
               >
-                {isLoading ? 'Guardando...' : 'Guardar Ítem'}
+                {isLoading ? 'Guardando...' : initialParentId ? 'Crear Sub-tarea' : 'Crear Ítem'}
               </button>
             </div>
           </form>

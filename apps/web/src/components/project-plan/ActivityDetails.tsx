@@ -19,9 +19,11 @@ import {
   Trash2,
   Link as LinkIcon,
   Camera,
+  Package,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CloseActivityModal } from './CloseActivityModal';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 
 interface ActivityDetailsProps {
   activityId: string;
@@ -41,6 +43,7 @@ export const ActivityDetails = ({
   const queryClient = useQueryClient();
   const { t } = useTranslation();
   const [showCloseModal, setShowCloseModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // UI State for inputs
   const [percentInput, setPercentInput] = useState(0);
@@ -50,6 +53,11 @@ export const ActivityDetails = ({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState('');
   const [showAllHistory, setShowAllHistory] = useState(false);
+
+  // Material Form
+  const [selectedMaterialId, setSelectedMaterialId] = useState('');
+  const [materialQty, setMaterialQty] = useState('');
+  const [materialNotes, setMaterialNotes] = useState('');
 
   const openLightbox = (src: string) => {
     setLightboxSrc(src);
@@ -161,6 +169,20 @@ export const ActivityDetails = ({
     onError: () => toast.error('Error al eliminar dependencia'),
   });
 
+  const deleteActivityMutation = useMutation({
+    mutationFn: async () => {
+      return api.delete(`/activities/${activity.id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activities', (activity as any)?.projectId] });
+      toast.success('Actividad eliminada correctamente');
+      if (onClose) onClose();
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Error al eliminar actividad');
+    },
+  });
+
   const handleAddDependency = () => {
     if (!selectedDependencyId) return;
     addDependencyMutation.mutate();
@@ -171,6 +193,52 @@ export const ActivityDetails = ({
       removeDependencyMutation.mutate(depId);
     }
   };
+
+  const { data: projectMaterials } = useQuery({
+    queryKey: ['projectMaterials', (activity as any)?.projectId],
+    queryFn: async () => {
+      const pid = (activity as any)?.projectId;
+      if (!pid) return [];
+      const { data } = await api.get(`/project-materials?projectId=${pid}`);
+      return data;
+    },
+    enabled: !!activity,
+  });
+
+  const addMaterialMutation = useMutation({
+    mutationFn: async (payload: {
+      projectMaterialId: string;
+      quantityConsumed: number;
+      notes: string;
+    }) => {
+      return api.post(`/activities/${activity.id}/materials`, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activity', activityId] });
+      queryClient.invalidateQueries({
+        queryKey: ['projectMaterials', (activity as any)?.projectId],
+      });
+      toast.success('Material agregado');
+      setSelectedMaterialId('');
+      setMaterialQty('');
+      setMaterialNotes('');
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Error al agregar material'),
+  });
+
+  const removeMaterialMutation = useMutation({
+    mutationFn: async (consumptionId: string) => {
+      return api.delete(`/activities/${activity.id}/materials/${consumptionId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activity', activityId] });
+      queryClient.invalidateQueries({
+        queryKey: ['projectMaterials', (activity as any)?.projectId],
+      });
+      toast.success('Registro de material eliminado');
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'Error al eliminar material'),
+  });
 
   // Helper for safe dates
   const safeDate = (dateVal: any) => {
@@ -292,42 +360,6 @@ export const ActivityDetails = ({
                 className="h-full bg-blue-600 transition-all duration-1000 ease-out"
                 style={{ width: `${activity.percent || 0}%` }}
               />
-            </div>
-          </div>
-
-          {/* BLOCK B: UPDATE ACTION (Interactive) - REFACTORED */}
-          <div className="bg-blue-50/50 rounded-lg shadow-sm border border-blue-100 p-4">
-            <h3 className="text-sm font-bold text-blue-900 mb-3 flex items-center gap-1.5">
-              <Clock size={16} /> Comentario de Alto Nivel
-            </h3>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[10px] font-bold text-blue-800 mb-1">
-                  Nota / Comentario <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  rows={3}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Escribe un comentario o actualización..."
-                  className="w-full text-xs py-2 px-3 border border-blue-200 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-gray-800 shadow-sm bg-white resize-none"
-                />
-              </div>
-
-              <button
-                onClick={() => {
-                  if (!notes || notes.trim() === '')
-                    return toast.error(t('activities.notes_required'));
-                  // Send current percent (no change) and notes
-                  updateMutation.mutate({ percent: activity.percent, notes });
-                  setNotes(''); // Clear after send
-                }}
-                disabled={updateMutation.isPending || !notes}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-md shadow-sm transition-transform active:scale-[0.99] text-xs"
-              >
-                {updateMutation.isPending ? 'Guardando...' : 'Agregar comentario'}
-              </button>
             </div>
           </div>
 
@@ -491,6 +523,115 @@ export const ActivityDetails = ({
             </div>
           </div>
 
+          {/* BLOCK G: MATERIALS */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3 border-b border-gray-100 pb-1.5 flex items-center gap-1.5">
+              <Package size={14} /> Materiales y Consumo
+            </h3>
+
+            <div className="space-y-4">
+              {/* Consumed Materials List */}
+              <div className="space-y-2">
+                {activity.activityMaterials?.map((am: any) => (
+                  <div
+                    key={am.id}
+                    className="flex justify-between items-start text-xs bg-gray-50 p-2 rounded border border-gray-100"
+                  >
+                    <div>
+                      <div className="font-bold text-gray-900">
+                        {am.projectMaterial?.material?.name || 'Material'}
+                      </div>
+                      <div className="text-[10px] text-gray-500">
+                        Cantidad: {am.quantityConsumed} {am.projectMaterial?.material?.uom}
+                      </div>
+                      {am.notes && (
+                        <div className="text-[10px] text-gray-400 italic">"{am.notes}"</div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (confirm('¿Eliminar este registro de consumo?')) {
+                          removeMaterialMutation.mutate(am.id);
+                        }
+                      }}
+                      className="text-red-400 hover:text-red-600 p-1"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+                {!activity.activityMaterials?.length && (
+                  <p className="text-xs text-gray-400 italic">
+                    No hay consumo de material registrado.
+                  </p>
+                )}
+              </div>
+
+              {/* Add Material Form */}
+              <div className="border border-gray-200 rounded-md bg-gray-50/50 p-3 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold text-gray-700 mb-1">
+                      Material
+                    </label>
+                    <select
+                      className="w-full bg-white border border-gray-300 text-gray-900 text-xs rounded-md p-2 outline-none focus:ring-1 focus:ring-blue-500"
+                      value={selectedMaterialId}
+                      onChange={(e) => setSelectedMaterialId(e.target.value)}
+                    >
+                      <option value="">-- Seleccionar --</option>
+                      {projectMaterials?.map((pm: any) => (
+                        <option key={pm.id} value={pm.id}>
+                          {pm.material?.name} (Disp: {Math.max(0, pm.stockTotal - pm.stockConsumed)}{' '}
+                          {pm.material?.uom})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-700 mb-1">
+                      Cantidad
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="w-full bg-white border border-gray-300 text-gray-900 text-xs rounded-md p-2 outline-none focus:ring-1 focus:ring-blue-500"
+                      value={materialQty}
+                      onChange={(e) => setMaterialQty(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-700 mb-1">Notas</label>
+                    <input
+                      type="text"
+                      className="w-full bg-white border border-gray-300 text-gray-900 text-xs rounded-md p-2 outline-none focus:ring-1 focus:ring-blue-500"
+                      value={materialNotes}
+                      placeholder="Opcional"
+                      onChange={(e) => setMaterialNotes(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const qty = parseFloat(materialQty);
+                    if (!selectedMaterialId || isNaN(qty) || qty <= 0) {
+                      return toast.error('Selecciona material y cantidad válida');
+                    }
+                    addMaterialMutation.mutate({
+                      projectMaterialId: selectedMaterialId,
+                      quantityConsumed: qty,
+                      notes: materialNotes,
+                    });
+                  }}
+                  disabled={addMaterialMutation.isPending || !selectedMaterialId || !materialQty}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-bold py-2 rounded-md shadow-sm transition-colors text-xs flex justify-center items-center gap-1.5"
+                >
+                  {addMaterialMutation.isPending ? 'Agregando...' : '+ Ingresar Consumo'}
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* BLOCK E: HISTORY */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-1.5">
@@ -599,6 +740,42 @@ export const ActivityDetails = ({
             </div>
           </div>
 
+          {/* BLOCK B: UPDATE ACTION (Interactive) - REFACTORED (MOVED TO BOTTOM) */}
+          <div className="bg-blue-50/50 rounded-lg shadow-sm border border-blue-100 p-4">
+            <h3 className="text-sm font-bold text-blue-900 mb-3 flex items-center gap-1.5">
+              <Clock size={16} /> Comentario de Alto Nivel
+            </h3>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold text-blue-800 mb-1">
+                  Nota / Comentario <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Escribe un comentario o actualización..."
+                  className="w-full text-xs py-2 px-3 border border-blue-200 rounded-md focus:ring-1 focus:ring-blue-500 outline-none text-gray-800 shadow-sm bg-white resize-none"
+                />
+              </div>
+
+              <button
+                onClick={() => {
+                  if (!notes || notes.trim() === '')
+                    return toast.error(t('activities.notes_required'));
+                  // Send current percent (no change) and notes
+                  updateMutation.mutate({ percent: activity.percent, notes });
+                  setNotes(''); // Clear after send
+                }}
+                disabled={updateMutation.isPending || !notes}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-md shadow-sm transition-transform active:scale-[0.99] text-xs"
+              >
+                {updateMutation.isPending ? 'Guardando...' : 'Agregar comentario'}
+              </button>
+            </div>
+          </div>
+
           {/* BLOCK F: ACTIONS */}
           <div className="pt-2 pb-6">
             {currentPercent === 100 && activity.status !== 'CLOSED' ? (
@@ -616,7 +793,10 @@ export const ActivityDetails = ({
                 <User size={18} /> Ver Acta de Cierre
               </button>
             ) : (
-              <button className="w-full text-red-500 hover:text-red-600 hover:bg-red-50 text-xs font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 border border-transparent hover:border-red-100">
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-full text-red-500 hover:text-red-600 hover:bg-red-50 text-xs font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 border border-transparent hover:border-red-100"
+              >
                 <Trash2 size={14} /> {t('activities.delete_activity')}
               </button>
             )}
@@ -631,6 +811,39 @@ export const ActivityDetails = ({
         token={token}
         existingRecord={activity.closureRecord}
       />
+
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle size={20} />
+              Eliminar Actividad
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2 text-sm text-gray-600">
+            ¿Está seguro de que desea eliminar permanentemente la actividad{' '}
+            <strong>{activity.name}</strong>? Esta acción no se puede deshacer.
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0 mt-4">
+            <button
+              onClick={() => setShowDeleteConfirm(false)}
+              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                deleteActivityMutation.mutate();
+              }}
+              disabled={deleteActivityMutation.isPending}
+              className="px-4 py-2 bg-red-600 border border-transparent text-white rounded-md hover:bg-red-700 text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {deleteActivityMutation.isPending ? 'Eliminando...' : 'Sí, eliminar'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <PhotoLightbox
         isOpen={lightboxOpen}

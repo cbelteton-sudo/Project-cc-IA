@@ -94,11 +94,19 @@ export class ContractorsController {
 
   // --- Resources ---
   @Get(':id/resources')
-  getResources(
+  async getResources(
     @ActiveUser('tenantId') tenantId: string,
     @Param('id') contractorId: string,
   ) {
-    return this.contractorsService.getResources(tenantId, contractorId);
+    console.log(
+      `[DEBUG] getResources requested for tenant=${tenantId}, contractor=${contractorId}`,
+    );
+    const res = await this.contractorsService.getResources(
+      tenantId,
+      contractorId,
+    );
+    console.log(`[DEBUG] getResources returned ${res.length} items`);
+    return res;
   }
 
   @Post(':id/resources')

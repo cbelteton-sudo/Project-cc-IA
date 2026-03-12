@@ -63,6 +63,32 @@ export class ProjectsService {
       }));
     }
 
+    if (user.role === 'PROJECT_MANAGER') {
+      const projects = await this.prisma.project.findMany({
+        where: {
+          tenantId,
+          projectManagerId: user.userId || user.id,
+        },
+        include: {
+          _count: {
+            select: { budgets: true },
+          },
+          sprints: {
+            where: { status: 'ACTIVE' },
+            select: { id: true, name: true },
+            take: 1,
+          },
+          projectManager: {
+            select: { name: true },
+          },
+        },
+      });
+      return projects.map((p) => ({
+        ...p,
+        managerName: (p as any).projectManager?.name,
+      }));
+    }
+
     const projects = await this.prisma.project.findMany({
       where: {
         tenantId,
@@ -84,11 +110,15 @@ export class ProjectsService {
         projectManager: {
           select: { name: true },
         },
+        mainContractor: {
+          select: { name: true },
+        },
       },
     });
     return projects.map((p) => ({
       ...p,
       managerName: (p as any).projectManager?.name,
+      constructorName: (p as any).mainContractor?.name,
     }));
   }
 
@@ -98,6 +128,9 @@ export class ProjectsService {
       include: {
         budgets: true,
         projectManager: {
+          select: { name: true },
+        },
+        mainContractor: {
           select: { name: true },
         },
       },
@@ -110,6 +143,7 @@ export class ProjectsService {
     const result = {
       ...project,
       managerName: (project as any).projectManager?.name,
+      constructorName: (project as any).mainContractor?.name,
     };
 
     console.log(
@@ -133,7 +167,7 @@ export class ProjectsService {
     }
 
     // 2. Fetch parallel aggregates
-    const [activities, backlogItems, budgets, pos] = await Promise.all([
+    const [activities, backlogItems, budgets, pos, rawMilestones, rawMaterials] = await Promise.all([
       // To get phase progress (parents)
       this.prisma.projectActivity.findMany({
         where: { projectId: id, parentId: null },
@@ -152,175 +186,191 @@ export class ProjectsService {
       this.prisma.purchaseOrder.findMany({
         where: { projectId: id },
       }),
+      // Milestones for dashboard
+      this.prisma.projectMilestone.findMany({
+        where: { projectId: id },
+        orderBy: { date: 'asc' },
+      }),
+      // Materials for actual costs
+      this.prisma.projectMaterial.findMany({
+        where: { projectId: id },
+      }),
     ]);
 
-    // -- CALCULATIONS -- //
+    // 1. Progress (Fases Principales)
+    let avgProgress = 0;
+    const progressData = activities.map(act => {
+      let color = '#f59e0b'; // Default Active/In Progress Orange
+      if (act.percent === 100) color = '#10b981'; // Green Done
+      else if (act.percent === 0) color = '#64748b'; // Gray Not started
+      
+      avgProgress += act.percent;
+      
+      return {
+        name: act.name,
+        percentage: act.percent,
+        color
+      };
+    }).slice(0, 5); // Limit to top 5 phases visually
+    
+    if (activities.length > 0) {
+      avgProgress = avgProgress / activities.length;
+    }
 
-    // 1. Tasks
-    let todo = 0,
-      inProgress = 0,
-      review = 0,
-      done = 0;
-    backlogItems.forEach((item) => {
-      const status = item.status.toUpperCase();
-      if (status === 'BACKLOG' || status === 'READY' || status === 'TODO')
-        todo++;
-      else if (status === 'IN_SPRINT' || status === 'IN_PROGRESS') inProgress++;
-      else if (status === 'IN_REVIEW' || status === 'REVIEW') review++;
-      else if (status === 'DONE' || status === 'CLOSED') done++;
+    // 2. Sprint Data (Active Sprint for the project)
+    const activeSprintData = await this.prisma.sprint.findFirst({
+        where: { projectId: id, status: 'ACTIVE' },
+        include: { items: { include: { backlogItem: true } } }
     });
 
-    const tasksData = [
-      { name: 'Por Hacer', value: todo, color: '#e2e8f0' },
-      { name: 'En Progreso', value: inProgress, color: '#3b82f6' },
-      { name: 'En Revisión', value: review, color: '#f59e0b' },
-      { name: 'Completadas', value: done, color: '#22c55e' },
-    ];
+    let activeSprint = null;
+    if (activeSprintData) {
+        const totalTasks = activeSprintData.items.length;
+        const completedTasks = activeSprintData.items.filter(i => i.boardStatus === 'DONE').length;
+        const blockedTasks = activeSprintData.items.filter(i => i.boardStatus === 'BLOCKED').length;
+        
+        activeSprint = {
+            id: activeSprintData.id,
+            name: activeSprintData.name,
+            goal: activeSprintData.goal || 'No hay objetivo definido',
+            startDate: new Date(activeSprintData.startDate).toISOString(),
+            endDate: new Date(activeSprintData.endDate).toISOString(),
+            completedTasks,
+            totalTasks,
+            blockedTasks
+        }
+    }
 
-    // 2. Progress (Fases Principales)
-    let totalProgressSum = 0;
-    const progressData = activities
-      .slice(0, 4) // Show top 4 phases
-      .map((act) => {
-        totalProgressSum += act.percent || 0;
-        return {
-          name: act.name,
-          percentage: act.percent || 0,
-          color: 'bg-emerald-400',
-        };
-      });
+    // 3. Costs (Real Data from ProjectMaterials)
+    let totalBudget = 0;
+    let totalConsumed = 0;
 
-    const avgProgress =
-      activities.length > 0 ? totalProgressSum / activities.length : 0;
+    rawMaterials.forEach((mat) => {
+      totalBudget += mat.plannedQty * mat.plannedPrice;
+      totalConsumed += mat.stockConsumed * mat.plannedPrice;
+    });
 
-    // 3. Workload
-    const workloadMap = new Map<
-      string,
-      { name: string; completed: number; remaining: number; overdue: number }
-    >();
-    const now = new Date();
+    const startDate = project.startDate ? new Date(project.startDate) : new Date();
+    const endDate = project.endDate ? new Date(project.endDate) : new Date(new Date().setMonth(startDate.getMonth() + 1));
+    const nowLocal = new Date();
 
-    backlogItems.forEach((item) => {
-      if (!item.assigneeUser) return;
-      const userName =
-        item.assigneeUser.name || item.assigneeUser.email || 'Usuario';
-      const w = workloadMap.get(userName) || {
-        name: userName,
-        completed: 0,
-        remaining: 0,
-        overdue: 0,
-      };
+    if (endDate.getTime() <= startDate.getTime()) {
+      endDate.setMonth(startDate.getMonth() + 1);
+    }
+    
+    // Estimate Time Elapsed
+    const totalProjectMs = endDate.getTime() - startDate.getTime();
+    const elapsedMs = Math.max(0, nowLocal.getTime() - startDate.getTime());
+    let timeElapsedPercent = Math.round((elapsedMs / totalProjectMs) * 100);
+    if (timeElapsedPercent > 100) timeElapsedPercent = 100;
 
-      const isDone = item.status === 'DONE' || item.status === 'CLOSED';
-      if (isDone) {
-        w.completed++;
-      } else {
-        w.remaining++;
-        if (item.dueDate && new Date(item.dueDate) < now) {
-          w.overdue++;
+    const monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth()) + 1;
+    const budgetPerMonth = totalBudget / monthsDiff;
+
+    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const costsData = [];
+
+    let cumPlanned = 0;
+    let cumActual = 0;
+
+    for (let i = 0; i < monthsDiff; i++) {
+        const currentMonth = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+        const name = `${monthNames[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`;
+
+        cumPlanned += budgetPerMonth;
+
+        let actualForMonth = 0;
+        if (currentMonth.getTime() <= nowLocal.getTime() || (currentMonth.getMonth() === nowLocal.getMonth() && currentMonth.getFullYear() === nowLocal.getFullYear())) {
+             const elapsedMonths = Math.max(1, (nowLocal.getFullYear() - startDate.getFullYear()) * 12 + (nowLocal.getMonth() - startDate.getMonth()) + 1);
+             actualForMonth = totalConsumed / Math.max(1, elapsedMonths);
+             cumActual += actualForMonth;
+        }
+
+        costsData.push({
+            name,
+            budget: Math.round(totalBudget),
+            planned: Math.round(cumPlanned),
+            actual: (currentMonth.getTime() <= nowLocal.getTime() || (currentMonth.getMonth() === nowLocal.getMonth() && currentMonth.getFullYear() === nowLocal.getFullYear())) ? Math.round(cumActual) : null,
+        });
+    }
+
+    const costBudgetPercent = totalBudget > 0 ? Math.min(100, Math.round((totalConsumed / totalBudget) * 100)) : 0;
+
+    // ---------------------------------------------------------
+    // NEW METRICS (Mock Data for visual demonstration)
+    // ---------------------------------------------------------
+
+    // A. Milestones Health (Estado de Hitos Críticos)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const milestonesData = rawMilestones.map(m => {
+      let status = 'ON_TRACK';
+      if (m.status !== 'COMPLETED') {
+        const mDate = new Date(m.date);
+        mDate.setHours(0, 0, 0, 0);
+        const diffTime = mDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+          status = 'DELAYED';
+        } else if (diffDays <= 7) {
+          status = 'AT_RISK';
         }
       }
-      workloadMap.set(userName, w);
-    });
 
-    const workloadData = Array.from(workloadMap.values())
-      .sort((a, b) => b.completed + b.remaining - (a.completed + a.remaining))
-      .slice(0, 4);
+      return {
+        name: m.name,
+        date: new Date(m.date).toISOString().split('T')[0],
+        status,
+      };
+    }).slice(0, 5); // Pick top 5 earliest
 
-    let totalOverdue = 0;
-    workloadData.forEach((w) => (totalOverdue += w.overdue));
-
-    // 4. Time (Simplified: we compare actual progress % vs expected time elapsed %)
-    let timeElapsedPercent = 0;
-    if (project.startDate && project.endDate) {
-      const start = new Date(project.startDate).getTime();
-      const end = new Date(project.endDate).getTime();
-      const current = now.getTime();
-      if (current >= end) timeElapsedPercent = 100;
-      else if (current <= start) timeElapsedPercent = 0;
-      else {
-        timeElapsedPercent = Math.round(
-          ((current - start) / (end - start)) * 100,
-        );
-      }
-    }
-
-    const timeData = [
-      {
-        name: 'Proyecto Fase Inicial',
-        planned: Math.min(100, timeElapsedPercent + 5),
-        actual: timeElapsedPercent,
-      },
-      {
-        name: 'Fase de Construcción',
-        planned: Math.max(0, timeElapsedPercent - 10),
-        actual: Math.max(0, timeElapsedPercent - 20),
-      },
+    // B. Constructor Progress (Eficiencia del Contratista)
+    const constructorProgressData = [
+      { name: 'Contratista A (Estructura)', progress: 85, color: '#3b82f6' },
+      { name: 'Contratista B (Acabados)', progress: 12, color: '#f59e0b' },
+      { name: 'Contratista C (MEP)', progress: 45, color: '#10b981' },
     ];
 
-    // 5. Costs
-    let totalBudget = 0;
-    budgets.forEach((b) => {
-      b.budgetLines.forEach((l) => {
-        totalBudget += l.budgetBase + l.budgetCO;
-      });
-    });
-    // Fallback if no detailed budget
-    if (totalBudget === 0 && project.globalBudget) {
-      totalBudget = project.globalBudget;
-    }
-
-    let actualCost = 0;
-    pos.forEach((po) => (actualCost += po.total));
-
-    const costBudgetPercent =
-      totalBudget > 0 ? Math.round((actualCost / totalBudget) * 100) : 0;
-
-    // Distribute actual vs planned linearly across 4 months (Dummy extrapolation for visual)
-    const costsData = [
-      {
-        name: 'Mes 1',
-        planned: Math.round(totalBudget * 0.25),
-        actual: Math.round(actualCost * 0.1),
-        budget: Math.round(totalBudget * 0.25),
-      },
-      {
-        name: 'Mes 2',
-        planned: Math.round(totalBudget * 0.5),
-        actual: Math.round(actualCost * 0.4),
-        budget: Math.round(totalBudget * 0.5),
-      },
-      {
-        name: 'Mes 3',
-        planned: Math.round(totalBudget * 0.75),
-        actual: Math.round(actualCost * 0.6),
-        budget: Math.round(totalBudget * 0.75),
-      },
-      {
-        name: 'Mes 4',
-        planned: totalBudget,
-        actual: actualCost,
-        budget: totalBudget,
-      },
-    ];
+    // C. Blockers Overview (Índice de Actividades Bloqueadas)
+    const blockersData = {
+      totalBlocked: 6,
+      categories: [
+        { reason: 'Falta de Materiales', count: 3, color: '#ef4444' },
+        { reason: 'Permisos Municipales', count: 2, color: '#f97316' },
+        { reason: 'Clima', count: 1, color: '#3b82f6' },
+      ]
+    };
 
     return {
       health: {
         timeElapsedPercent,
-        tasksCompletionPercent:
-          backlogItems.length > 0
-            ? Math.round((done / backlogItems.length) * 100)
-            : 0,
-        workloadOverdueTasks: totalOverdue,
         progressPercent: Math.round(avgProgress),
         costBudgetPercent,
       },
-      tasks: tasksData,
       progress: progressData,
-      time: timeData,
+      activeSprint,
       costs: costsData,
-      workload: workloadData,
+      milestones: milestonesData,
+      constructorProgress: constructorProgressData,
+      blockers: blockersData,
     };
+  }
+
+  async getMembers(projectId: string, tenantId: string) {
+    // Basic tenancy check
+    await this.findOne(projectId, tenantId);
+
+    // Fetch members with user info
+    return this.prisma.projectMember.findMany({
+      where: { projectId },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, role: true },
+        },
+      },
+    });
   }
 
   async update(
@@ -331,13 +381,12 @@ export class ProjectsService {
     // Ensure ownership
     await this.findOne(id, tenantId);
 
-    const data: any = { ...updateProjectDto };
-    if (updateProjectDto.startDate)
-      data.startDate = new Date(updateProjectDto.startDate);
-    if (updateProjectDto.endDate)
-      data.endDate = new Date(updateProjectDto.endDate);
-    if (updateProjectDto.globalBudget !== undefined)
-      data.globalBudget = Number(updateProjectDto.globalBudget);
+    const { startDate, endDate, globalBudget, ...restData } = updateProjectDto;
+
+    const data: any = { ...restData };
+    if (startDate) data.startDate = new Date(startDate);
+    if (endDate) data.endDate = new Date(endDate);
+    if (globalBudget !== undefined) data.globalBudget = Number(globalBudget);
 
     const project = await this.prisma.project.update({
       where: { id },

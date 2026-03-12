@@ -53,7 +53,7 @@ export const Login = () => {
 
       if (user.role === 'CONTRATISTA') {
         navigate('/portal/dashboard');
-      } else if (user.role === 'PM') {
+      } else if (user.role === 'PM' || user.role === 'PROJECT_MANAGER') {
         navigate('/field/dashboard');
       } else if (
         user.projectMembers &&

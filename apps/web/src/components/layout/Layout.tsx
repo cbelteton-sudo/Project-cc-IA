@@ -34,14 +34,14 @@ const SidebarItem = ({
     onClick={onClick}
     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group ${
       active
-        ? 'bg-blue-50 text-blue-700 font-semibold'
-        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 font-medium'
+        ? 'bg-brand-ambar/10 text-brand-ambar font-semibold'
+        : 'text-slate-300 hover:bg-brand-acero/50 hover:text-white font-medium'
     } ${collapsed ? 'justify-center' : ''}`}
     title={collapsed ? label : ''}
   >
     <Icon
       size={20}
-      className={`shrink-0 ${active ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'}`}
+      className={`shrink-0 ${active ? 'text-brand-ambar' : 'text-slate-400 group-hover:text-slate-300'}`}
     />
     {!collapsed && <span className="text-sm truncate">{label}</span>}
   </Link>
@@ -100,7 +100,7 @@ export const Layout = () => {
     user.projectMembers.every((m) => ['FIELD_OPERATOR', 'RESIDENTE'].includes(m.role));
 
   return (
-    <div className="flex min-h-[100dvh] bg-slate-50 overflow-hidden relative">
+    <div className="flex h-[100dvh] bg-slate-50 overflow-hidden relative">
       {/* Mobile Sidebar Overlay */}
       {mobileMenuOpen && (
         <div
@@ -114,18 +114,18 @@ export const Layout = () => {
         <aside
           className={`${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-          } ${collapsed ? 'w-20' : 'w-64'} fixed md:relative inset-y-0 left-0 bg-white border-r border-slate-200 flex flex-col print:hidden transition-transform duration-300 z-40`}
+          } ${collapsed ? 'w-20' : 'w-64'} fixed md:relative inset-y-0 left-0 bg-brand-pizarra border-r border-brand-acero flex flex-col print:hidden transition-transform duration-300 z-40 h-screen`}
         >
           {/* Toggle Button (Desktop Only) */}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="hidden md:flex absolute -right-3 top-6 bg-white border border-slate-200 rounded-full p-1 text-slate-400 hover:text-slate-800 z-50 shadow-sm transition-colors hover:shadow"
+            className="hidden md:flex absolute -right-3 top-6 bg-brand-acero border border-brand-pizarra rounded-full p-1 text-slate-300 hover:text-white z-50 shadow-sm transition-colors hover:shadow"
           >
             {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
           </button>
 
           <div
-            className={`h-16 flex items-center ${collapsed ? 'justify-center px-0' : 'px-6'} border-b border-slate-100 bg-white transition-all shrink-0`}
+            className={`h-16 flex items-center ${collapsed ? 'justify-center px-0' : 'px-6'} border-b border-brand-acero bg-brand-pizarra transition-all shrink-0`}
           >
             <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               {tenantLogo ? (
@@ -136,7 +136,7 @@ export const Layout = () => {
               {!collapsed && !tenantLogo && (
                 <span className="text-xl tracking-tight flex items-center">
                   <span
-                    className="text-slate-800"
+                    className="text-white"
                     style={{
                       fontFamily: '"Century Gothic", CenturyGothic, AppleGothic, sans-serif',
                       fontWeight: '400',
@@ -145,7 +145,7 @@ export const Layout = () => {
                     Field
                   </span>
                   <span
-                    className="text-blue-600"
+                    className="text-brand-ambar"
                     style={{ fontFamily: '"Mangal Pro", Mangal, sans-serif', fontWeight: 'bold' }}
                   >
                     Close
@@ -156,18 +156,18 @@ export const Layout = () => {
             </Link>
           </div>
 
-          <nav className="flex-1 p-3 space-y-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
+          <nav className="flex-1 p-3 space-y-1 overflow-y-auto custom-scrollbar overflow-x-hidden min-h-0">
             {projectId && !isOperator && (
               <div className="mb-6">
                 <Link
                   to="/projects"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium text-sm group ${collapsed ? 'justify-center' : ''}`}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-slate-300 hover:bg-brand-acero/50 hover:text-white font-medium text-sm group ${collapsed ? 'justify-center' : ''}`}
                   title={collapsed ? 'Todos los Proyectos' : ''}
                 >
                   <ChevronLeft
                     size={20}
-                    className="shrink-0 text-slate-400 group-hover:text-slate-600"
+                    className="shrink-0 text-slate-400 group-hover:text-slate-300"
                   />
                   {!collapsed && <span className="truncate">Volver a Todos los Proyectos</span>}
                 </Link>
@@ -203,17 +203,17 @@ export const Layout = () => {
             ))}
           </nav>
 
-          <div className="p-4 border-t border-slate-100 bg-slate-50/50 shrink-0">
+          <div className="p-4 border-t border-brand-acero bg-brand-pizarra shrink-0">
             <div className={`flex items-center gap-3 mb-4 ${collapsed ? 'justify-center' : ''}`}>
-              <div className="w-9 h-9 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 font-bold text-sm shrink-0 uppercase">
+              <div className="w-9 h-9 rounded-full bg-brand-acero border border-brand-acero/50 flex items-center justify-center text-brand-ambar font-bold text-sm shrink-0 uppercase">
                 {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
               </div>
               {!collapsed && (
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-700 truncate">
+                  <p className="text-sm font-semibold text-white truncate">
                     {user?.name || 'Usuario'}
                   </p>
-                  <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                  <p className="text-xs text-slate-400 truncate">{user?.email}</p>
                 </div>
               )}
             </div>
@@ -222,7 +222,7 @@ export const Layout = () => {
                 await logout();
                 window.location.href = '/login';
               }}
-              className={`w-full bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 hover:text-red-600 text-sm py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center gap-2 ${collapsed ? 'px-0' : ''}`}
+              className={`w-full bg-brand-acero hover:bg-brand-acero/80 border border-transparent text-slate-300 hover:text-red-400 text-sm py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center gap-2 ${collapsed ? 'px-0' : ''}`}
               title="Cerrar sesión"
             >
               <Settings size={16} />
@@ -233,7 +233,7 @@ export const Layout = () => {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden max-w-full print:overflow-visible print:h-auto">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden max-w-full print:overflow-visible print:h-auto">
         {/* Header - Minimal for strictly field users, Full for others */}
         {isStrictlyFieldUser ? (
           <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-8 shrink-0 print:hidden relative z-10 w-full overflow-hidden">
@@ -246,7 +246,7 @@ export const Layout = () => {
               {!tenantLogo && (
                 <span className="text-xl tracking-tight hidden sm:flex items-center">
                   <span
-                    className="text-slate-800"
+                    className="text-brand-pizarra"
                     style={{
                       fontFamily: '"Century Gothic", CenturyGothic, AppleGothic, sans-serif',
                       fontWeight: '400',
@@ -255,7 +255,7 @@ export const Layout = () => {
                     Field
                   </span>
                   <span
-                    className="text-blue-600"
+                    className="text-brand-ambar"
                     style={{ fontFamily: '"Mangal Pro", Mangal, sans-serif', fontWeight: 'bold' }}
                   >
                     Close
@@ -265,7 +265,7 @@ export const Layout = () => {
             </div>
             <div className="flex items-center gap-4 shrink-0">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 font-bold text-sm shrink-0 uppercase">
+                <div className="w-8 h-8 rounded-full bg-brand-pizarra border border-brand-acero flex items-center justify-center text-white font-bold text-sm shrink-0 uppercase">
                   {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                 </div>
                 <span className="text-sm font-medium text-slate-700 truncate max-w-[120px] sm:max-w-none">
@@ -305,13 +305,13 @@ export const Layout = () => {
             {/* LEFT: Context Switcher & Title */}
             <div className="flex items-center gap-2 md:gap-6 min-w-0 flex-1">
               <ContextSwitcher />
-              <h1 className="text-xl font-semibold text-gray-800 hidden lg:block truncate pr-2">
+              <h1 className="text-lg font-semibold text-gray-800 hidden lg:block truncate pr-2">
                 {projectId ? 'Panel de Proyecto' : t('dashboard.title')}
               </h1>
             </div>
 
             <div className="flex items-center gap-2 md:gap-4 shrink-0">
-              <span className="hidden sm:inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium truncate max-w-[200px]">
+              <span className="hidden sm:inline-block px-3 py-1 bg-brand-acero/10 text-brand-pizarra rounded-full text-xs font-semibold truncate max-w-[200px]">
                 {t('common.tenant')}: {tenantName || 'Constructora Demo'}
               </span>
               <div className="sm:border-l sm:pl-4 sm:ml-2">
@@ -320,7 +320,7 @@ export const Layout = () => {
             </div>
           </header>
         )}
-        <div className="flex-1 overflow-auto p-0 md:p-8 print:overflow-visible print:h-auto print:p-0 relative">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-0 md:p-8 print:overflow-visible print:h-auto print:p-0 relative min-h-0">
           <Outlet />
         </div>
       </main>

@@ -63,7 +63,10 @@ export function CreateProjectModal({ customTrigger }: CreateProjectModalProps = 
 
   const mutation = useMutation({
     mutationFn: async (data: CreateProjectFormValues) => {
-      const response = await api.post(`/scrum/projects`, data);
+      const payload = { ...data };
+      if (payload.startDate) payload.startDate = `${payload.startDate}T12:00:00.000Z`;
+      if (payload.endDate) payload.endDate = `${payload.endDate}T12:00:00.000Z`;
+      const response = await api.post(`/scrum/projects`, payload);
       return response.data;
     },
     onSuccess: (newProject) => {

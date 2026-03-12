@@ -1,5 +1,11 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { IsString, IsOptional, IsEmail, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEmail,
+  IsBoolean,
+  ValidateIf,
+} from 'class-validator';
 
 export class CreateContractorDto {
   @IsString()
@@ -9,6 +15,9 @@ export class CreateContractorDto {
   @IsOptional()
   type?: string;
 
+  @ValidateIf(
+    (o: any) => o.email !== '' && o.email !== undefined && o.email !== null,
+  )
   @IsEmail()
   @IsOptional()
   email?: string;

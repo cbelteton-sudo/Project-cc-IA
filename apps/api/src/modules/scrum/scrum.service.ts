@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -99,18 +100,103 @@ export class ScrumService {
     data: Prisma.BacklogItemUncheckedCreateInput & { sprintId?: string },
   ) {
     const { sprintId, ...rest } = data;
-    return this.prisma.backlogItem.create({
-      data: {
-        ...rest,
-        sprintItems: sprintId
-          ? {
-              create: {
-                sprintId,
-                boardStatus: 'TODO',
-              },
+
+    return this.prisma.$transaction(async (tx) => {
+      let wbsActivityIdToLink: string | undefined = undefined;
+
+      if (rest.parentId) {
+        // Fetch parent to check if it's linked
+        const parent = await tx.backlogItem.findUnique({
+          where: { id: String(rest.parentId) },
+          select: { linkedWbsActivityId: true, dueDate: true },
+        });
+
+        if (!parent) {
+          throw new BadRequestException('La tarea principal no existe.');
+        }
+
+        const parentDate = parent.dueDate;
+
+        if (parent?.linkedWbsActivityId) {
+          // Parent is linked to WBS, fetch parent WBS activity to get its dates
+          const parentWbs = await tx.projectActivity.findUnique({
+            where: { id: parent.linkedWbsActivityId },
+            select: { startDate: true, endDate: true, tenantId: true },
+          });
+
+          if (parentWbs) {
+            if (rest.dueDate) {
+              const subtaskDateStr = new Date(rest.dueDate)
+                .toISOString()
+                .split('T')[0];
+              const parentEndDateStr = new Date(parentWbs.endDate)
+                .toISOString()
+                .split('T')[0];
+              const parentStartDateStr = new Date(parentWbs.startDate)
+                .toISOString()
+                .split('T')[0];
+
+              if (subtaskDateStr > parentEndDateStr) {
+                throw new BadRequestException(
+                  'La fecha límite de la sub-tarea no puede exceder la fecha de la tarea principal.',
+                );
+              }
+              if (subtaskDateStr < parentStartDateStr) {
+                throw new BadRequestException(
+                  'La fecha límite de la sub-tarea no puede ser anterior al inicio de la tarea principal.',
+                );
+              }
             }
-          : undefined,
-      },
+
+            // Create a child WBS activity
+            const newWbsActivity = await tx.projectActivity.create({
+              data: {
+                tenantId: parentWbs.tenantId,
+                projectId: rest.projectId,
+                parentId: parent.linkedWbsActivityId,
+                name: rest.title,
+                startDate: parentWbs.startDate, // Inherit start date
+                endDate: rest.dueDate
+                  ? new Date(rest.dueDate)
+                  : parentWbs.endDate, // Use due date if provided
+                status: 'NOT_STARTED',
+                contractorId: rest.contractorId,
+                assignedUserId: rest.assigneeUserId,
+              },
+            });
+            wbsActivityIdToLink = newWbsActivity.id;
+          }
+        } else if (parentDate && rest.dueDate) {
+          const subtaskDateStr = new Date(rest.dueDate)
+            .toISOString()
+            .split('T')[0];
+          const parentDateStr = new Date(parentDate)
+            .toISOString()
+            .split('T')[0];
+          if (subtaskDateStr > parentDateStr) {
+            throw new BadRequestException(
+              'La fecha límite de la sub-tarea no puede exceder la fecha de la tarea principal.',
+            );
+          }
+        }
+      }
+
+      // Create the backlog item
+      return tx.backlogItem.create({
+        data: {
+          ...rest,
+          dueDate: rest.dueDate ? new Date(rest.dueDate) : undefined,
+          linkedWbsActivityId: wbsActivityIdToLink || rest.linkedWbsActivityId,
+          sprintItems: sprintId
+            ? {
+                create: {
+                  sprintId,
+                  boardStatus: 'TODO',
+                },
+              }
+            : undefined,
+        },
+      });
     });
   }
 
@@ -139,14 +225,50 @@ export class ScrumService {
         },
         include: {
           assigneeUser: true,
+          assigneeContractorResource: true,
           contractor: true,
           sprintItems: { include: { sprint: true } },
+          parent: {
+            include: {
+              contractor: true,
+              linkedWbsActivity: {
+                include: {
+                  contractor: true,
+                  parent: { include: { contractor: true } },
+                },
+              },
+            },
+          },
+          linkedWbsActivity: {
+            include: {
+              contractor: true,
+              parent: { include: { contractor: true } },
+            },
+          },
           children: {
             // Include tasks for Stories
             include: {
               assigneeUser: true,
+              assigneeContractorResource: true,
               contractor: true,
               sprintItems: { include: { sprint: true } },
+              parent: {
+                include: {
+                  contractor: true,
+                  linkedWbsActivity: {
+                    include: {
+                      contractor: true,
+                      parent: { include: { contractor: true } },
+                    },
+                  },
+                },
+              },
+              linkedWbsActivity: {
+                include: {
+                  contractor: true,
+                  parent: { include: { contractor: true } },
+                },
+              },
             },
           },
         },
@@ -181,7 +303,7 @@ export class ScrumService {
           projectId: String(projectId),
           type: 'WBS', // distinct type
           title: activity.name,
-          description: `Desde Cronograma: ${activity.code || ''}`,
+          description: undefined,
           status: 'PENDING_PLANNING',
           priority: 3,
           linkedWbsActivityId: activity.id,
@@ -219,7 +341,7 @@ export class ScrumService {
         projectId: String(projectId),
         type: 'TASK',
         title: activity.name,
-        description: `Imported from Gantt activity: ${activity.code || ''}`,
+        description: undefined,
         status: 'BACKLOG',
         priority: 3,
         linkedWbsActivityId: String(activityId),
@@ -275,9 +397,25 @@ export class ScrumService {
             backlogItem: {
               include: {
                 assigneeUser: true,
+                assigneeContractorResource: true,
                 contractor: true,
-                parent: { include: { contractor: true } },
-                linkedWbsActivity: { include: { contractor: true } },
+                parent: {
+                  include: {
+                    contractor: true,
+                    linkedWbsActivity: {
+                      include: {
+                        contractor: true,
+                        parent: { include: { contractor: true } },
+                      },
+                    },
+                  },
+                },
+                linkedWbsActivity: {
+                  include: {
+                    contractor: true,
+                    parent: { include: { contractor: true } },
+                  },
+                },
               },
             },
           },
@@ -293,7 +431,10 @@ export class ScrumService {
         items: sprint.items.filter((item) => {
           const itemContractor =
             item.backlogItem.contractorId ||
-            item.backlogItem.linkedWbsActivity?.contractorId;
+            item.backlogItem.linkedWbsActivity?.contractorId ||
+            item.backlogItem.linkedWbsActivity?.parent?.contractorId ||
+            item.backlogItem.parent?.contractorId ||
+            item.backlogItem.parent?.linkedWbsActivity?.contractorId;
           return itemContractor === contractorIdFilter;
         }),
       }));
@@ -405,18 +546,31 @@ export class ScrumService {
     });
   }
 
-  async assignBacklogItem(backlogItemId: string, userId: string) {
+  async assignBacklogItem(
+    backlogItemId: string,
+    assigneeId?: string,
+    assigneeType?: 'USER' | 'CONTRACTOR_RESOURCE',
+  ) {
+    const isUser = assigneeType === 'USER';
+    const isResource = assigneeType === 'CONTRACTOR_RESOURCE';
+
     // 1. Update Backlog Item
     const updatedItem = await this.prisma.backlogItem.update({
       where: { id: backlogItemId },
-      data: { assigneeUserId: userId },
+      data: {
+        assigneeUserId: isUser ? assigneeId : null,
+        assigneeContractorResourceId: isResource ? assigneeId : null,
+      },
     });
 
-    // 2. Sync with WBS Activity if linked
+    // 2. Sync with WBS Activity if linked (only for USER type currently supported in WBS)
     if (updatedItem.linkedWbsActivityId) {
       await this.prisma.projectActivity.update({
         where: { id: updatedItem.linkedWbsActivityId },
-        data: { assignedUserId: userId },
+        data: {
+          assignedUserId: isUser ? assigneeId : null,
+          // WBS might need crewLeaderId updated for resources if applicable, but for now we follow the existing logic
+        },
       });
     }
 
@@ -760,12 +914,6 @@ export class ScrumService {
       where: { projectId },
     });
 
-    const itemsByStatusRaw = await this.prisma.backlogItem.groupBy({
-      by: ['status'],
-      where: { projectId },
-      _count: true,
-    });
-
     // Map DB status to simplified view
     const itemsByStatus = {
       todo: 0,
@@ -774,16 +922,24 @@ export class ScrumService {
       done: 0,
     };
 
-    itemsByStatusRaw.forEach((group) => {
-      if (['BACKLOG', 'TODO', 'READY'].includes(group.status))
-        itemsByStatus.todo += group._count;
-      if (['IN_PROGRESS', 'IN_SPRINT'].includes(group.status))
-        itemsByStatus.inProgress += group._count;
-      if (['REVIEW', 'IN_REVIEW'].includes(group.status))
-        itemsByStatus.review += group._count;
-      if (['DONE', 'COMPLETED', 'CLOSED'].includes(group.status))
-        itemsByStatus.done += group._count;
-    });
+    if (activeSprint) {
+      const itemsByStatusRaw = await this.prisma.sprintItem.groupBy({
+        by: ['boardStatus'],
+        where: { sprintId: activeSprint.id },
+        _count: true,
+      });
+
+      itemsByStatusRaw.forEach((group) => {
+        if (['TODO'].includes(group.boardStatus))
+          itemsByStatus.todo += group._count;
+        if (['IN_PROGRESS'].includes(group.boardStatus))
+          itemsByStatus.inProgress += group._count;
+        if (['IN_REVIEW'].includes(group.boardStatus))
+          itemsByStatus.review += group._count;
+        if (['DONE'].includes(group.boardStatus))
+          itemsByStatus.done += group._count;
+      });
+    }
 
     const openImpediments = await this.prisma.impediment.count({
       where: { projectId, status: 'OPEN' },
@@ -894,6 +1050,7 @@ export class ScrumService {
       },
       include: {
         assigneeUser: true,
+        assigneeContractorResource: true,
         contractor: true,
       },
       orderBy: { priority: 'asc' },

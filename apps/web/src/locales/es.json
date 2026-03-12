@@ -141,5 +141,9 @@
       "progress": "Progreso",
       "status": "Estado"
     }
+  },
+  "contractors": {
+    "saveSuccess": "Contratista guardado exitosamente",
+    "saveError": "Error al guardar el contratista"
   }
 }

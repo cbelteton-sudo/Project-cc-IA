@@ -1,6 +1,5 @@
 import {
   CalendarClock,
-  ArrowRight,
   MoreVertical,
   Calendar,
   Briefcase,
@@ -63,7 +62,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
   return (
     <div
       className="group bg-white rounded-xl shadow-sm hover:shadow-md border border-gray-200 transition-all duration-200 flex flex-col h-full cursor-pointer hover:border-field-blue/30"
-      onClick={() => navigate(`/scrum/${project.id}`)}
+      onClick={() => navigate(`/projects/${project.id}/scrum`)}
     >
       <div className="p-5 flex flex-col flex-1">
         {/* Header */}
@@ -92,7 +91,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/scrum/${project.id}`);
+                  navigate(`/projects/${project.id}/scrum`);
                 }}
               >
                 Ver detalles
@@ -100,7 +99,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/scrum/${project.id}/settings`);
+                  navigate(`/projects/${project.id}/settings`);
                 }}
               >
                 Configuración

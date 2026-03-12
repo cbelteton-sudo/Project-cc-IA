@@ -13,6 +13,7 @@ export interface Project {
   endDate?: string;
   globalBudget?: number;
   managerName?: string;
+  constructorName?: string;
   projectManagerId?: string;
   mainContractorId?: string;
   enableScrum?: boolean;
@@ -20,6 +21,7 @@ export interface Project {
   enableFieldManagement?: boolean;
   enablePMDashboard?: boolean;
   enablePunchListPro?: boolean;
+  enableMaterials?: boolean;
 }
 
 export const useProjects = () => {

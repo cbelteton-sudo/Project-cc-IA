@@ -7,12 +7,13 @@ import {
   Briefcase,
   BarChart2,
   AlertTriangle,
-  CalendarClock,
   LayoutDashboard,
   Calendar,
   Activity,
   HardHat,
   FileText,
+  Boxes,
+  TrendingUp,
   type LucideIcon,
 } from 'lucide-react';
 import type { User } from '../context/AuthContext';
@@ -56,7 +57,6 @@ export const getNavItems = (
   const sections: NavSection[] = [];
 
   const isOperator = projectRole === 'FIELD_OPERATOR';
-  const isGlobalOperator = user.projectMembers?.some((m) => m.role === 'FIELD_OPERATOR');
 
   // --- ORG CONTEXT ---
   // 1. Dashboard & Projects (Common) - Hide when in a specific project
@@ -64,25 +64,21 @@ export const getNavItems = (
     const mainItems: NavItem[] = [
       { label: 'Inicio', to: '/', icon: Home, exact: true },
       { label: 'Proyectos', to: '/projects', icon: FolderKanban },
-      {
-        label: 'Gestión de Campo',
-        to: isGlobalOperator ? '/field/operator' : '/field/dashboard',
-        icon: HardHat,
-      },
     ];
     sections.push({ items: mainItems });
   }
 
-  // 2. Org Management (Admin/PM only)
+  // 2. Org Management (Admin/Director only)
   if (
     !isProjectContext &&
-    ['ADMIN', 'ADMINISTRADOR', 'PM', 'DIRECTOR', 'PROJECT_MANAGER'].includes(role)
+    ['ADMIN', 'ADMINISTRADOR', 'DIRECTOR', 'DIRECTOR_PMO'].includes(role)
   ) {
     sections.push({
       title: 'Organización',
       items: [
         { label: 'Usuarios', to: '/admin/users', icon: Users },
-        { label: 'Contratistas', to: '/admin/contractors', icon: Briefcase },
+        { label: 'Constructores', to: '/admin/contractors', icon: Briefcase },
+        { label: 'Materiales', to: '/admin/materials', icon: Boxes },
         { label: 'Configuración', to: '/settings', icon: Settings },
         { label: 'Reportes', to: '/reports', icon: BarChart2 },
       ],
@@ -102,6 +98,7 @@ export const getNavItems = (
     role === 'PM' ||
     role === 'PROJECT_MANAGER' ||
     projectRole === 'PROJECT_MANAGER' ||
+    projectRole === 'PM' ||
     projectRole === 'SUPERVISOR';
   const isExecutive = role === 'DIRECTOR' || projectRole === 'EXECUTIVE_VIEWER';
   // isOperator is already defined above
@@ -120,6 +117,14 @@ export const getNavItems = (
       to: `/projects/${projectId}/plan`,
       icon: Calendar,
     });
+
+    if (currentProject?.enableScrum === true) {
+      commonItems.push({
+        label: 'Semanas de Obra (Agile)',
+        to: `/projects/${projectId}/scrum`,
+        icon: FolderKanban,
+      });
+    }
   }
 
   sections.push({ title: 'Contexto de Proyecto', items: commonItems });
@@ -128,16 +133,25 @@ export const getNavItems = (
   const fieldItems: NavItem[] = [];
 
   if (currentProject?.enableFieldManagement === true) {
+    if (isOperator) {
+      fieldItems.push({
+        label: 'Dashboard de Campo',
+        to: `/projects/${projectId}/field-operator`,
+        icon: LayoutDashboard,
+      });
+    } else if (isProjectAdmin || isPM || isExecutive) {
+      fieldItems.push({
+        label: 'Dashboard de Campo',
+        to: `/projects/${projectId}/field-dashboard`,
+        icon: LayoutDashboard,
+      });
+    }
     fieldItems.push({ label: 'Actividad', to: `/projects/${projectId}/activity`, icon: Activity });
     fieldItems.push({
       label: 'Punch List',
       to: `/projects/${projectId}/punch`,
       icon: AlertTriangle,
     });
-  }
-
-  if (currentProject?.enableScrum === true) {
-    fieldItems.push({ label: 'Semanas de Obra', to: `/scrum/${projectId}`, icon: CalendarClock });
   }
 
   if (fieldItems.length > 0) {
@@ -150,6 +164,15 @@ export const getNavItems = (
 
     if (currentProject?.enableBudget === true) {
       mgmtItems.push({ label: 'Presupuesto', to: `/projects/${projectId}/budget`, icon: Banknote });
+    }
+
+    if (currentProject?.enableMaterials === true) {
+      mgmtItems.push({ label: 'Materiales', to: `/projects/${projectId}/materials`, icon: Boxes });
+      mgmtItems.push({
+        label: 'Control Financiero',
+        to: `/projects/${projectId}/financials`,
+        icon: TrendingUp,
+      });
     }
 
     mgmtItems.push({ label: 'Reportes', to: `/projects/${projectId}/reports`, icon: FileText });

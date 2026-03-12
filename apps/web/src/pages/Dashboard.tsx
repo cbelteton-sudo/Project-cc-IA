@@ -67,7 +67,7 @@ export const Dashboard = () => {
 
   // Redirect PMs and Operators who land here by accident (e.g. direct URL)
   useEffect(() => {
-    if (user?.role === 'PM') {
+    if (user?.role === 'PM' || user?.role === 'PROJECT_MANAGER') {
       navigate('/field/dashboard', { replace: true });
     } else if (
       user?.projectMembers?.some((m: { role: string }) =>
@@ -94,7 +94,7 @@ export const Dashboard = () => {
   if (isLoading) return <div className="p-8 text-center text-gray-500">{t('common.loading')}</div>;
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 pb-20">
+    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 pb-8">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-800">
@@ -148,19 +148,19 @@ export const Dashboard = () => {
         {/* FIELD MODE CARD */}
         <div
           onClick={() => navigate('/field')}
-          className="bg-white p-6 rounded-2xl shadow-sm border border-blue-200 flex items-center justify-between cursor-pointer hover:shadow-md transition-all group"
+          className="bg-white p-6 rounded-2xl shadow-sm border border-brand-ambar/30 flex items-center justify-between cursor-pointer hover:shadow-md transition-all group"
         >
           <div>
-            <p className="text-blue-500 text-sm font-medium mb-1">Modo Campo</p>
-            <h3 className="text-xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+            <p className="text-brand-ambar text-sm font-medium mb-1">Modo Campo</p>
+            <h3 className="text-xl font-bold text-gray-800 group-hover:text-brand-ambar transition-colors">
               Ir a Campo
             </h3>
             <p className="text-xs mt-2 text-gray-500">Reportes, Bitácora y Avance</p>
           </div>
-          <div className="p-3 rounded-xl bg-blue-100 group-hover:bg-blue-600 transition-colors">
+          <div className="p-3 rounded-xl bg-brand-ambar/10 group-hover:bg-brand-ambar transition-colors">
             <Activity
               size={24}
-              className="text-blue-600 group-hover:text-white transition-colors"
+              className="text-brand-ambar group-hover:text-white transition-colors"
             />
           </div>
         </div>

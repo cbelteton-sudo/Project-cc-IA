@@ -1,16 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
-import { Activity, AlertCircle, BarChart3, Calendar, Clock, Target } from 'lucide-react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { Activity, AlertCircle, Calendar, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo } from 'react';
@@ -62,18 +52,6 @@ export function ScrumMetricsTab({ projectId }: { projectId: string }) {
         bg: 'bg-blue-50',
       },
       {
-        label: 'Presupuesto',
-        value: new Intl.NumberFormat('es-GT', {
-          style: 'currency',
-          currency: 'GTQ',
-          maximumFractionDigits: 0,
-        }).format(data.projectBudget),
-        subtext: 'Presupuesto Total',
-        icon: BarChart3,
-        color: 'text-purple-500',
-        bg: 'bg-purple-50',
-      },
-      {
         label: 'SPI (Cronograma)',
         value: data.spi.toFixed(2),
         subtext: data.spi >= 1 ? 'Adelantado/A tiempo' : 'Atrasado',
@@ -90,15 +68,7 @@ export function ScrumMetricsTab({ projectId }: { projectId: string }) {
         bg: data.cpi >= 1 ? 'bg-green-50' : 'bg-orange-50',
       },
       {
-        label: 'Velocity',
-        value: `${data.velocity} pts`,
-        subtext: 'Promedio ult. 3 sprints',
-        icon: Target,
-        color: 'text-indigo-500',
-        bg: 'bg-indigo-50',
-      },
-      {
-        label: 'Impedimentos',
+        label: 'Bloqueos activos',
         value: data.openImpediments,
         subtext: data.openImpediments > 0 ? 'Requiere atención' : 'Sin bloqueos',
         icon: AlertCircle,
@@ -118,7 +88,7 @@ export function ScrumMetricsTab({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-6 pt-4">
       {/* KPI GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiCards.map((card, idx) => (
           <Card
             key={idx}
@@ -142,54 +112,12 @@ export function ScrumMetricsTab({ projectId }: { projectId: string }) {
 
       {/* CHARTS ROW */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <BarChart3 className="h-5 w-5 text-gray-500" />
-              Historial de Velocity
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.recentSprints}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: '8px',
-                      border: 'none',
-                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                    }}
-                  />
-                  <Legend />
-                  <Bar
-                    dataKey="planned"
-                    name="Planificado"
-                    fill="#e2e8f0"
-                    radius={[4, 4, 0, 0]}
-                    barSize={30}
-                  />
-                  <Bar
-                    dataKey="completed"
-                    name="Completado"
-                    fill="#3b82f6"
-                    radius={[4, 4, 0, 0]}
-                    barSize={30}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* STATUS DISTRIBUTION */}
-        <Card className="shadow-sm">
+        <Card className="shadow-sm lg:col-span-3">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Clock className="h-5 w-5 text-gray-500" />
-              Estado del Backlog
+              Estado del Sprint Activo
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -225,14 +153,13 @@ export function ScrumMetricsTab({ projectId }: { projectId: string }) {
 function DashboardSkeleton() {
   return (
     <div className="space-y-6 pt-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
           <Skeleton key={i} className="h-32 w-full rounded-xl" />
         ))}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Skeleton className="h-[400px] lg:col-span-2 rounded-xl" />
-        <Skeleton className="h-[400px] rounded-xl" />
+      <div className="grid grid-cols-1 gap-6">
+        <Skeleton className="h-[200px] rounded-xl" />
       </div>
     </div>
   );

@@ -62,16 +62,34 @@ export const SprintBoard = ({ projectId }: { projectId: string }) => {
     queryFn: async () => (await api.get(`/scrum/sprints/${projectId}`)).data,
   });
 
-  const { data: users } = useQuery({
-    queryKey: ['users'],
-    queryFn: async () => (await api.get(`/users`)).data,
+  const { data: projectMembers } = useQuery({
+    queryKey: ['projects', projectId, 'members'],
+    queryFn: async () => (await api.get(`/projects/${projectId}/members`)).data,
   });
+
+  const users =
+    projectMembers?.map((pm: any) => ({
+      id: pm.user?.id || pm.id,
+      name: pm.user?.name || pm.name,
+      role: pm.role,
+    })) || [];
+
+  console.log('SprintBoard projectMembers:', projectMembers);
+  console.log('SprintBoard users mapped:', users);
 
   const activeSprint = sprints?.find((s: any) => s.status === 'ACTIVE');
 
   const assignMutation = useMutation({
-    mutationFn: async ({ itemId, userId }: { itemId: string; userId: string }) => {
-      return api.patch(`/scrum/backlog/${itemId}/assign`, { userId });
+    mutationFn: async ({
+      itemId,
+      assigneeId,
+      assigneeType,
+    }: {
+      itemId: string;
+      assigneeId: string;
+      assigneeType: 'USER' | 'CONTRACTOR_RESOURCE';
+    }) => {
+      return api.patch(`/scrum/backlog/${itemId}/assign`, { assigneeId, assigneeType });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scrum', 'sprints', projectId] });
@@ -130,7 +148,15 @@ export const SprintBoard = ({ projectId }: { projectId: string }) => {
 
     if (activeItem && targetStatus && targetStatus !== activeItem.boardStatus) {
       updateStatusMutation.mutate({ itemId: activeId, status: targetStatus });
-      toast.success(`Item movido a ${targetStatus.replace('_', ' ')}`);
+      const translatedStatus =
+        {
+          TODO: 'POR HACER',
+          IN_PROGRESS: 'EN PROGRESO',
+          IN_REVIEW: 'EN REVISIÓN',
+          DONE: 'FINALIZADO',
+        }[targetStatus] || targetStatus;
+
+      toast.success(`Item movido a ${translatedStatus}`);
     }
 
     setActiveId(null);
@@ -152,8 +178,23 @@ export const SprintBoard = ({ projectId }: { projectId: string }) => {
     });
   };
 
-  const handleAssign = (itemId: string, userId: string) => {
-    assignMutation.mutate({ itemId, userId });
+  const handleAssign = (
+    itemId: string,
+    assigneeId: string,
+    assigneeType: 'USER' | 'CONTRACTOR_RESOURCE',
+  ) => {
+    console.log('🔥🔥 EXPERIMENTAL TRACE: handleAssign called in SprintBoard!', {
+      itemId,
+      assigneeId,
+      assigneeType,
+    });
+    assignMutation.mutate(
+      { itemId, assigneeId, assigneeType },
+      {
+        onSuccess: () => console.log('🔥🔥 EXPERIMENTAL TRACE: assignMutation success!'),
+        onError: (err) => console.error('🔥🔥 EXPERIMENTAL TRACE: assignMutation error!', err),
+      },
+    );
   };
 
   // Handler for manual moves (fallback)
@@ -233,7 +274,7 @@ export const SprintBoard = ({ projectId }: { projectId: string }) => {
     : null;
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col min-h-0 flex-1 overflow-hidden bg-slate-50/30 p-4 sm:p-6 rounded-xl border border-gray-200">
       <div className="flex justify-between items-center mb-4 px-2">
         <div>
           <h2 className="font-bold text-xl text-gray-800 flex items-center gap-2">
@@ -241,9 +282,24 @@ export const SprintBoard = ({ projectId }: { projectId: string }) => {
             <span className="text-xs font-normal text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
               Activo
             </span>
+            <span className="text-sm font-normal text-gray-500 ml-2">
+              {new Date(activeSprint.startDate).toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: 'short',
+              })}{' '}
+              al{' '}
+              {new Date(activeSprint.endDate).toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              })}
+            </span>
           </h2>
-          <div className="text-sm text-gray-500 mt-1">
-            Objetivo: <span className="italic">{activeSprint.goal || 'Sin objetivo definido'}</span>
+          <div className="text-sm text-gray-500 mt-1 flex flex-col gap-0.5">
+            <p>
+              Objetivo:{' '}
+              <span className="italic">{activeSprint.goal || 'Sin objetivo definido'}</span>
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -287,7 +343,6 @@ export const SprintBoard = ({ projectId }: { projectId: string }) => {
               column={col}
               items={getItems(col.id)}
               users={users}
-              onAssign={handleAssign}
               onReport={handleReport}
               onViewLog={handleViewLog}
               onMoveUpdated={handleMoveUpdated}
@@ -302,7 +357,6 @@ export const SprintBoard = ({ projectId }: { projectId: string }) => {
                 item={activeDraggingItem}
                 users={users}
                 columnId={activeDraggingItem.boardStatus}
-                onAssign={(userId) => handleAssign(activeDraggingItem.backlogItem.id, userId)}
                 onReport={handleReport}
                 onViewLog={handleViewLog}
                 onMoveUpdated={handleMoveUpdated}

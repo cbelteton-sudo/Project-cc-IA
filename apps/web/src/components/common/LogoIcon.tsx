@@ -8,13 +8,13 @@ export const LogoIcon = ({ className = 'w-8 h-8' }: { className?: string }) => (
       width="90"
       height="90"
       rx="20"
+      fill="white"
       stroke="#F59E0B"
       strokeWidth="6"
-      fill="white"
     />
     <rect x="20" y="20" width="18" height="28" rx="6" fill="#F59E0B" />
-    <rect x="44" y="20" width="38" height="28" rx="6" fill="#1E293B" />
-    <rect x="20" y="52" width="18" height="28" rx="6" fill="#94A3B8" />
+    <rect x="44" y="20" width="38" height="28" rx="6" fill="#FFFFFF" />
+    <rect x="20" y="52" width="18" height="28" rx="6" fill="#F1F5F9" />
     <path
       d="M46 64 L56 74 L80 48"
       stroke="#F59E0B"

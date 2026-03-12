@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { X, Calendar } from 'lucide-react';
 import type { Project } from '../../hooks/useProjects';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 interface ProjectSettingsModalProps {
   isOpen: boolean;
@@ -24,17 +25,21 @@ interface SettingsForm {
   enableScrum?: boolean;
   enableBudget?: boolean;
   enableFieldManagement?: boolean;
+  enableMaterials?: boolean;
 }
 
 export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettingsModalProps) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = ['ADMIN', 'PLATFORM_ADMIN', 'DIRECTOR_PMO'].includes(user?.role || '');
   const { register, handleSubmit, reset, watch } = useForm<SettingsForm>({
     defaultValues: {
       currency: 'GTQ',
       enableBudget: false,
       enableFieldManagement: false,
+      enableMaterials: false,
     },
   });
 
@@ -54,15 +59,14 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
   // Fetch lists
   const { data: projectMembers } = useQuery({
     queryKey: ['project-members', project?.id],
-    queryFn: async () => (await api.get(`/admin/projects/${project?.id}/members`)).data,
+    queryFn: async () => (await api.get(`/projects/${project?.id}/members`)).data,
     enabled: isOpen && !!project?.id,
   });
 
   const { data: contractors } = useQuery({
-    queryKey: ['project-contractors', project?.id],
-    queryFn: async () =>
-      (await api.get('/contractors', { params: { projectId: project?.id } })).data,
-    enabled: isOpen && !!project?.id,
+    queryKey: ['global-constructors'],
+    queryFn: async () => (await api.get('/contractors')).data,
+    enabled: isOpen,
   });
 
   useEffect(() => {
@@ -89,6 +93,7 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
         enableScrum: project.enableScrum || false,
         enableBudget: project.enableBudget || false,
         enableFieldManagement: project.enableFieldManagement || false,
+        enableMaterials: project.enableMaterials || false,
       });
     }
   }, [project, reset, isOpen, projectMembers, contractors]);
@@ -99,8 +104,8 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
       const payload = {
         ...data,
         // Handle empty dates (send null or undefined if empty string)
-        startDate: data.startDate ? data.startDate : null,
-        endDate: data.endDate ? data.endDate : null,
+        startDate: data.startDate ? `${data.startDate}T12:00:00.000Z` : null,
+        endDate: data.endDate ? `${data.endDate}T12:00:00.000Z` : null,
         // Ensure number
         globalBudget: data.globalBudget ? Number(data.globalBudget) : 0,
         projectManagerId: data.projectManagerId || null,
@@ -108,6 +113,7 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
         enableScrum: data.enableScrum,
         enableBudget: data.enableBudget,
         enableFieldManagement: data.enableFieldManagement,
+        enableMaterials: data.enableMaterials,
       };
 
       return api.patch(`/projects/${project.id}`, payload);
@@ -264,6 +270,22 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
               </label>
             </div>
+
+            {/* Materials Toggle */}
+            <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50">
+              <div>
+                <span className="block text-sm font-medium text-gray-900">
+                  Gestión de Materiales
+                </span>
+                <span className="block text-xs text-gray-500">
+                  Control de inventario de ingresos y consumos
+                </span>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" {...register('enableMaterials')} className="sr-only peer" />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
           </div>
 
           {/* Responsables Section */}
@@ -271,14 +293,14 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Contratista responsable *
+                  Construye:
                 </label>
                 <select
-                  {...register('mainContractorId', { required: true })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                  required
+                  {...register('mainContractorId')}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-gray-100 disabled:text-gray-500"
+                  disabled={!isAdmin}
                 >
-                  <option value="">-- Seleccione contratista --</option>
+                  <option value="">-- Seleccione constructor --</option>
                   {contractors?.map((c: { id: string; name: string }) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -292,7 +314,8 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
                 </label>
                 <select
                   {...register('projectManagerId')}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-gray-100 disabled:text-gray-500"
+                  disabled={!isAdmin}
                 >
                   <option value="">-- Sin asignar --</option>
                   {projectMembers?.map(

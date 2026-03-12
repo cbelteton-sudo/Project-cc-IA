@@ -1,4 +1,5 @@
 import { api } from '../lib/api';
+import type { UserDTO } from './users';
 
 export interface Project {
   id: string;
@@ -19,6 +20,7 @@ export interface Project {
   enableScrum?: boolean;
   enableBudget?: boolean;
   enableFieldManagement?: boolean;
+  enableMaterials?: boolean;
 }
 
 export interface CreateProjectDTO {
@@ -33,6 +35,7 @@ export interface CreateProjectDTO {
   enableScrum?: boolean;
   enableBudget?: boolean;
   enableFieldManagement?: boolean;
+  enableMaterials?: boolean;
   currency?: string;
 }
 
@@ -55,5 +58,11 @@ export const projectsService = {
   update: async (id: string, project: Partial<CreateProjectDTO>) => {
     const { data } = await api.patch<Project>(`/projects/${id}`, project);
     return data;
+  },
+
+  getMembers: async (id: string) => {
+    const { data } = await api.get<{ user: UserDTO }[]>(`/projects/${id}/members`);
+    // Extract the user object from the ProjectMember relation
+    return data.map((member) => member.user);
   },
 };

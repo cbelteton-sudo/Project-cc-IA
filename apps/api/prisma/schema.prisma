@@ -7,1235 +7,999 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- CORE ---
-
 model Tenant {
-  id        String   @id @default(uuid())
-  name      String
-  slug      String   @unique
-  logoUrl   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  users     User[]
-  projects  Project[]
-  auditLogs AuditLog[]
-  materials Material[]
-
-  // Phase 9
+  id                    String                        @id @default(uuid())
+  name                  String
+  slug                  String                        @unique
+  logoUrl               String?
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @updatedAt
+  auditLogs             AuditLog[]
   contractors           Contractor[]
   contractorAssignments ContractorProjectAssignment[]
   contractorResources   ContractorResource[]
+  materials             Material[]
+  projects              Project[]
   projectActivities     ProjectActivity[]
   projectMilestones     ProjectMilestone[]
+  users                 User[]
 }
 
 model User {
-  id       String  @id @default(uuid())
-  username String? @unique
-  email    String? @unique // Nullable for FieldOperators
-  password String? // Nullable for invited users, but also used for FieldOperator hash
-  name     String?
-  phone    String?
-  role     String  @default("USER") // System Role: ADMIN, PM, USER (Legacy/Global)
-  status   String  @default("ACTIVE") // INVITED, ACTIVE, DISABLED
-
-  invitationToken   String?   @unique
-  invitationExpires DateTime?
-
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  contractorId String?
-  contractor   Contractor? @relation(fields: [contractorId], references: [id])
-
-  // Phase 12: Project Specific Users
-  projectId       String?
-  projectSpecific Project? @relation("ProjectSpecificUsers", fields: [projectId], references: [id])
-
-  auditLogs          AuditLog[]
-  assignedActivities ProjectActivity[]
-  ledActivities      ProjectActivity[] @relation("CrewLeader")
-  notifications      Notification[]
-
-  // Scrum Relations
+  id                   String            @id @default(uuid())
+  username             String?           @unique
+  email                String?           @unique
+  password             String?
+  name                 String?
+  phone                String?
+  role                 String            @default("USER")
+  status               String            @default("ACTIVE")
+  invitationToken      String?           @unique
+  invitationExpires    DateTime?
+  tenantId             String
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  contractorId         String?
+  projectId            String?
+  auditLogs            AuditLog[]
   assignedBacklogItems BacklogItem[]
   dailyUpdates         DailyUpdate[]
+  impediments          Impediment[]      @relation("ImpedimentOwner")
+  notifications        Notification[]
+  managedProjects      Project[]         @relation("ProjectManager")
+  assignedActivities   ProjectActivity[]
+  ledActivities        ProjectActivity[] @relation("CrewLeader")
+  projectMemberships   ProjectMember[]
+  approvedPOs          PurchaseOrder[]   @relation("POApprover")
+  sessions             Session[]
   createdSprints       Sprint[]
-  impediments          Impediment[]  @relation("ImpedimentOwner")
+  timesheets           Timesheet[]
+  contractor           Contractor?       @relation(fields: [contractorId], references: [id])
+  projectSpecific      Project?          @relation("ProjectSpecificUsers", fields: [projectId], references: [id])
+  tenant               Tenant            @relation(fields: [tenantId], references: [id])
 
-  // Budget Module
-  approvedPOs PurchaseOrder[] @relation("POApprover")
-  timesheets  Timesheet[]
-
-  // Phase 0 Relations
-  sessions           Session[]
-  projectMemberships ProjectMember[]
-  managedProjects    Project[]       @relation("ProjectManager")
+  costLedgerEntries    CostLedger[]
+  materialConsumptions ActivityMaterial[] @relation("ReportedBy")
 }
 
 model AuditLog {
-  id         String  @id @default(uuid())
+  id         String   @id @default(uuid())
   action     String
-  resource   String  @default("UNKNOWN") // Resource Type (e.g. PROJECT, TASK)
-  resourceId String? // ID of the resource
-
-  // Tenancy
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
-
-  // Context
-  projectId String?
-  project   Project? @relation(fields: [projectId], references: [id])
-
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id])
-
-  // Data
-  metadata String  @default("{}") // JSON string (Legacy)
-  diff     String? // JSON string of changes {before, after}
-
-  ipAddress String?
-  userAgent String?
-
-  createdAt DateTime @default(now())
+  resource   String   @default("UNKNOWN")
+  resourceId String?
+  tenantId   String
+  projectId  String?
+  userId     String?
+  metadata   String   @default("{}")
+  diff       String?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  project    Project? @relation(fields: [projectId], references: [id])
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id])
 }
-
-// --- PROJECT MANAGEMENT ---
 
 model Project {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  code        String?
-  status      String   @default("ACTIVE")
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
-  currency    String   @default("GTQ")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  budgets          Budget[]
-  purchaseOrders   PurchaseOrder[]
-  materialRequests MaterialRequest[]
-  invoices         Invoice[]
-  rfis             RFI[]
-  inspections      Inspection[]
-  changeOrders     ChangeOrder[]
-  rfqs             RFQ[]
-  subcontracts     Subcontract[]
-
-  // Phase 9 Extensions
-  startDate    DateTime?
-  endDate      DateTime?
-  globalBudget Float?
-
-  // New Fields for Create Project Form
-  clientName       String?
-  mainContractorId String?
-  mainContractor   Contractor? @relation("ProjectMainContractor", fields: [mainContractorId], references: [id])
-  projectManagerId String?
-  projectManager   User?       @relation("ProjectManager", fields: [projectManagerId], references: [id])
-
-  // Phase 0: Security & RBAC
-  members ProjectMember[]
-
-  activities            ProjectActivity[]
-  milestones            ProjectMilestone[]
+  id                    String                        @id @default(uuid())
+  name                  String
+  description           String?
+  code                  String?
+  status                String                        @default("ACTIVE")
+  tenantId              String
+  currency              String                        @default("GTQ")
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @updatedAt
+  startDate             DateTime?
+  endDate               DateTime?
+  globalBudget          Float?
+  clientName            String?
+  mainContractorId      String?
+  projectManagerId      String?
+  enableReports         Boolean                       @default(false)
+  enablePMDashboard     Boolean                       @default(false)
+  enableOfflineQueue    Boolean                       @default(false)
+  enablePunchListPro    Boolean                       @default(false)
+  enableGanttPro        Boolean                       @default(false)
+  enableScrum           Boolean                       @default(false)
+  enableBudget          Boolean                       @default(false)
+  enableFieldManagement Boolean                       @default(false)
+  enableMaterials       Boolean                       @default(false)
+  managerName           String?
+  auditLogs             AuditLog[]
+  backlogItems          BacklogItem[]
+  budgets               Budget[]
+  changeOrders          ChangeOrder[]
+  projectContractors    Contractor[]                  @relation("ProjectContractors")
   contractorAssignments ContractorProjectAssignment[]
-  projectContractors    Contractor[]                  @relation("ProjectContractors") // Phase 9.1: Project-scoped contractors
+  costLedger            CostLedger[]
+  dailyUpdates          DailyUpdate[]
+  expenses              Expense[]
+  fieldDailyReports     FieldDailyReport[]
+  fieldUpdates          FieldUpdate[]
+  impediments           Impediment[]
+  inspections           Inspection[]
+  invoices              Invoice[]
+  issues                Issue[]
+  materialRequests      MaterialRequest[]
+  measurementTemplates  MeasurementTemplate[]
+  photos                Photo[]
+  mainContractor        Contractor?                   @relation("ProjectMainContractor", fields: [mainContractorId], references: [id])
+  projectManager        User?                         @relation("ProjectManager", fields: [projectManagerId], references: [id])
+  tenant                Tenant                        @relation(fields: [tenantId], references: [id])
+  activities            ProjectActivity[]
+  members               ProjectMember[]
+  milestones            ProjectMilestone[]
+  purchaseOrders        PurchaseOrder[]
+  rfis                  RFI[]
+  rfqs                  RFQ[]
+  sprints               Sprint[]
+  subcontracts          Subcontract[]
+  timesheets            Timesheet[]
   projectSpecificUsers  User[]                        @relation("ProjectSpecificUsers")
-
-  // Phase 6: Field Management
-  fieldUpdates         FieldUpdate[]
-  photos               Photo[]
-  issues               Issue[]
-  measurementTemplates MeasurementTemplate[]
-  fieldDailyReports    FieldDailyReport[]
-
-  // Phase 16: Reports
-  enableReports Boolean @default(false)
-
-  // Phase 17: PM Dashboard
-  enablePMDashboard Boolean @default(false)
-
-  // Phase 18: Field Offline Queue
-  enableOfflineQueue Boolean @default(false)
-
-  // Punch List Pro
-  enablePunchListPro Boolean @default(false)
-
-  // Gantt Pro
-  enableGanttPro Boolean @default(false)
-
-  // Scrum Module
-  enableScrum Boolean @default(false)
-
-  // Budget & Financials Module
-  enableBudget Boolean @default(false)
-
-  // Field Management Module
-  enableFieldManagement Boolean @default(false)
-
-  managerName String? // Company managing the project
-
-  // Scrum Relations
-  backlogItems BacklogItem[]
-  sprints      Sprint[]
-  dailyUpdates DailyUpdate[]
-  impediments  Impediment[]
-
-  // Budget Module Relations
-  expenses   Expense[]
-  costLedger CostLedger[]
-  timesheets Timesheet[]
-  auditLogs  AuditLog[]
+  projectMaterials      ProjectMaterial[]
+  comments              Comment[]
+  notifications         Notification[]
 }
-
-// ... (Budget model starts here)
-
-// --- BUDGET ---
-
-// --- BUDGET ---
 
 model Budget {
   id          String       @id @default(uuid())
   projectId   String
-  project     Project      @relation(fields: [projectId], references: [id])
   name        String       @default("General Budget")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  project     Project      @relation(fields: [projectId], references: [id])
   budgetLines BudgetLine[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model BudgetLine {
-  id       String @id @default(uuid())
-  budgetId String
-  budget   Budget @relation(fields: [budgetId], references: [id])
-
-  // Control Account Definition
-  wbsActivityId String? // WBS Parent Activity
-  wbsActivity   ProjectActivity? @relation("BudgetLineWbs", fields: [wbsActivityId], references: [id])
-
-  costType String @default("MATERIAL") // ENUM: CostType
-
-  code String? // Optional custom code
-  name String // Descriptive name if no WBS, or auto-sync from WBS
-
-  // Amounts
-  budgetBase     Float @default(0) // Original Budget
-  budgetCO       Float @default(0) // Change Orders
-  budgetTransfer Float @default(0) // Internal transfers
-
-  // Legacy fields (keeping for compatibility if needed, otherwise deprecate)
-  amountParam     Float @default(0)
-  amountCommitted Float @default(0)
-  amountExecuted  Float @default(0)
-
-  purchaseOrderItems PurchaseOrderItem[]
+  id                 String              @id @default(uuid())
+  budgetId           String
+  wbsActivityId      String?
+  costType           String              @default("MATERIAL")
+  code               String?
+  name               String
+  budgetBase         Float               @default(0)
+  budgetCO           Float               @default(0)
+  budgetTransfer     Float               @default(0)
+  amountParam        Float               @default(0)
+  amountCommitted    Float               @default(0)
+  amountExecuted     Float               @default(0)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  budget             Budget              @relation(fields: [budgetId], references: [id])
+  wbsActivity        ProjectActivity?    @relation("BudgetLineWbs", fields: [wbsActivityId], references: [id])
+  changeOrderItems   ChangeOrderItem[]
+  expenses           Expense[]
   invoiceAllocations InvoiceAllocation[]
-  activities         ProjectActivity[]   @relation("BudgetLineActivities") // Activities linked to this budget line
-
-  expenses Expense[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  changeOrderItems ChangeOrderItem[]
+  activities         ProjectActivity[]   @relation("BudgetLineActivities")
+  purchaseOrderItems PurchaseOrderItem[]
 
   @@unique([budgetId, wbsActivityId, costType])
 }
 
 model CostLedger {
-  id        String  @id @default(uuid())
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id])
-
-  date DateTime @default(now())
-
-  wbsActivityId String?
-  wbsActivity   ProjectActivity? @relation(fields: [wbsActivityId], references: [id])
-
-  costType  String // ENUM: CostType
-  entryType String // ENUM: LedgerEntryType
-
-  amount Float // Positive = Increase cost/commit. Negative = Decrease.
-
-  referenceId String? // ID of PO, Invoice, Timesheet
-  description String?
-
-  createdAt DateTime @default(now())
+  id             String           @id @default(uuid())
+  projectId      String
+  date           DateTime         @default(now())
+  wbsActivityId  String?
+  costType       String
+  entryType      String
+  amount         Float
+  referenceId    String?
+  description    String?
+  documentUrl    String?
+  documentNumber String?
+  userId         String?
+  createdAt      DateTime         @default(now())
+  project        Project          @relation(fields: [projectId], references: [id])
+  wbsActivity    ProjectActivity? @relation(fields: [wbsActivityId], references: [id])
+  user           User?            @relation(fields: [userId], references: [id])
 }
-
-// --- PROCUREMENT ---
 
 model MaterialRequest {
   id        String   @id @default(uuid())
   projectId String
-  project   Project  @relation(fields: [projectId], references: [id])
   title     String
-  status    String   @default("DRAFT") // DRAFT, SUBMITTED, APPROVED, CLOSED
-  items     String // JSON string of requested items
+  status    String   @default("DRAFT")
+  items     String
   createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id])
 }
 
 model PurchaseOrder {
-  id        String  @id @default(uuid())
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id])
-  vendor    String? // Legacy string
-  total     Float   @default(0)
-
-  // New Status Enum (mapped)
-  status    String @default("DRAFT") // Keeping String for safety, but will use DocStatus values in code
-  docStatus String @default("DRAFT") // ENUM: DocStatus
-
-  items    PurchaseOrderItem[]
-  invoices Invoice[]
-
-  vendorId  String?
-  vendorRel Contractor? @relation(fields: [vendorId], references: [id])
-
+  id         String              @id @default(uuid())
+  projectId  String
+  vendor     String?
+  total      Float               @default(0)
+  status     String              @default("DRAFT")
+  docStatus  String              @default("DRAFT")
+  vendorId   String?
   approverId String?
-  approver   User?   @relation("POApprover", fields: [approverId], references: [id])
-
-  notes String?
-  date  DateTime @default(now())
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  notes      String?
+  date       DateTime            @default(now())
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  invoices   Invoice[]
+  approver   User?               @relation("POApprover", fields: [approverId], references: [id])
+  project    Project             @relation(fields: [projectId], references: [id])
+  vendorRel  Contractor?         @relation(fields: [vendorId], references: [id])
+  items      PurchaseOrderItem[]
 }
 
 model PurchaseOrderItem {
-  id              String        @id @default(uuid())
-  purchaseOrderId String
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
-  description     String
-  quantity        Float
-  unitPrice       Float
-  total           Float
-
-  budgetLineId String?
-  budgetLine   BudgetLine? @relation(fields: [budgetLineId], references: [id])
-
-  // Direct Link to Control Account if BudgetLine is not created yet? 
-  // Better to always use BudgetLine as the connector.
+  id                String           @id @default(uuid())
+  purchaseOrderId   String
+  description       String
+  quantity          Float
+  unitPrice         Float
+  total             Float
+  budgetLineId      String?
+  budgetLine        BudgetLine?      @relation(fields: [budgetLineId], references: [id])
+  purchaseOrder     PurchaseOrder    @relation(fields: [purchaseOrderId], references: [id])
+  projectMaterialId String?
+  projectMaterial   ProjectMaterial? @relation(fields: [projectMaterialId], references: [id])
 }
 
-// --- FINANCIALS ---
-
 model Invoice {
-  id              String         @id @default(uuid())
+  id              String              @id @default(uuid())
   projectId       String
-  project         Project        @relation(fields: [projectId], references: [id])
   purchaseOrderId String?
-  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
   vendor          String?
   invoiceNumber   String
   total           Float
-  currency        String         @default("USD")
-  exchangeRate    Float          @default(1.0)
+  currency        String              @default("USD")
+  exchangeRate    Float               @default(1.0)
   fileUrl         String?
-  ocrData         String? // JSON string of mock OCR results
-
-  status    String @default("PENDING")
-  docStatus String @default("DRAFT") // ENUM: DocStatus
-
-  date        DateTime
-  allocations InvoiceAllocation[]
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  ocrData         String?
+  status          String              @default("PENDING")
+  docStatus       String              @default("DRAFT")
+  date            DateTime
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  project         Project             @relation(fields: [projectId], references: [id])
+  purchaseOrder   PurchaseOrder?      @relation(fields: [purchaseOrderId], references: [id])
+  allocations     InvoiceAllocation[]
 }
 
 model InvoiceAllocation {
   id           String     @id @default(uuid())
   invoiceId    String
-  invoice      Invoice    @relation(fields: [invoiceId], references: [id])
   budgetLineId String
-  budgetLine   BudgetLine @relation(fields: [budgetLineId], references: [id])
   amount       Float
+  budgetLine   BudgetLine @relation(fields: [budgetLineId], references: [id])
+  invoice      Invoice    @relation(fields: [invoiceId], references: [id])
 }
 
 model Expense {
-  id        String  @id @default(uuid())
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id])
-
-  status      String   @default("DRAFT") // ENUM: DocStatus
-  date        DateTime
-  vendorName  String
-  amount      Float
-  description String?
-
-  // Link to WBS/CostType directly if no BudgetLine?
-  // Let's enforce linking to a BudgetLine for consistency in Reporting
+  id           String      @id @default(uuid())
+  projectId    String
+  status       String      @default("DRAFT")
+  date         DateTime
+  vendorName   String
+  amount       Float
+  description  String?
   budgetLineId String?
+  attachments  String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
   budgetLine   BudgetLine? @relation(fields: [budgetLineId], references: [id])
-
-  attachments String? // JSON
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  project      Project     @relation(fields: [projectId], references: [id])
 }
-
-// --- FIELD ---
 
 model RFI {
   id         String   @id @default(uuid())
   projectId  String
-  project    Project  @relation(fields: [projectId], references: [id])
-  code       String   @default("RFI-000") // e.g. RFI-001
+  code       String   @default("RFI-000")
   subject    String   @default("General")
   question   String
   answer     String?
-  status     String   @default("OPEN") // OPEN, CLOSED, ANSWERED
+  status     String   @default("OPEN")
   assignedTo String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  project    Project  @relation(fields: [projectId], references: [id])
 }
 
 model Inspection {
   id        String   @id @default(uuid())
   projectId String
-  project   Project  @relation(fields: [projectId], references: [id])
   date      DateTime
-  type      String   @default("QUALITY") // QUALITY, SAFETY, PROGRESS
-  status    String   @default("PENDING") // PASSED, FAILED, PENDING
+  type      String   @default("QUALITY")
+  status    String   @default("PENDING")
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  project   Project  @relation(fields: [projectId], references: [id])
 }
 
-// --- CHANGE MANAGEMENT ---
-
 model ChangeOrder {
-  id          String  @id @default(uuid())
+  id          String            @id @default(uuid())
   projectId   String
-  project     Project @relation(fields: [projectId], references: [id])
   title       String
   description String?
   amount      Float
-  status      String  @default("DRAFT") // DRAFT, PENDING, APPROVED, REJECTED
-
-  items ChangeOrderItem[]
-
-  approverId String?
-  approvedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status      String            @default("DRAFT")
+  approverId  String?
+  approvedAt  DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  project     Project           @relation(fields: [projectId], references: [id])
+  items       ChangeOrderItem[]
 }
 
 model ChangeOrderItem {
   id            String      @id @default(uuid())
   changeOrderId String
+  budgetLineId  String
+  description   String
+  amount        Float
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  budgetLine    BudgetLine  @relation(fields: [budgetLineId], references: [id])
   changeOrder   ChangeOrder @relation(fields: [changeOrderId], references: [id], onDelete: Cascade)
-
-  budgetLineId String
-  budgetLine   BudgetLine @relation(fields: [budgetLineId], references: [id])
-
-  description String
-  amount      Float // Can be positive (increase) or negative (decrease)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
-
-// --- PROCUREMENT CATALOG ---
 
 model Material {
-  id          String   @id @default(uuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
-  name        String
-  description String?
-  unit        String   @default("UN") // UN, KG, M3, ETC
-  costParam   Float    @default(0) // Reference cost
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String            @id @default(uuid())
+  tenantId         String
+  name             String
+  description      String?
+  unit             String            @default("UN")
+  costParam        Float             @default(0)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  tenant           Tenant            @relation(fields: [tenantId], references: [id])
+  projectMaterials ProjectMaterial[]
+  comments         Comment[]
 }
-
-// --- SUBCONTRACTS & RFQ ---
 
 model RFQ {
   id          String   @id @default(uuid())
   projectId   String
-  project     Project  @relation(fields: [projectId], references: [id])
   title       String
   description String?
-  status      String   @default("OPEN") // OPEN, CLOSED, AWARDED
-  bids        Bid[]
+  status      String   @default("OPEN")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  bids        Bid[]
+  project     Project  @relation(fields: [projectId], references: [id])
 }
 
 model Bid {
   id          String   @id @default(uuid())
   rfqId       String
-  rfq         RFQ      @relation(fields: [rfqId], references: [id])
   vendor      String
   amount      Float
-  status      String   @default("PENDING") // PENDING, REJECTED, ACCEPTED
+  status      String   @default("PENDING")
   submittedAt DateTime @default(now())
+  rfq         RFQ      @relation(fields: [rfqId], references: [id])
 }
 
 model Subcontract {
   id          String             @id @default(uuid())
   projectId   String
-  project     Project            @relation(fields: [projectId], references: [id])
   vendor      String
   title       String
   totalAmount Float
   startDate   DateTime?
   endDate     DateTime?
-  status      String             @default("DRAFT") // DRAFT, ACTIVE, COMPLETED
-  estimates   ProgressEstimate[]
+  status      String             @default("DRAFT")
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
+  estimates   ProgressEstimate[]
+  project     Project            @relation(fields: [projectId], references: [id])
 }
 
 model ProgressEstimate {
   id            String      @id @default(uuid())
   subcontractId String
-  subcontract   Subcontract @relation(fields: [subcontractId], references: [id])
   periodStart   DateTime
   periodEnd     DateTime
   amount        Float
-  status        String      @default("SUBMITTED") // SUBMITTED, APPROVED, PAID
+  status        String      @default("SUBMITTED")
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+  subcontract   Subcontract @relation(fields: [subcontractId], references: [id])
 }
 
-// --- PHASE 9: PROJECT EXPANSION ---
-
-// 1. PROJECT EXTENSIONS (Fields added to Project model above via separate patch or verify compatibility)
-// Note: We need to modify the existing Project model definition. See the separate replacement call for that.
-
 model Contractor {
-  id       String  @id @default(uuid())
-  tenantId String
-  tenant   Tenant  @relation(fields: [tenantId], references: [id])
-  name     String
-  type     String  @default("CONTRACTOR") // CONTRACTOR, SUPPLIER
-  email    String?
-  phone    String?
-  taxId    String?
-  address  String?
-
-  // Phase 10 Extended Profile
+  id                 String                        @id @default(uuid())
+  tenantId           String
+  name               String
+  type               String                        @default("CONTRACTOR")
+  email              String?
+  phone              String?
+  taxId              String?
+  address            String?
   legalName          String?
   website            String?
-  specialties        String? // JSON
-  certifications     String? // JSON
+  specialties        String?
+  certifications     String?
   insurancePolicy    String?
   bankName           String?
   bankAccount        String?
   contactPersonName  String?
   contactPersonPhone String?
   notes              String?
-
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  assignedActivities ProjectActivity[]
-  users              User[]
+  isActive           Boolean                       @default(true)
+  createdAt          DateTime                      @default(now())
+  updatedAt          DateTime                      @updatedAt
+  projectId          String?
+  backlogItems       BacklogItem[]
+  project            Project?                      @relation("ProjectContractors", fields: [projectId], references: [id])
+  tenant             Tenant                        @relation(fields: [tenantId], references: [id])
   assignments        ContractorProjectAssignment[]
-  purchaseOrders     PurchaseOrder[]
+  resources          ContractorResource[]
   issues             Issue[]
-
-  // Scrum Relations
-  backlogItems   BacklogItem[]
-  projectMembers ProjectMember[]
-
-  // Phase 9 Extensions
-  mainProjects Project[] @relation("ProjectMainContractor")
-
-  // Phase 9.1: Project-scoped contractors
-  projectId String?
-  project   Project? @relation("ProjectContractors", fields: [projectId], references: [id])
-
-  // Phase 19: Contractor Resources
-  resources ContractorResource[]
+  mainProjects       Project[]                     @relation("ProjectMainContractor")
+  assignedActivities ProjectActivity[]
+  projectMembers     ProjectMember[]
+  purchaseOrders     PurchaseOrder[]
+  users              User[]
 }
 
 model ContractorResource {
-  id           String     @id @default(uuid())
-  tenantId     String
-  tenant       Tenant     @relation(fields: [tenantId], references: [id])
-  contractorId String
-  contractor   Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
-
-  name  String
-  role  String  @default("OPERATOR") // CREW, OPERATOR, INSTALLER, SUPERVISOR
-  phone String?
-  email String?
-
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String        @id @default(uuid())
+  tenantId      String
+  contractorId  String
+  name          String
+  role          String        @default("OPERATOR")
+  phone         String?
+  email         String?
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  contractor    Contractor    @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  assignedTasks BacklogItem[]
 
   @@unique([contractorId, email])
 }
 
 model ProjectActivity {
-  id        String  @id @default(uuid())
-  tenantId  String
-  tenant    Tenant  @relation(fields: [tenantId], references: [id])
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id])
-
-  parentId String?
-  parent   ProjectActivity?  @relation("ActivityHierarchy", fields: [parentId], references: [id])
-  children ProjectActivity[] @relation("ActivityHierarchy")
-
-  name String
-  code String? // Unique within project/tenant
-
-  startDate DateTime
-  endDate   DateTime
-
-  status         String @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, BLOCKED, DONE, CLOSED
-  percent        Int    @default(0) // 0-100 (Cumulative)
-  manualProgress Int? // For Gantt Pro manual override
-  plannedWeight  Float  @default(1.0)
-  orderIndex     Int    @default(0) // For Drag & Drop ordering
-
-  contractorId String?
-  contractor   Contractor? @relation(fields: [contractorId], references: [id])
-
-  assignedUserId String?
-  assignedUser   User?   @relation(fields: [assignedUserId], references: [id])
-
-  crewLeaderId String?
-  crewLeader   User?   @relation("CrewLeader", fields: [crewLeaderId], references: [id])
-
-  budgetLineId String?
-  budgetLine   BudgetLine? @relation("BudgetLineActivities", fields: [budgetLineId], references: [id])
-
-  // Inverse relation for Control Account definition
-  budgetLinesControl BudgetLine[] @relation("BudgetLineWbs")
-
-  timesheetEntries TimesheetEntry[]
-
-  costLedgerEntries CostLedger[]
-
-  // Relations
-  dependencies ActivityDependency[] @relation("ActivityDependsOn")
-  predecessors ActivityDependency[] @relation("ActivityPredecessor")
-
-  progressRecords ActivityWeeklyProgress[]
-  closureRecord   ActivityClosureRecord?
-
-  milestones ProjectMilestone[]
-
-  // Phase 6: Field Management
-  measurementType String @default("QUANTITY") // QUANTITY, CHECKLIST, MILESTONE, TIME_ESTIMATE
-
+  id                    String                   @id @default(uuid())
+  tenantId              String
+  projectId             String
+  parentId              String?
+  name                  String
+  code                  String?
+  startDate             DateTime
+  endDate               DateTime
+  status                String                   @default("NOT_STARTED")
+  percent               Int                      @default(0)
+  manualProgress        Int?
+  plannedWeight         Float                    @default(1.0)
+  orderIndex            Int                      @default(0)
+  contractorId          String?
+  assignedUserId        String?
+  crewLeaderId          String?
+  budgetLineId          String?
+  measurementType       String                   @default("QUANTITY")
   measurementTemplateId String?
-  measurementTemplate   MeasurementTemplate? @relation(fields: [measurementTemplateId], references: [id])
-
-  totalQty Float?
-  unit     String?
-
-  fieldUpdates FieldUpdateItem[]
-  photos       Photo[]
-  issues       Issue[]
-
-  fieldDailyEntries FieldDailyEntry[]
-
-  lastUpdateAt DateTime @default(now())
-
-  blockedReason      String?
-  blockedComment     String?
-  blockedEta         DateTime?
-  blockedOwnerUserId String?
-
-  committedDate DateTime?
-
-  // Scrum Relations
-  backlogItems BacklogItem[]
-  dailyUpdates DailyUpdate[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  totalQty              Float?
+  unit                  String?
+  lastUpdateAt          DateTime                 @default(now())
+  blockedReason         String?
+  blockedComment        String?
+  blockedEta            DateTime?
+  blockedOwnerUserId    String?
+  committedDate         DateTime?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  closureRecord         ActivityClosureRecord?
+  dependencies          ActivityDependency[]     @relation("ActivityDependsOn")
+  predecessors          ActivityDependency[]     @relation("ActivityPredecessor")
+  progressRecords       ActivityWeeklyProgress[]
+  backlogItems          BacklogItem[]
+  budgetLinesControl    BudgetLine[]             @relation("BudgetLineWbs")
+  costLedgerEntries     CostLedger[]
+  dailyUpdates          DailyUpdate[]
+  fieldDailyEntries     FieldDailyEntry[]
+  fieldUpdates          FieldUpdateItem[]
+  issues                Issue[]
+  photos                Photo[]
+  assignedUser          User?                    @relation(fields: [assignedUserId], references: [id])
+  budgetLine            BudgetLine?              @relation("BudgetLineActivities", fields: [budgetLineId], references: [id])
+  contractor            Contractor?              @relation(fields: [contractorId], references: [id])
+  crewLeader            User?                    @relation("CrewLeader", fields: [crewLeaderId], references: [id])
+  measurementTemplate   MeasurementTemplate?     @relation(fields: [measurementTemplateId], references: [id])
+  parent                ProjectActivity?         @relation("ActivityHierarchy", fields: [parentId], references: [id])
+  children              ProjectActivity[]        @relation("ActivityHierarchy")
+  project               Project                  @relation(fields: [projectId], references: [id])
+  tenant                Tenant                   @relation(fields: [tenantId], references: [id])
+  milestones            ProjectMilestone[]
+  timesheetEntries      TimesheetEntry[]
+  materialConsumptions  ActivityMaterial[]
+  comments              Comment[]
 }
 
 model ActivityDependency {
-  id        String @id @default(uuid())
-  tenantId  String
-  projectId String
-
-  activityId String
-  activity   ProjectActivity @relation("ActivityDependsOn", fields: [activityId], references: [id])
-
+  id          String          @id @default(uuid())
+  tenantId    String
+  projectId   String
+  activityId  String
   dependsOnId String
+  createdAt   DateTime        @default(now())
+  activity    ProjectActivity @relation("ActivityDependsOn", fields: [activityId], references: [id])
   dependsOn   ProjectActivity @relation("ActivityPredecessor", fields: [dependsOnId], references: [id])
-
-  createdAt DateTime @default(now())
 }
 
 model ActivityWeeklyProgress {
-  id         String          @id @default(uuid())
-  tenantId   String
-  projectId  String
-  activityId String
-  activity   ProjectActivity @relation(fields: [activityId], references: [id])
-
+  id            String          @id @default(uuid())
+  tenantId      String
+  projectId     String
+  activityId    String
   weekStartDate DateTime
-  percent       Int      @default(0) // 0-100
+  percent       Int             @default(0)
   notes         String?
-
-  createdAt DateTime @default(now())
+  createdAt     DateTime        @default(now())
+  activity      ProjectActivity @relation(fields: [activityId], references: [id])
 
   @@unique([activityId, weekStartDate])
 }
 
 model ProjectMilestone {
-  id        String  @id @default(uuid())
-  tenantId  String
-  tenant    Tenant  @relation(fields: [tenantId], references: [id])
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id])
-
+  id          String           @id @default(uuid())
+  tenantId    String
+  projectId   String
   name        String
   date        DateTime
   description String?
-  status      String   @default("PLANNED") // PLANNED, ACHIEVED, MISSED
-  orderIndex  Int      @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  activityId String?
-  activity   ProjectActivity? @relation(fields: [activityId], references: [id])
+  status      String           @default("PLANNED")
+  orderIndex  Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  activityId  String?
+  activity    ProjectActivity? @relation(fields: [activityId], references: [id])
+  project     Project          @relation(fields: [projectId], references: [id])
+  tenant      Tenant           @relation(fields: [tenantId], references: [id])
 }
 
 model ActivityClosureRecord {
-  id         String          @id @default(uuid())
-  tenantId   String
-  projectId  String
-  activityId String
-  activity   ProjectActivity @relation(fields: [activityId], references: [id])
-
-  closureCode String?
-  closedAt    DateTime
-
-  pmName         String
-  directorName   String
-  contractorName String
-
-  pmSignature         String? // Base64 or URL
+  id                  String          @id @default(uuid())
+  tenantId            String
+  projectId           String
+  activityId          String          @unique
+  closureCode         String?
+  closedAt            DateTime
+  pmName              String
+  directorName        String
+  contractorName      String
+  pmSignature         String?
   directorSignature   String?
   contractorSignature String?
-
-  pdfDocumentId String? // Link to Document system if exists
-
-  createdAt DateTime @default(now())
-
-  @@unique([activityId])
+  pdfDocumentId       String?
+  createdAt           DateTime        @default(now())
+  activity            ProjectActivity @relation(fields: [activityId], references: [id])
 }
 
 model ContractorProjectAssignment {
-  id       String @id @default(uuid())
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
-
-  contractorId String
-  contractor   Contractor @relation(fields: [contractorId], references: [id])
-
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id])
-
-  assignedAt    DateTime @default(now())
+  id            String     @id @default(uuid())
+  tenantId      String
+  contractorId  String
+  projectId     String
+  assignedAt    DateTime   @default(now())
   roleInProject String?
-  status        String   @default("ACTIVE")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status        String     @default("ACTIVE")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  contractor    Contractor @relation(fields: [contractorId], references: [id])
+  project       Project    @relation(fields: [projectId], references: [id])
+  tenant        Tenant     @relation(fields: [tenantId], references: [id])
 
   @@unique([tenantId, contractorId, projectId])
 }
 
-// --- FIELD MANAGEMENT (Phase 6) ---
-
 model MeasurementTemplate {
-  id        String                    @id @default(uuid())
-  projectId String
-  project   Project                   @relation(fields: [projectId], references: [id])
-  name      String
-  type      String                    @default("CHECKLIST") // CHECKLIST, MILESTONE
-  isDefault Boolean                   @default(false)
-  items     MeasurementTemplateItem[]
-
+  id         String                    @id @default(uuid())
+  projectId  String
+  name       String
+  type       String                    @default("CHECKLIST")
+  isDefault  Boolean                   @default(false)
+  createdAt  DateTime                  @default(now())
+  updatedAt  DateTime                  @updatedAt
+  project    Project                   @relation(fields: [projectId], references: [id])
+  items      MeasurementTemplateItem[]
   activities ProjectActivity[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model MeasurementTemplateItem {
   id         String              @id @default(uuid())
   templateId String
-  template   MeasurementTemplate @relation(fields: [templateId], references: [id])
   label      String
-  weight     Int // Sum should be 100 per template
+  weight     Int
   orderIndex Int
+  template   MeasurementTemplate @relation(fields: [templateId], references: [id])
 }
 
 model FieldUpdate {
-  id        String   @id @default(uuid())
-  projectId String
-  project   Project  @relation(fields: [projectId], references: [id])
-  date      DateTime // The "daily log" date
-
-  status String @default("DRAFT") // DRAFT, SUBMITTED, APPROVED, REJECTED
-
+  id              String            @id @default(uuid())
+  projectId       String
+  date            DateTime
+  status          String            @default("DRAFT")
   submittedAt     DateTime?
   approvedAt      DateTime?
-  approvedBy      String? // User ID
+  approvedBy      String?
   rejectionReason String?
-
-  createdBy String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  items  FieldUpdateItem[]
-  photos Photo[]
+  createdBy       String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  project         Project           @relation(fields: [projectId], references: [id])
+  items           FieldUpdateItem[]
+  photos          Photo[]
 }
 
 model FieldUpdateItem {
-  id            String      @id @default(uuid())
-  fieldUpdateId String
-  fieldUpdate   FieldUpdate @relation(fields: [fieldUpdateId], references: [id])
-
-  activityId String
-  activity   ProjectActivity @relation(fields: [activityId], references: [id])
-
-  qtyDone        Float? // For QUANTITY type
-  checklistState String? // JSON: { itemId: boolean }
-  milestoneState String? // JSON: { itemId: boolean }
-  manualPercent  Int?
-
+  id                    String          @id @default(uuid())
+  fieldUpdateId         String
+  activityId            String
+  qtyDone               Float?
+  checklistState        String?
+  milestoneState        String?
+  manualPercent         Int?
   notes                 String?
-  isRisk                Boolean @default(false)
+  isRisk                Boolean         @default(false)
   overrideJustification String?
-
-  suggestedPercent Int?
-  confidenceScore  Int? // 0-100
-  deltaFromLast    Int?
-  requiresReview   Boolean @default(false)
-
-  // Gap Remediation: Track status change
-  status String? // NOT_STARTED, IN_PROGRESS, BLOCKED, DONE
+  suggestedPercent      Int?
+  confidenceScore       Int?
+  deltaFromLast         Int?
+  requiresReview        Boolean         @default(false)
+  status                String?
+  activity              ProjectActivity @relation(fields: [activityId], references: [id])
+  fieldUpdate           FieldUpdate     @relation(fields: [fieldUpdateId], references: [id])
 }
 
 model Photo {
-  id        String  @id @default(uuid())
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id])
-
-  activityId String?
-  activity   ProjectActivity? @relation(fields: [activityId], references: [id])
-
+  id            String           @id @default(uuid())
+  projectId     String
+  activityId    String?
   fieldUpdateId String?
-  fieldUpdate   FieldUpdate? @relation(fields: [fieldUpdateId], references: [id])
-
-  urlMain  String
-  urlThumb String?
-
-  width     Int?
-  height    Int?
-  sizeBytes Int?
-  hash      String? // SHA-256 for dedup/integrity
-
-  dailyEntryId String?
-  dailyEntry   FieldDailyEntry? @relation(fields: [dailyEntryId], references: [id])
-
-  capturedAt DateTime?
-  uploadedAt DateTime  @default(now())
-  createdBy  String
-
-  // Scrum Relations
+  urlMain       String
+  urlThumb      String?
+  width         Int?
+  height        Int?
+  sizeBytes     Int?
+  hash          String?
+  dailyEntryId  String?
+  capturedAt    DateTime?
+  uploadedAt    DateTime         @default(now())
+  createdBy     String
   dailyUpdateId String?
-  dailyUpdate   DailyUpdate? @relation(fields: [dailyUpdateId], references: [id])
+  activity      ProjectActivity? @relation(fields: [activityId], references: [id])
+  dailyEntry    FieldDailyEntry? @relation(fields: [dailyEntryId], references: [id])
+  dailyUpdate   DailyUpdate?     @relation(fields: [dailyUpdateId], references: [id])
+  fieldUpdate   FieldUpdate?     @relation(fields: [fieldUpdateId], references: [id])
+  project       Project          @relation(fields: [projectId], references: [id])
 }
 
 model Issue {
-  id        String  @id @default(uuid())
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id])
-
-  // Punch List Pro Fields
-  code Int? // Auto-increment per project (handled in app logic)
-  type String @default("ISSUE") // ISSUE (Legacy), PUNCH_LIST
-
-  title       String
-  description String?
-  severity    String  @default("MEDIUM") // HIGH, MEDIUM, LOW, CRITICAL
-  status      String  @default("OPEN") // OPEN, IN_PROGRESS, READY_FOR_VALIDATION, BLOCKED, DONE, CLOSED, REOPENED
-
-  // Location Hierarchy
-  locationBuilding String?
-  locationLevel    String?
-  locationZone     String?
-
-  // Categories
-  trade String?
-
-  // Assignment
-  ownerUserId  String?
-  contractorId String?
-  contractor   Contractor? @relation(fields: [contractorId], references: [id])
-
-  dueDate DateTime?
-
-  // Validation Workflow
+  id                   String           @id @default(uuid())
+  projectId            String
+  code                 Int?
+  type                 String           @default("ISSUE")
+  title                String
+  description          String?
+  severity             String           @default("MEDIUM")
+  status               String           @default("OPEN")
+  locationBuilding     String?
+  locationLevel        String?
+  locationZone         String?
+  trade                String?
+  ownerUserId          String?
+  contractorId         String?
+  dueDate              DateTime?
   readyForValidationAt DateTime?
   validatedAt          DateTime?
-  validatedBy          String? // User ID
+  validatedBy          String?
   reopenedAt           DateTime?
-  reopenedBy           String? // User ID
-
-  // Phase 16 Legacy Fields (maintained for compatibility)
-  closedAt DateTime?
-
-  // Links
-  activityId String?
-  activity   ProjectActivity? @relation(fields: [activityId], references: [id])
-
-  comments Comment[]
-
-  createdBy String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  reopenedBy           String?
+  closedAt             DateTime?
+  activityId           String?
+  createdBy            String
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  comments             Comment[]
+  activity             ProjectActivity? @relation(fields: [activityId], references: [id])
+  contractor           Contractor?      @relation(fields: [contractorId], references: [id])
+  project              Project          @relation(fields: [projectId], references: [id])
 }
 
 model Comment {
-  id String @id @default(uuid())
-
-  // Polymorphic-ish linking
-  issueId String?
-  issue   Issue?  @relation(fields: [issueId], references: [id])
-
-  // Could link to FieldUpdate or Activity too if needed, but starting with Issues
-
+  id        String   @id @default(uuid())
   text      String
   createdBy String
   createdAt DateTime @default(now())
+
+  // Polymorphic relations (optional associations)
+  issueId    String?
+  projectId  String?
+  activityId String?
+  materialId String?
+
+  issue    Issue?           @relation(fields: [issueId], references: [id])
+  project  Project?         @relation(fields: [projectId], references: [id])
+  activity ProjectActivity? @relation(fields: [activityId], references: [id])
+  material Material?        @relation(fields: [materialId], references: [id])
 }
 
-// --- PHASE 7: FIELD QUICK REPORTING ---
-
 model FieldDailyReport {
-  id          String    @id @default(uuid())
+  id          String            @id @default(uuid())
   projectId   String
-  project     Project   @relation(fields: [projectId], references: [id])
-  date        DateTime // YYYY-MM-DD
-  status      String    @default("DRAFT") // DRAFT, SUBMITTED, APPROVED
-  createdBy   String // UserId
+  date        DateTime
+  status      String            @default("DRAFT")
+  createdBy   String
   submittedAt DateTime?
   approvedAt  DateTime?
   approvedBy  String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  entries FieldDailyEntry[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  entries     FieldDailyEntry[]
+  project     Project           @relation(fields: [projectId], references: [id])
 
   @@unique([projectId, date])
 }
 
 model FieldDailyEntry {
-  id            String           @id @default(uuid())
-  dailyReportId String
-  dailyReport   FieldDailyReport @relation(fields: [dailyReportId], references: [id])
-
-  scheduleActivityId String? // Optional link to ProjectActivity
+  id                 String           @id @default(uuid())
+  dailyReportId      String
+  scheduleActivityId String?
+  wbs                String?
+  activityName       String
+  status             String
+  progressChip       Int?
+  note               String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  createdBy          String?
+  dailyReport        FieldDailyReport @relation(fields: [dailyReportId], references: [id])
   activity           ProjectActivity? @relation(fields: [scheduleActivityId], references: [id])
-
-  wbs          String? // Snapshot
-  activityName String
-
-  status       String // NOT_STARTED, IN_PROGRESS, DONE, BLOCKED
-  progressChip Int? // 0, 25, 50, 75, 100
-  note         String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  photos Photo[]
-
-  createdBy String? // User ID of the actual editor
+  photos             Photo[]
 }
 
 model Notification {
   id         String    @id @default(uuid())
   userId     String
-  user       User      @relation(fields: [userId], references: [id])
-  type       String // DUE_SOON, OVERDUE, NO_UPDATE, MENTION, REQUEST_UPDATE
-  entityType String // ACTIVITY, ISSUE, SPRIT_ITEM
+  projectId  String?
+  type       String
+  entityType String
   entityId   String
   message    String
   readAt     DateTime?
   createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id])
+  project    Project?  @relation(fields: [projectId], references: [id])
 }
 
-// --- MODULE: SCRUM (SEMANAS DE OBRA) ---
-
 model BacklogItem {
-  id        String  @id @default(uuid())
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id])
-
-  type        String // EPIC, STORY, TASK, BUG, RISK
-  title       String
-  description String?
-
-  status      String  @default("BACKLOG") // BACKLOG, READY, IN_SPRINT, DONE, BLOCKED
-  priority    Int     @default(3) // 1-5
-  isUrgent    Boolean @default(false)
-  isImportant Boolean @default(false)
-  discipline  String?
-
-  assigneeUserId String?
-  assigneeUser   User?   @relation(fields: [assigneeUserId], references: [id])
-
-  contractorId String?
-  contractor   Contractor? @relation(fields: [contractorId], references: [id])
-
-  linkedWbsActivityId String?
-  linkedWbsActivity   ProjectActivity? @relation(fields: [linkedWbsActivityId], references: [id])
-
-  // Hierarchy: Story -> Tasks
-  parentId String?
-  parent   BacklogItem?  @relation("ParentChild", fields: [parentId], references: [id])
-  children BacklogItem[] @relation("ParentChild")
-
-  // Estimation
-  storyPoints    Int? // For STORIES (Fibonacci: 1, 2, 3, 5, 8, 13...)
-  estimatedHours Float? // For TASKS (Time based)
-
-  definitionOfDone String?
-  evidenceRequired String  @default("NONE") // NONE, PHOTO, PHOTO_NOTE, DOCUMENT
-
-  dueDate DateTime?
-
-  sprintItems  SprintItem[]
-  dailyUpdates DailyUpdate[]
-  impediments  Impediment[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                           String              @id @default(uuid())
+  projectId                    String
+  type                         String
+  title                        String
+  description                  String?
+  status                       String              @default("BACKLOG")
+  priority                     Int                 @default(3)
+  isUrgent                     Boolean             @default(false)
+  isImportant                  Boolean             @default(false)
+  discipline                   String?
+  assigneeUserId               String?
+  assigneeContractorResourceId String?
+  contractorId                 String?
+  linkedWbsActivityId          String?
+  parentId                     String?
+  storyPoints                  Int?
+  estimatedHours               Float?
+  definitionOfDone             String?
+  evidenceRequired             String              @default("NONE")
+  dueDate                      DateTime?
+  createdAt                    DateTime            @default(now())
+  updatedAt                    DateTime            @updatedAt
+  assigneeUser                 User?               @relation(fields: [assigneeUserId], references: [id])
+  assigneeContractorResource   ContractorResource? @relation(fields: [assigneeContractorResourceId], references: [id])
+  contractor                   Contractor?         @relation(fields: [contractorId], references: [id])
+  linkedWbsActivity            ProjectActivity?    @relation(fields: [linkedWbsActivityId], references: [id])
+  parent                       BacklogItem?        @relation("ParentChild", fields: [parentId], references: [id])
+  children                     BacklogItem[]       @relation("ParentChild")
+  project                      Project             @relation(fields: [projectId], references: [id])
+  dailyUpdates                 DailyUpdate[]
+  impediments                  Impediment[]
+  sprintItems                  SprintItem[]
 }
 
 model Sprint {
-  id        String  @id @default(uuid())
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id])
-
-  name String
-  goal String?
-
-  startDate DateTime
-  endDate   DateTime
-
-  status String @default("PLANNED") // PLANNED, ACTIVE, CLOSED
-
+  id              String        @id @default(uuid())
+  projectId       String
+  name            String
+  goal            String?
+  startDate       DateTime
+  endDate         DateTime
+  status          String        @default("PLANNED")
   createdByUserId String
-  createdByUser   User   @relation(fields: [createdByUserId], references: [id])
-
-  items        SprintItem[]
-  dailyUpdates DailyUpdate[]
-  retros       Retro[]
-  impediments  Impediment[] // Impediments logged during this sprint
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  dailyUpdates    DailyUpdate[]
+  impediments     Impediment[]
+  retros          Retro[]
+  createdByUser   User          @relation(fields: [createdByUserId], references: [id])
+  project         Project       @relation(fields: [projectId], references: [id])
+  items           SprintItem[]
 }
 
 model SprintItem {
-  id       String @id @default(uuid())
-  sprintId String
-  sprint   Sprint @relation(fields: [sprintId], references: [id])
-
+  id            String      @id @default(uuid())
+  sprintId      String
   backlogItemId String
+  boardStatus   String      @default("TODO")
+  orderIndex    Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
   backlogItem   BacklogItem @relation(fields: [backlogItemId], references: [id])
-
-  boardStatus String @default("TODO") // TODO, IN_PROGRESS, IN_REVIEW, DONE, BLOCKED
-  orderIndex  Int    @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  sprint        Sprint      @relation(fields: [sprintId], references: [id])
 
   @@unique([sprintId, backlogItemId])
 }
 
 model DailyUpdate {
-  id        String  @id @default(uuid())
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id])
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  sprintId String?
-  sprint   Sprint? @relation(fields: [sprintId], references: [id])
-
+  id            String           @id @default(uuid())
+  projectId     String
+  userId        String
+  sprintId      String?
   backlogItemId String?
-  backlogItem   BacklogItem? @relation(fields: [backlogItemId], references: [id])
-
   wbsActivityId String?
+  text          String
+  blocker       String?
+  createdAt     DateTime         @default(now())
+  backlogItem   BacklogItem?     @relation(fields: [backlogItemId], references: [id])
+  project       Project          @relation(fields: [projectId], references: [id])
+  sprint        Sprint?          @relation(fields: [sprintId], references: [id])
+  user          User             @relation(fields: [userId], references: [id])
   wbsActivity   ProjectActivity? @relation(fields: [wbsActivityId], references: [id])
-
-  text    String
-  blocker String?
-
-  photos Photo[]
-
-  createdAt DateTime @default(now())
+  photos        Photo[]
 }
 
 model Retro {
-  id       String @id @default(uuid())
-  sprintId String
-  sprint   Sprint @relation(fields: [sprintId], references: [id])
-
-  keep    String? // JSON or Text
-  improve String?
-  stop    String?
-
-  actionItems String? // JSON list of text
-
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  sprintId    String
+  keep        String?
+  improve     String?
+  stop        String?
+  actionItems String?
+  createdAt   DateTime @default(now())
+  sprint      Sprint   @relation(fields: [sprintId], references: [id])
 }
 
 model Impediment {
-  id        String  @id @default(uuid())
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id])
-
-  sprintId String?
-  sprint   Sprint? @relation(fields: [sprintId], references: [id])
-
+  id            String       @id @default(uuid())
+  projectId     String
+  sprintId      String?
   backlogItemId String?
+  title         String
+  description   String?
+  severity      Int          @default(2)
+  status        String       @default("OPEN")
+  ownerUserId   String?
+  resolvedAt    DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
   backlogItem   BacklogItem? @relation(fields: [backlogItemId], references: [id])
-
-  title       String
-  description String?
-  severity    Int     @default(2) // 1-4
-
-  status      String  @default("OPEN") // OPEN, MITIGATING, RESOLVED
-  ownerUserId String? // Who is resolving it
-  ownerUser   User?   @relation("ImpedimentOwner", fields: [ownerUserId], references: [id])
-
-  resolvedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  ownerUser     User?        @relation("ImpedimentOwner", fields: [ownerUserId], references: [id])
+  project       Project      @relation(fields: [projectId], references: [id])
+  sprint        Sprint?      @relation(fields: [sprintId], references: [id])
 }
 
-// --- BUDGET MODULE: LABOR ---
-
 model Timesheet {
-  id        String  @id @default(uuid())
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id])
-
+  id            String           @id @default(uuid())
+  projectId     String
   weekStartDate DateTime
-  status        String   @default("DRAFT") // ENUM: DocStatus
-
-  workerName String? // Free text or...
-  userId     String?
-  user       User?   @relation(fields: [userId], references: [id]) // Optional link to system user
-
-  role     String?
-  baseRate Float   @default(0)
-
-  entries TimesheetEntry[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status        String           @default("DRAFT")
+  workerName    String?
+  userId        String?
+  role          String?
+  baseRate      Float            @default(0)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  project       Project          @relation(fields: [projectId], references: [id])
+  user          User?            @relation(fields: [userId], references: [id])
+  entries       TimesheetEntry[]
 }
 
 model TimesheetEntry {
-  id          String    @id @default(uuid())
-  timesheetId String
-  timesheet   Timesheet @relation(fields: [timesheetId], references: [id])
-
-  date DateTime
-
+  id            String           @id @default(uuid())
+  timesheetId   String
+  date          DateTime
   wbsActivityId String?
-  wbsActivity   ProjectActivity? @relation(fields: [wbsActivityId], references: [id])
-
   hours         Float
-  overtimeHours Float @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  overtimeHours Float            @default(0)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  timesheet     Timesheet        @relation(fields: [timesheetId], references: [id])
+  wbsActivity   ProjectActivity? @relation(fields: [wbsActivityId], references: [id])
 }
-
-// --- PHASE 0: SECURITY & RBAC ---
 
 model Session {
   id        String    @id @default(uuid())
   userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash String    @unique // Hashed Refresh Token
+  tokenHash String    @unique
   expiresAt DateTime
   createdAt DateTime  @default(now())
   ipAddress String?
   userAgent String?
-  // Phase 1 Security Fields
   revokedAt DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ProjectMember {
-  id        String  @id @default(uuid())
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  role String @default("VIEWER")
-  // ENUM: PROJECT_ADMIN, EXECUTIVE_VIEWER, PM, CONTRACTOR_LEAD, FIELD_OPERATOR
-
+  id           String      @id @default(uuid())
+  projectId    String
+  userId       String
+  role         String      @default("VIEWER")
   contractorId String?
+  status       String      @default("ACTIVE")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
   contractor   Contractor? @relation(fields: [contractorId], references: [id])
-
-  status String @default("ACTIVE") // ACTIVE, DISABLED
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  project      Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, userId])
 }
 
-// --- PHASE 0: SYSTEM RBAC (DB-ONLY) ---
-
 model SystemRole {
   id          String           @id @default(uuid())
-  name        String           @unique // e.g., "PROJECT_MANAGER"
+  name        String           @unique
   description String?
   permissions RolePermission[]
 }
 
 model SystemPermission {
   id          String           @id @default(uuid())
-  action      String           @unique // e.g., "task.create"
+  action      String           @unique
   description String?
   roles       RolePermission[]
 }
 
 model RolePermission {
   roleId       String
-  role         SystemRole       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permissionId String
   permission   SystemPermission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         SystemRole       @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
+}
+
+model ProjectMaterial {
+  id             String   @id @default(uuid())
+  projectId      String
+  materialId     String
+  projectSKU     String? // SKU específico si el proyecto lo requiere
+  plannedQty     Float    @default(0) // Cantidad base presupuestada
+  plannedPrice   Float    @default(0) // Precio unitario presupuestado
+  stockAvailable Float    @default(0) // Cantidad en bodega de la obra
+  stockConsumed  Float    @default(0) // Cantidad ya utilizada/instalada
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  material Material @relation(fields: [materialId], references: [id])
+  project  Project  @relation(fields: [projectId], references: [id])
+
+  poItems              PurchaseOrderItem[]
+  activityConsumptions ActivityMaterial[]
+
+  @@unique([projectId, materialId])
+}
+
+model ActivityMaterial {
+  id                String   @id @default(uuid())
+  projectMaterialId String
+  activityId        String
+  quantityConsumed  Float    @default(0)
+  dateConsumed      DateTime @default(now())
+  reportedBy        String?
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  projectMaterial ProjectMaterial @relation(fields: [projectMaterialId], references: [id])
+  activity        ProjectActivity @relation(fields: [activityId], references: [id])
+  reportedByUser  User?           @relation("ReportedBy", fields: [reportedBy], references: [id])
 }

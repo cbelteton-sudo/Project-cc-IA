@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class ReportsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private emailService: EmailService,
+  ) {}
 
   async getDashboardStats(tenantId: string, period?: string) {
     const prisma = this.prisma as any;
@@ -836,6 +840,7 @@ export class ReportsService {
             : 'NONE',
         startDate: sprint.startDate, // Default to Sprint Start
         endDate: bi.dueDate || sprint.endDate, // Default to Sprint End if no due date
+        createdAt: bi.createdAt,
       };
     });
 
@@ -855,5 +860,102 @@ export class ReportsService {
         return 0;
       }),
     };
+  }
+
+  async sendSprintAssignmentsEmail(
+    projectId: string,
+    tenantId: string,
+    email: string,
+  ) {
+    const data = await this.getSprintAssignments(projectId, tenantId);
+    if (!data.sprint) {
+      throw new NotFoundException('No active sprint found for this project.');
+    }
+
+    const sprintName = data.sprint.name;
+
+    // Translate status to Spanish
+    const STATUS_MAP: Record<string, string> = {
+      TODO: 'Por Hacer',
+      IN_PROGRESS: 'En Progreso',
+      REVIEW: 'En Revisión',
+      DONE: 'Completado',
+    };
+
+    // Format dates
+    const formatDate = (date: Date) =>
+      new Intl.DateTimeFormat('es-MX', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }).format(new Date(date));
+
+    const calculateDaysOpen = (createdAt: Date) => {
+      const diffTime = Math.abs(
+        new Date().getTime() - new Date(createdAt).getTime(),
+      );
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    };
+
+    // Generate HTML Table rows
+    const rowsHtml = data.assignments
+      .map((a: any) => {
+        const starts = a.startDate ? formatDate(a.startDate) : 'N/A';
+        const ends = a.endDate ? formatDate(a.endDate) : 'N/A';
+        const assignedOn = a.createdAt ? formatDate(a.createdAt) : 'N/A';
+        const daysOpen = a.createdAt ? calculateDaysOpen(a.createdAt) : 0;
+
+        return `
+          <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #1e293b;">${a.title}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #475569;">${a.assignee}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #475569;">${STATUS_MAP[a.status] || a.status}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #475569;">Inicio: ${starts}<br/>Fin: ${ends}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #475569;">${assignedOn}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; font-weight: 500; color: #1e293b;">${daysOpen} días</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    const htmlTemplate = `
+      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #0f172a; margin-bottom: 8px;">Reporte de Asignaciones de Proyecto</h1>
+        <div style="margin-bottom: 24px; padding: 16px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <p style="color: #1e293b; font-size: 16px; margin: 0 0 8px 0;">Sprint: <strong>${sprintName}</strong></p>
+          <p style="color: #475569; font-size: 14px; margin: 0 0 8px 0;">
+            <strong>Objetivo:</strong> ${data.sprint.goal || 'Sin objetivo definido'}
+          </p>
+          <p style="color: #64748b; font-size: 13px; margin: 0;">
+            <strong>Período:</strong> Del ${formatDate(data.sprint.startDate)} al ${formatDate(data.sprint.endDate)}
+          </p>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 24px; font-size: 14px; text-align: left;">
+          <thead>
+            <tr style="background-color: #f8fafc;">
+              <th style="padding: 12px; border-bottom: 2px solid #cbd5e1; color: #334155;">Tarea / Actividad</th>
+              <th style="padding: 12px; border-bottom: 2px solid #cbd5e1; color: #334155;">Responsable</th>
+              <th style="padding: 12px; border-bottom: 2px solid #cbd5e1; color: #334155;">Estado</th>
+              <th style="padding: 12px; border-bottom: 2px solid #cbd5e1; color: #334155;">Fechas Programadas</th>
+              <th style="padding: 12px; border-bottom: 2px solid #cbd5e1; color: #334155;">Fecha Asignación</th>
+              <th style="padding: 12px; border-bottom: 2px solid #cbd5e1; color: #334155;">Días Abiertos</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+
+        <p style="margin-top: 32px; font-size: 12px; color: #94a3b8; text-align: center;">
+          Generado automáticamente por FieldClose.
+        </p>
+      </div>
+    `;
+
+    return this.emailService.sendEmail(
+      email,
+      `Reporte de Asignaciones: ${sprintName}`,
+      htmlTemplate,
+    );
   }
 }

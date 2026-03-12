@@ -196,6 +196,14 @@ export class AuthController {
       return { access_token, refresh_token, user };
     } catch (e) {
       console.error('❌ Refresh failed:', e.message);
+      try {
+        require('fs').appendFileSync(
+          'testPatch.log',
+          `[REFRESH 500 ERROR] - ${new Date().toISOString()}\n${e.stack || e.message}\n\n`,
+        );
+      } catch (err) {
+        // ignore
+      }
       throw e;
     }
   }

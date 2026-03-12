@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuth } from '../context/AuthContext';
-import { Plus, ArrowLeft, Settings } from 'lucide-react';
+import { Plus, ArrowLeft, Settings, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useProjects } from '../hooks/useProjects';
@@ -15,10 +15,7 @@ import type { Activity } from '../components/project-plan/ActivitiesTree';
 import { ActivityDetails } from '../components/project-plan/ActivityDetails';
 import { ProjectSettingsModal } from '../components/project-plan/ProjectSettingsModal';
 import { GanttChart } from '../components/project-plan/GanttChart';
-import { ProjectAnalytics } from '../components/project-plan/ProjectAnalytics';
-import { PunchKanban } from '../components/punch-list/PunchKanban';
-import { PunchQuickCreate } from '../components/punch-list/PunchQuickCreate';
-import { ScrumDashboard } from '../components/scrum/ScrumDashboard';
+import { CreateMilestoneModal } from '../components/project-plan/CreateMilestoneModal';
 
 interface Milestone {
   id: string;
@@ -41,16 +38,16 @@ export const ProjectPlan = () => {
   const queryClient = useQueryClient();
   const { data: projects } = useProjects();
   const currentProject = projects?.find((p: Project) => p.id === projectId);
+  console.log('ProjectPlan currentProject loaded:', currentProject);
 
   const [activeTab, setActiveTab] = useState<
-    'schedule' | 'gantt' | 'analytics' | 'milestones' | 'punch_list' | 'scrum'
-  >('schedule'); // Added scrum tab
+    'schedule' | 'gantt' | 'milestones'
+  >('schedule');
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [defaultParentId, setDefaultParentId] = useState<string | undefined>(undefined);
   const [isCreateMilestoneModalOpen, setIsCreateMilestoneModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [isCreatePunchModalOpen, setIsCreatePunchModalOpen] = useState(false);
 
   // Assignment State
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -98,7 +95,15 @@ export const ProjectPlan = () => {
       setIsCreateMilestoneModalOpen(false);
       toast.success('Hito creado');
     },
-    onError: () => toast.error('Error al crear hito'),
+    onError: (err: { response?: { data?: { message?: string | string[] } } }) => {
+      console.error(err);
+      const msg = err.response?.data?.message || 'Error al crear hito';
+      toast.error(Array.isArray(msg) ? msg[0] : msg, {
+        position: 'top-center',
+        duration: 8000,
+        className: 'text-base font-medium px-4 py-3',
+      });
+    },
   });
 
   // Fetch Contractors
@@ -296,8 +301,7 @@ export const ProjectPlan = () => {
                 )}
               </div>
 
-              {/* Meta Info Row */}
-              <div className="flex items-center gap-6 mt-1.5">
+              <div className="flex items-center gap-4 mt-1.5 flex-wrap">
                 {isLoadingProject ? (
                   <div className="h-4 w-48 bg-gray-200 rounded animate-pulse" />
                 ) : (
@@ -321,25 +325,15 @@ export const ProjectPlan = () => {
                     </div>
                   )
                 )}
-                {isLoadingProject || isLoadingContractors ? (
+                {isLoadingProject ? (
                   <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
                 ) : (
-                  project?.mainContractorId &&
-                  contractors?.find(
-                    (c: { id: string; name: string }) => c.id === project.mainContractorId,
-                  ) && (
+                  (project?.constructorName || currentProject?.constructorName) && (
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <div className="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
                       <span>
                         <span className="font-medium mr-1">Constructora asignada:</span>
-                        <span className="text-gray-700">
-                          {
-                            contractors.find(
-                              (c: { id: string; name: string }) =>
-                                c.id === project.mainContractorId,
-                            )?.name
-                          }
-                        </span>
+                        <span className="text-gray-700">{project?.constructorName || currentProject?.constructorName}</span>
                       </span>
                     </div>
                   )
@@ -351,7 +345,7 @@ export const ProjectPlan = () => {
                     <div className="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
                     <span>
                       <span className="font-medium mr-1">Project manager asignado:</span>
-                      <span className="text-gray-700">{project?.managerName || 'Sin asignar'}</span>
+                      <span className="text-gray-700">{project?.managerName || currentProject?.managerName || 'Sin asignar'}</span>
                     </span>
                   </div>
                 )}
@@ -375,7 +369,7 @@ export const ProjectPlan = () => {
                   setDefaultParentId(undefined);
                   setIsCreateModalOpen(true);
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-all text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-brand-ambar text-white rounded-lg hover:bg-brand-oro shadow-sm transition-all text-sm font-medium"
               >
                 <Plus size={18} />
                 Nueva Actividad
@@ -390,15 +384,6 @@ export const ProjectPlan = () => {
                 Nuevo Hito
               </button>
             )}
-            {activeTab === 'punch_list' && (
-              <button
-                onClick={() => setIsCreatePunchModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 shadow-sm transition-all text-sm font-medium"
-              >
-                <Plus size={18} />
-                Nuevo Punch
-              </button>
-            )}
           </div>
         </div>
 
@@ -408,13 +393,6 @@ export const ProjectPlan = () => {
             { id: 'schedule', label: 'Plan de Trabajo', color: 'blue' },
             { id: 'gantt', label: 'Cronograma', color: 'indigo' },
             { id: 'milestones', label: 'Hitos', color: 'purple' },
-            ...(currentProject?.enableScrum === true
-              ? [{ id: 'scrum', label: 'Semanas de Obra (Agile)', color: 'emerald' }]
-              : []),
-            ...(currentProject?.enableFieldManagement === true
-              ? [{ id: 'punch_list', label: 'Punch List', color: 'red' }]
-              : []),
-            { id: 'analytics', label: 'Análisis EVM', color: 'orange' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -510,21 +488,6 @@ export const ProjectPlan = () => {
                 </div>
               )}
             </>
-          ) : activeTab === 'scrum' ? (
-            // Scrum Dashboard
-            <div className="w-full h-full overflow-hidden animate-fade-in">
-              <ScrumDashboard projectId={projectId || ''} />
-            </div>
-          ) : activeTab === 'analytics' ? (
-            // Analytics View
-            <div className="w-full h-full overflow-hidden animate-fade-in">
-              <ProjectAnalytics projectId={projectId || ''} token={token} />
-            </div>
-          ) : activeTab === 'punch_list' ? (
-            // Punch List View
-            <div className="w-full h-full overflow-hidden animate-fade-in">
-              <PunchKanban projectId={projectId || ''} />
-            </div>
           ) : (
             // Milestones View
             <div className="w-full bg-white rounded-xl shadow-sm border border-gray-200 p-6 overflow-auto">
@@ -567,92 +530,207 @@ export const ProjectPlan = () => {
               onSubmit={(e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
+                const startDateStr = formData.get('startDate') as string;
+                const endDateStr = formData.get('endDate') as string;
+                const parentIdStr = formData.get('parentId') as string;
+
+                // Date Boundary Validation (Only if no parent)
+                if (!parentIdStr && currentProject?.startDate && currentProject?.endDate) {
+                  const pStart = new Date(currentProject.startDate);
+                  pStart.setHours(0, 0, 0, 0);
+                  const pEnd = new Date(currentProject.endDate);
+                  pEnd.setHours(23, 59, 59, 999);
+
+                  const aStart = new Date(startDateStr);
+                  aStart.setHours(0, 0, 0, 0);
+                  const aEnd = new Date(endDateStr);
+                  aEnd.setHours(0, 0, 0, 0);
+
+                  if (aStart < pStart || aEnd > pEnd) {
+                    const strStart = pStart.toLocaleDateString('es-ES', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    });
+                    const strEnd = pEnd.toLocaleDateString('es-ES', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    });
+                    toast.error(
+                      `Las fechas de la actividad deben estar dentro del rango general del proyecto: ${strStart} al ${strEnd}`,
+                    );
+                    return;
+                  }
+                }
+
+                // Sub-Activity Date Boundary Validation
+                if (parentIdStr && activities) {
+                  const findNode = (id: string, nodes: Activity[]): Activity | null => {
+                    for (const node of nodes) {
+                      if (node.id === id) return node;
+                      if (node.children) {
+                        const found = findNode(id, node.children);
+                        if (found) return found;
+                      }
+                    }
+                    return null;
+                  };
+
+                  const parentActivity = findNode(parentIdStr, activities);
+                  if (parentActivity) {
+                    const pStart = new Date(parentActivity.startDate);
+                    pStart.setHours(0, 0, 0, 0);
+                    const pEnd = new Date(parentActivity.endDate);
+                    pEnd.setHours(23, 59, 59, 999);
+
+                    const aStart = new Date(startDateStr);
+                    aStart.setHours(0, 0, 0, 0);
+                    const aEnd = new Date(endDateStr);
+                    aEnd.setHours(0, 0, 0, 0);
+
+                    if (aStart < pStart || aEnd > pEnd) {
+                      const strStart = pStart.toLocaleDateString('es-ES', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                      });
+                      const strEnd = pEnd.toLocaleDateString('es-ES', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                      });
+                      toast.error(
+                        `Las fechas de la sub-actividad deben estar dentro del rango de su actividad principal: ${strStart} al ${strEnd}`,
+                      );
+                      return;
+                    }
+                  }
+                }
+
                 createActivityMutation.mutate({
                   projectId: projectId!,
                   name: formData.get('name') as string,
-                  startDate: formData.get('startDate') as string,
-                  endDate: formData.get('endDate') as string,
-                  parentId: (formData.get('parentId') as string) || undefined,
+                  startDate: startDateStr ? `${startDateStr}T12:00:00.000Z` : startDateStr,
+                  endDate: endDateStr ? `${endDateStr}T12:00:00.000Z` : endDateStr,
+                  parentId: parentIdStr || undefined,
                   contractorId: (formData.get('contractorId') as string) || undefined,
                   plannedWeight: 1,
                 });
               }}
               className="space-y-4"
             >
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nombre de la Actividad
-                </label>
-                <input
-                  name="name"
-                  required
-                  placeholder="Ej. Cimentación Torre A"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
+              {(() => {
+                const flatten = (
+                  nodes: Activity[],
+                  depth = 0,
+                ): (Activity & { depth: number })[] => {
+                  return nodes.reduce(
+                    (acc, node) => {
+                      acc.push({ ...node, depth });
+                      if (node.children) acc.push(...flatten(node.children, depth + 1));
+                      return acc;
+                    },
+                    [] as (Activity & { depth: number })[],
+                  );
+                };
+                const flatActivities = flatten(activities || []);
+                const selectedParent = flatActivities.find((a) => a.id === (defaultParentId || ''));
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Fecha Inicio
-                  </label>
-                  <input
-                    name="startDate"
-                    type="date"
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Fin</label>
-                  <input
-                    name="endDate"
-                    type="date"
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-              </div>
+                return (
+                  <>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Actividad Padre
+                        </label>
+                        <select
+                          name="parentId"
+                          value={defaultParentId || ''}
+                          onChange={(e) => setDefaultParentId(e.target.value)}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                        >
+                          <option value="">-- Ninguna (Nivel Raíz) --</option>
+                          {flatActivities.map((act) => (
+                            <option key={act.id} value={act.id}>
+                              {'-'.repeat(act.depth * 2)} {act.name}
+                            </option>
+                          ))}
+                        </select>
+                        {selectedParent ? (
+                          <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-lg flex items-start gap-2">
+                            <Calendar className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+                            <div className="text-sm text-blue-800">
+                              <span className="font-semibold block mb-1">
+                                Para programar esta sub-tarea, usa el rango de su padre:
+                              </span>
+                              Inicio:{' '}
+                              <span className="font-bold">
+                                {new Date(selectedParent.startDate).toLocaleDateString('es-ES', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })}
+                              </span>{' '}
+                              <br />
+                              Fin:{' '}
+                              <span className="font-bold">
+                                {new Date(selectedParent.endDate).toLocaleDateString('es-ES', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-400 mt-1">
+                            Las actividades raíz suelen ser fases grandes (Ej. Estructura,
+                            Acabados).
+                          </p>
+                        )}
+                      </div>
+                    </div>
 
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Actividad Padre (Agrupadora)
-                  </label>
-                  <select
-                    name="parentId"
-                    defaultValue={defaultParentId || ''}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                  >
-                    <option value="">-- Ninguna (Nivel Raíz) --</option>
-                    {/* Flatten tree for select */}
-                    {(() => {
-                      const flatten = (
-                        nodes: Activity[],
-                        depth = 0,
-                      ): (Activity & { depth: number })[] => {
-                        return nodes.reduce(
-                          (acc, node) => {
-                            acc.push({ ...node, depth });
-                            if (node.children) acc.push(...flatten(node.children, depth + 1));
-                            return acc;
-                          },
-                          [] as (Activity & { depth: number })[],
-                        );
-                      };
-                      const flatActivities = flatten(activities || []);
-                      return flatActivities.map((act) => (
-                        <option key={act.id} value={act.id}>
-                          {'-'.repeat(act.depth * 2)} {act.name}
-                        </option>
-                      ));
-                    })()}
-                  </select>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Las actividades raíz suelen ser fases grandes (Ej. Estructura, Acabados).
-                  </p>
-                </div>
-              </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nombre de la Actividad
+                      </label>
+                      <input
+                        name="name"
+                        required
+                        placeholder="Ej. Cimentación Torre A"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Fecha Inicio
+                        </label>
+                        <input
+                          name="startDate"
+                          type="date"
+                          required
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Fecha Fin
+                        </label>
+                        <input
+                          name="endDate"
+                          type="date"
+                          required
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
 
               <div className="flex justify-end gap-3 pt-6 border-t border-gray-100 mt-2">
                 <button
@@ -664,7 +742,7 @@ export const ProjectPlan = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-sm transition-colors"
+                  className="px-6 py-2 bg-brand-ambar text-white rounded-lg hover:bg-brand-oro font-medium shadow-sm transition-colors"
                 >
                   Crear Actividad
                 </button>
@@ -675,112 +753,13 @@ export const ProjectPlan = () => {
       )}
 
       {/* Modal for Creating Milestone */}
-      {isCreateMilestoneModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl animate-fade-in">
-            <h3 className="text-lg font-bold mb-6 text-gray-800">Nuevo Hito Clave</h3>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                createMilestoneMutation.mutate({
-                  name: formData.get('name') as string,
-                  date: formData.get('date') as string,
-                  description: formData.get('description') as string,
-                  activityId: (formData.get('activityId') as string) || undefined,
-                });
-              }}
-              className="space-y-4"
-            >
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nombre del Hito
-                </label>
-                <input
-                  name="name"
-                  required
-                  placeholder="Ej. Fin de Cimentación"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Fecha Objetivo
-                </label>
-                <input
-                  name="date"
-                  type="date"
-                  required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Relacionar con Actividad (Opcional)
-                </label>
-                <select
-                  name="activityId"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 outline-none bg-white"
-                >
-                  <option value="">-- Ninguna --</option>
-                  {/* Flatten tree for select */}
-                  {(() => {
-                    const flatten = (
-                      nodes: Activity[],
-                      depth = 0,
-                    ): (Activity & { depth: number })[] => {
-                      return nodes.reduce(
-                        (acc, node) => {
-                          acc.push({ ...node, depth });
-                          if (node.children) acc.push(...flatten(node.children, depth + 1));
-                          return acc;
-                        },
-                        [] as (Activity & { depth: number })[],
-                      );
-                    };
-                    const flatActivities = flatten(activities || []);
-                    return flatActivities.map((act) => (
-                      <option key={act.id} value={act.id}>
-                        {'-'.repeat(act.depth * 2)} {act.name}
-                      </option>
-                    ));
-                  })()}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Descripción (Opcional)
-                </label>
-                <textarea
-                  name="description"
-                  rows={3}
-                  placeholder="Detalles adicionales..."
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 outline-none resize-none"
-                ></textarea>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-6 border-t border-gray-100 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateMilestoneModalOpen(false)}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium shadow-sm transition-colors"
-                >
-                  Crear Hito
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <CreateMilestoneModal
+        isOpen={isCreateMilestoneModalOpen}
+        onClose={() => setIsCreateMilestoneModalOpen(false)}
+        isLoading={createMilestoneMutation.isPending}
+        activities={activities || []}
+        onSubmit={(data) => createMilestoneMutation.mutate(data)}
+      />
 
       {/* Assignment Modal */}
       {isAssignModalOpen && (
@@ -809,12 +788,9 @@ export const ProjectPlan = () => {
                         contractorId: c.id,
                       })
                     }
-                    className="w-full text-left px-4 py-3 hover:bg-blue-50 hover:text-blue-700 transition flex items-center justify-between group"
+                    className="w-full text-left px-4 py-3 hover:bg-blue-50 hover:text-blue-700 transition flex items-center group"
                   >
                     <span className="font-medium">{c.name}</span>
-                    <span className="text-xs text-gray-400 group-hover:text-blue-400">
-                      {c.type}
-                    </span>
                   </button>
                 ))}
                 {!isLoadingContractors && !isErrorContractors && contractors?.length === 0 && (
@@ -842,17 +818,6 @@ export const ProjectPlan = () => {
         />
       )}
 
-      {/* Punch Create Modal */}
-      {isCreatePunchModalOpen && (
-        <PunchQuickCreate
-          projectId={projectId!}
-          onClose={() => setIsCreatePunchModalOpen(false)}
-          onSuccess={() => {
-            // Invalidate/refetch if needed, though hook handles opt updates usually
-            queryClient.invalidateQueries({ queryKey: ['punch-list', projectId] });
-          }}
-        />
-      )}
     </div>
   );
 };

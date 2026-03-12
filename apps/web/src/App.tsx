@@ -60,6 +60,16 @@ const Invoices = React.lazy(() =>
 const ChangeOrders = React.lazy(() =>
   import('./pages/ChangeOrders').then((m) => ({ default: m.ChangeOrders })),
 );
+const ProjectMaterialsCatalog = React.lazy(() =>
+  import('./pages/project/ProjectMaterialsCatalog').then((m) => ({
+    default: m.ProjectMaterialsCatalog,
+  })),
+);
+const FinancialVarianceReport = React.lazy(() =>
+  import('./pages/project/FinancialVarianceReport').then((m) => ({
+    default: m.FinancialVarianceReport,
+  })),
+);
 
 const FieldPMDashboard = React.lazy(() =>
   import('./pages/field/FieldPMDashboard').then((m) => ({ default: m.FieldPMDashboard })),
@@ -127,6 +137,9 @@ const AdminUsers = React.lazy(() =>
 );
 const Contractors = React.lazy(() =>
   import('./pages/admin/Contractors').then((m) => ({ default: m.Contractors })),
+);
+const AdminMaterials = React.lazy(() =>
+  import('./pages/admin/Materials').then((m) => ({ default: m.Materials })),
 );
 const Settings = React.lazy(() =>
   import('./pages/admin/Settings').then((m) => ({ default: m.Settings })),
@@ -220,6 +233,8 @@ function App() {
             <Route path="/projects/:id/team" element={<ProjectTeam />} />
             <Route path="/projects/:id/contractors" element={<ProjectContractors />} />
             <Route path="/projects/:id/activity" element={<ProjectActivity />} />
+            <Route path="/projects/:id/materials" element={<ProjectMaterialsCatalog />} />
+            <Route path="/projects/:id/financials" element={<FinancialVarianceReport />} />
             <Route path="/projects/:id/settings" element={<ProjectSettings />} />
 
             {/* Existing Project Routes Mapped */}
@@ -227,6 +242,8 @@ function App() {
             <Route path="/projects/:id/change-orders" element={<ChangeOrders />} />
             <Route path="/projects/:id/pm" element={<PMDashboard />} />
             <Route path="/projects/:id/punch" element={<PunchListPro />} />
+            <Route path="/projects/:id/field-dashboard" element={<FieldPMDashboard />} />
+            <Route path="/projects/:id/field-operator" element={<FieldDashboard />} />
 
             <Route path="/field" element={<FieldLayout />}>
               <Route index element={<Navigate to="today" replace />} />
@@ -251,11 +268,12 @@ function App() {
 
             {/* Scrum Module */}
             <Route path="/scrum" element={<ScrumProjects />} />
-            <Route path="/scrum/:projectId" element={<ScrumPage />} />
+            <Route path="/projects/:id/scrum" element={<ScrumPage />} />
 
             {/* Admin Routes */}
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/contractors" element={<Contractors />} />
+            <Route path="/admin/materials" element={<AdminMaterials />} />
             <Route path="/settings" element={<Settings />} />
 
             {/* Reports Hub */}

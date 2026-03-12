@@ -17,6 +17,7 @@ import {
   CloseActivityDto,
 } from './dto/create-activity.dto';
 import { ReorderActivitiesDto } from './dto/reorder-activities.dto';
+import { AddActivityMaterialDto } from './dto/add-activity-material.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ActiveUser } from '../../common/decorators/active-user.decorator';
 
@@ -94,5 +95,37 @@ export class ActivitiesController {
     @Body() dto: ReorderActivitiesDto,
   ) {
     return this.activitiesService.reorder(tenantId, dto);
+  }
+  @Delete(':id')
+  remove(@ActiveUser('tenantId') tenantId: string, @Param('id') id: string) {
+    return this.activitiesService.remove(tenantId, id);
+  }
+
+  @Post(':id/materials')
+  addMaterialConsumption(
+    @ActiveUser('tenantId') tenantId: string,
+    @ActiveUser('id') userId: string,
+    @Param('id') id: string,
+    @Body() dto: AddActivityMaterialDto,
+  ) {
+    return this.activitiesService.addMaterialConsumption(
+      tenantId,
+      id,
+      userId,
+      dto,
+    );
+  }
+
+  @Delete(':id/materials/:consumptionId')
+  removeMaterialConsumption(
+    @ActiveUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Param('consumptionId') consumptionId: string,
+  ) {
+    return this.activitiesService.removeMaterialConsumption(
+      tenantId,
+      id,
+      consumptionId,
+    );
   }
 }

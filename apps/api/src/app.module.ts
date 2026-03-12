@@ -35,6 +35,9 @@ import { ProjectMembersModule } from './modules/project-members/project-members.
 import { FieldRecordsModule } from './modules/field-records/field-records.module';
 
 import { HealthController } from './health.controller';
+import { EmailModule } from './modules/email/email.module';
+import { ProjectMaterialsModule } from './modules/project-materials/project-materials.module';
+import { CommentsModule } from './modules/comments/comments.module';
 
 @Module({
   imports: [
@@ -73,6 +76,9 @@ import { HealthController } from './health.controller';
     TimesheetsModule,
     ProjectMembersModule,
     FieldRecordsModule,
+    EmailModule,
+    ProjectMaterialsModule,
+    CommentsModule,
   ],
   controllers: [AppController, HealthController],
   providers: [

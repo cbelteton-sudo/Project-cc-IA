@@ -38,6 +38,24 @@ export const SprintPlanning = ({
   const targetSprint = plannedSprint || activeSprint;
   const isTargetActive = targetSprint?.status === 'ACTIVE';
 
+  const getTypeLabel = (item: any) => {
+    if (item.parentId) return 'Sub-tarea';
+    switch (item.type) {
+      case 'TASK':
+        return 'Tarea';
+      case 'STORY':
+        return 'Historia';
+      case 'BUG':
+        return 'Bug';
+      case 'EPIC':
+        return 'Épica';
+      case 'MILESTONE':
+        return 'Hito';
+      default:
+        return item.type || 'Otra';
+    }
+  };
+
   const createSprintMutation = useMutation({
     mutationFn: async (data: any) =>
       api.post(`/scrum/sprints`, {
@@ -109,7 +127,9 @@ export const SprintPlanning = ({
             >
               <div className="flex justify-between">
                 <span className="font-medium text-sm text-gray-800">{item.title}</span>
-                <span className="text-xs text-gray-500 font-mono">{item.type}</span>
+                <span className="text-xs text-gray-500 font-mono bg-gray-100 px-1.5 py-0.5 rounded">
+                  {getTypeLabel(item)}
+                </span>
               </div>
             </div>
           ))}
@@ -121,7 +141,7 @@ export const SprintPlanning = ({
         <button
           disabled={!targetSprint || selectedItems.length === 0}
           onClick={() => addToSprintMutation.mutate()}
-          className="p-3 bg-blue-600 text-white rounded-full disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-blue-700 shadow-md transition-all"
+          className="p-3 bg-brand-ambar text-white rounded-full disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-brand-oro shadow-md transition-all"
           title={!targetSprint ? 'No hay sprint seleccionado' : 'Mover al sprint'}
         >
           <ArrowRight />
@@ -182,7 +202,9 @@ export const SprintPlanning = ({
               >
                 <span className="font-medium text-sm text-gray-800">{sItem.backlogItem.title}</span>
                 <div className="flex justify-between items-center mt-2">
-                  <span className="text-xs text-gray-500">{sItem.backlogItem.type}</span>
+                  <span className="text-xs text-gray-500 font-mono bg-gray-100 px-1.5 py-0.5 rounded">
+                    {getTypeLabel(sItem.backlogItem)}
+                  </span>
                   {sItem.backlogItem.contractor && (
                     <span className="text-[10px] bg-gray-100 px-1.5 rounded text-gray-600 truncate max-w-[100px]">
                       {sItem.backlogItem.contractor.name}
@@ -231,8 +253,8 @@ const CreateSprintModal = ({
     onCreate({
       name,
       goal: goal || 'Cumplir objetivos del sprint',
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
+      startDate: new Date(`${startDate}T12:00:00.000Z`),
+      endDate: new Date(`${endDate}T12:00:00.000Z`),
       status: 'PLANNED',
     });
   };
@@ -307,7 +329,7 @@ const CreateSprintModal = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm"
+              className="px-4 py-2 bg-brand-ambar text-white rounded-lg font-medium hover:bg-brand-oro transition-colors shadow-sm"
             >
               Crear Sprint
             </button>

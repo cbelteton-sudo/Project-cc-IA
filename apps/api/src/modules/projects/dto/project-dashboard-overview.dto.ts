@@ -1,16 +1,9 @@
 export class ProjectDashboardOverview {
   health: {
     timeElapsedPercent: number;
-    tasksCompletionPercent: number;
-    workloadOverdueTasks: number;
     progressPercent: number;
     costBudgetPercent: number;
   };
-  tasks: {
-    name: string;
-    value: number;
-    color: string;
-  }[];
   progress: {
     name: string;
     percentage: number;
@@ -24,13 +17,25 @@ export class ProjectDashboardOverview {
   costs: {
     name: string;
     planned: number;
-    actual: number;
+    actual: number | null;
     budget: number;
   }[];
-  workload: {
+  milestones: {
     name: string;
-    completed: number;
-    remaining: number;
-    overdue: number;
+    date: string;
+    status: string;
   }[];
+  constructorProgress: {
+    name: string;
+    progress: number;
+    color: string;
+  }[];
+  blockers: {
+    totalBlocked: number;
+    categories: {
+      reason: string;
+      count: number;
+      color: string;
+    }[];
+  };
 }

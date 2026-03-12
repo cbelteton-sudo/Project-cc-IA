@@ -1,11 +1,11 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { HealthWidget } from '../../components/project/dashboard/HealthWidget';
-import { TasksWidget } from '../../components/project/dashboard/TasksWidget';
 import { ProgressWidget } from '../../components/project/dashboard/ProgressWidget';
-import { TimeWidget } from '../../components/project/dashboard/TimeWidget';
+import { SprintWidget } from '../../components/project/dashboard/SprintWidget';
 import { CostWidget } from '../../components/project/dashboard/CostWidget';
-import { WorkloadWidget } from '../../components/project/dashboard/WorkloadWidget';
+import { MilestonesWidget } from '../../components/project/dashboard/MilestonesWidget';
+import { ConstructorProgressWidget } from '../../components/project/dashboard/ConstructorProgressWidget';
+import { BlockersWidget } from '../../components/project/dashboard/BlockersWidget';
 import { useProjectDashboard } from '../../hooks/useProjectDashboard';
 import { useProjects } from '../../hooks/useProjects';
 import { Loader2 } from 'lucide-react';
@@ -54,13 +54,13 @@ export const ProjectOverview = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        <HealthWidget data={data?.health} />
-        <TasksWidget data={data?.tasks} />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <MilestonesWidget data={data?.milestones} />
+        <ConstructorProgressWidget data={data?.constructorProgress} />
+        <BlockersWidget data={data?.blockers} />
         <ProgressWidget data={data?.progress} />
-        <TimeWidget data={data?.time} />
+        <SprintWidget data={data?.activeSprint || null} />
         <CostWidget data={data?.costs} />
-        <WorkloadWidget data={data?.workload} />
       </div>
     </div>
   );

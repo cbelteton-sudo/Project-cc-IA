@@ -173,7 +173,12 @@ export class ProjectMembersService {
         where: {
           projectId_userId: { projectId, userId },
         },
-        data: { role },
+        data: {
+          role,
+          ...(contractorId !== undefined && {
+            contractorId: contractorId === '' ? null : contractorId,
+          }),
+        },
       });
 
       if (contractorId !== undefined) {

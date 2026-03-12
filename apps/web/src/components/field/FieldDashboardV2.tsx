@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useNetwork } from '@/context/NetworkContext';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { KpiCardGroup } from './components/KpiCardGroup';
 import { FilterBar } from './components/FilterBar';
 import { RecordList } from './components/RecordList';
@@ -20,7 +20,8 @@ export function FieldDashboardV2() {
 
   // Project State
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const { id: urlProjectId } = useParams();
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(urlProjectId || '');
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [apiError, setApiError] = useState('');
 
@@ -36,7 +37,9 @@ export function FieldDashboardV2() {
       try {
         const res = await api.get(`/projects`);
         setProjects(res.data);
-        if (res.data.length > 0 && !selectedProjectId) {
+        if (urlProjectId) {
+            setSelectedProjectId(urlProjectId);
+        } else if (res.data.length > 0 && !selectedProjectId) {
           setSelectedProjectId(res.data[0].id);
         } else if (res.data.length === 0) {
           setApiError('No se encontraron proyectos activos.');
@@ -56,7 +59,7 @@ export function FieldDashboardV2() {
     };
     fetchProjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOnline]);
+  }, [isOnline, urlProjectId]);
 
   // Generic Field Records Offline Sync
   useEffect(() => {

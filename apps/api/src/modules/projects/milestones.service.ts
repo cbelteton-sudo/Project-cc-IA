@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -6,6 +10,45 @@ export class MilestonesService {
   constructor(private prisma: PrismaService) {}
 
   async create(tenantId: string, projectId: string, dto: any) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId, tenantId },
+    });
+    if (!project) throw new NotFoundException('Project not found');
+
+    const mDate = new Date(dto.date);
+    mDate.setHours(0, 0, 0, 0);
+
+    if (project.startDate && project.endDate) {
+      const pStart = new Date(project.startDate);
+      pStart.setHours(0, 0, 0, 0);
+      const pEnd = new Date(project.endDate);
+      pEnd.setHours(23, 59, 59, 999);
+
+      if (mDate < pStart || mDate > pEnd) {
+        throw new BadRequestException(
+          `La fecha del hito debe estar dentro del rango general del proyecto: ${pStart.toLocaleDateString('es-ES')} al ${pEnd.toLocaleDateString('es-ES')}`,
+        );
+      }
+    }
+
+    if (dto.activityId) {
+      const activity = await this.prisma.projectActivity.findUnique({
+        where: { id: dto.activityId },
+      });
+      if (activity) {
+        const aStart = new Date(activity.startDate);
+        aStart.setHours(0, 0, 0, 0);
+        const aEnd = new Date(activity.endDate);
+        aEnd.setHours(23, 59, 59, 999);
+
+        if (mDate < aStart || mDate > aEnd) {
+          throw new BadRequestException(
+            `La fecha del hito debe estar dentro del rango de su actividad principal: ${aStart.toLocaleDateString('es-ES')} al ${aEnd.toLocaleDateString('es-ES')}`,
+          );
+        }
+      }
+    }
+
     return this.prisma.projectMilestone.create({
       data: {
         tenantId,

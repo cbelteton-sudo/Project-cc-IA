@@ -29,14 +29,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // LOG THE REAL ERROR
     this.logger.error('EXCEPTION STOPPER:', exception);
 
+    // Resolve detailed message if it's a validation error (HttpException)
+    let errorMessage: any =
+      exception instanceof Error ? exception.message : 'Internal server error';
+
+    if (exception instanceof HttpException) {
+      const response = exception.getResponse() as any;
+      if (response && response.message) {
+        errorMessage = response.message;
+      }
+    }
+
     const responseBody = {
       statusCode: httpStatus,
       timestamp: new Date().toISOString(),
       path: httpAdapter.getRequestUrl(ctx.getRequest()),
-      message:
-        exception instanceof Error
-          ? exception.message
-          : 'Internal server error',
+      message: errorMessage,
       details: exception, // Returning the full error object for debugging
     };
 

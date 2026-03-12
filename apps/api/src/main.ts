@@ -40,6 +40,18 @@ async function bootstrap() {
     const cookieParser = require('cookie-parser');
     app.use(cookieParser());
 
+    app.use((req: any, res: any, next: any) => {
+      const start = Date.now();
+      res.on('finish', () => {
+        if (req.url.includes('/members') || req.url.includes('/resources')) {
+          console.log(
+            `[DEBUG_API] ${req.method} ${req.url} ${res.statusCode} - ${Date.now() - start}ms`,
+          );
+        }
+      });
+      next();
+    });
+
     const allowedOrigins = [
       'http://localhost:5173',
       'http://localhost:3000',

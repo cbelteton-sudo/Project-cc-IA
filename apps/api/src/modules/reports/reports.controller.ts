@@ -1,4 +1,12 @@
-import { Controller, Get, Param, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../../modules/auth/jwt-auth.guard';
 import { ActiveUser } from '../../common/decorators/active-user.decorator';
@@ -44,5 +52,18 @@ export class ReportsController {
   @Get('project/:id/sprint-assignments')
   getSprintAssignments(@Param('id') id: string, @ActiveUser() user: any) {
     return this.reportsService.getSprintAssignments(id, user.tenantId);
+  }
+
+  @Post('project/:id/sprint-assignments/email')
+  sendSprintAssignmentsEmail(
+    @Param('id') id: string,
+    @Body('email') email: string,
+    @ActiveUser() user: any,
+  ) {
+    return this.reportsService.sendSprintAssignmentsEmail(
+      id,
+      user.tenantId,
+      email,
+    );
   }
 }

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { type AxiosResponse } from 'axios';
 
 // Create a dedicated Axios instance
 export const api = axios.create({
@@ -7,8 +7,7 @@ export const api = axios.create({
 });
 
 // Single-flight refresh logic
-let refreshPromise: Promise<any> | null = null;
-const isRefreshing = false;
+let refreshPromise: Promise<AxiosResponse> | null = null;
 
 export const refreshSessionOnce = async () => {
   if (refreshPromise) return refreshPromise;
@@ -18,7 +17,17 @@ export const refreshSessionOnce = async () => {
   refreshPromise = api
     .post('/auth/refresh', { refreshToken: localRefreshToken })
     .then((res) => {
-      refreshPromise = null;
+      // Store token immediately to avoid race conditions
+      if (res.data?.refresh_token) {
+        localStorage.setItem('fieldclose_refresh_token', res.data.refresh_token);
+      }
+
+      // Delay clearing the promise to allow trailing 401 errors from the same
+      // failing batch to piggyback instead of triggering a consecutive refresh rotation.
+      setTimeout(() => {
+        refreshPromise = null;
+      }, 2000);
+
       return res;
     })
     .catch((err) => {

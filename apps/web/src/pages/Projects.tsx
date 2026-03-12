@@ -266,7 +266,7 @@ export const Projects = () => {
 
           <CreateProjectModal
             customTrigger={
-              <button className="bg-gray-900 text-white px-4 py-2 rounded-full flex justify-center items-center gap-2 hover:bg-gray-800 transition shadow-sm font-medium text-sm whitespace-nowrap active:scale-95 w-full md:w-auto">
+              <button className="bg-brand-ambar text-white px-4 py-2 rounded-full flex justify-center items-center gap-2 hover:bg-brand-oro transition shadow-sm font-medium text-sm whitespace-nowrap active:scale-95 w-full md:w-auto">
                 <Plus size={16} />
                 <span className="inline">Nuevo Proyecto</span>
               </button>

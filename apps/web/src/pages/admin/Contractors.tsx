@@ -2,14 +2,14 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Edit, Briefcase, Phone, Mail, Globe, Users } from 'lucide-react';
+import { Plus, Edit, Briefcase, Phone, Mail, Globe, Users, FolderKanban } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
 import { ContractorResourcesModal } from './ContractorResourcesModal';
-
-// Schema
+import { ConstructorProjectsModal } from './ConstructorProjectsModal';
+import { useTranslation } from 'react-i18next';
 const contractorSchema = z.object({
   name: z.string().min(2, 'Commercial Name is required'),
   legalName: z.string().optional(),
@@ -27,6 +27,7 @@ type ContractorForm = z.infer<typeof contractorSchema>;
 type TabValue = 'all' | 'active' | 'inactive';
 
 export const Contractors = () => {
+  const { t } = useTranslation();
   const { token } = useAuth();
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -35,6 +36,12 @@ export const Contractors = () => {
 
   // Resource Modal State
   const [selectedContractorForResources, setSelectedContractorForResources] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
+  // Projects Modal State
+  const [selectedConstructorForProjects, setSelectedConstructorForProjects] = useState<{
     id: string;
     name: string;
   } | null>(null);
@@ -87,10 +94,14 @@ export const Contractors = () => {
       setIsModalOpen(false);
       setEditingId(null);
       reset();
-      toast.success('Contractor saved successfully');
+      toast.success(t('contractors.saveSuccess'));
     },
     onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Error saving contractor');
+      const message = err.response?.data?.message;
+      const errorMsg = Array.isArray(message)
+        ? message.join(', ')
+        : message || t('contractors.saveError');
+      toast.error(errorMsg);
     },
   });
 
@@ -120,10 +131,10 @@ export const Contractors = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-800 tracking-tight">
-            Directorio de Contratistas
+            Directorio de Constructores
           </h2>
           <p className="text-gray-500 mt-1">
-            Administra tus contratistas, especialidades y recursos asignados.
+            Administra tus constructores, especialidades y recursos asignados.
           </p>
         </div>
 
@@ -136,7 +147,7 @@ export const Contractors = () => {
           className="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-700 transition shadow-sm"
         >
           <Plus size={18} />
-          Registrar Contratista
+          Registrar Constructor
         </button>
       </div>
 
@@ -182,7 +193,7 @@ export const Contractors = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50/80 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                <th className="px-6 py-4 w-[25%]">Contratista</th>
+                <th className="px-6 py-4 w-[25%]">Constructor</th>
                 <th className="px-6 py-4 w-[25%]">Especialidad</th>
                 <th className="px-6 py-4 w-[25%]">Contacto Principal</th>
                 <th className="px-6 py-4 w-[10%] text-center">Estado</th>
@@ -193,7 +204,7 @@ export const Contractors = () => {
               {isLoading ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
-                    Cargando contratistas...
+                    Cargando constructores...
                   </td>
                 </tr>
               ) : filteredContractors.length === 0 ? (
@@ -201,9 +212,9 @@ export const Contractors = () => {
                   <td colSpan={5} className="px-6 py-16 text-center text-gray-400">
                     <div className="flex flex-col items-center justify-center">
                       <Briefcase className="w-12 h-12 text-gray-300 mb-4" />
-                      <p className="text-gray-500 font-medium">No se encontraron contratistas</p>
+                      <p className="text-gray-500 font-medium">No se encontraron constructores</p>
                       <p className="text-sm mt-1">
-                        Comienza agregando tu primer contratista al sistema.
+                        Comienza agregando tu primer constructor al sistema.
                       </p>
                       <button
                         onClick={() => {
@@ -213,7 +224,7 @@ export const Contractors = () => {
                         }}
                         className="mt-4 text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center gap-1"
                       >
-                        <Plus size={16} /> Registrar Contratista
+                        <Plus size={16} /> Registrar Constructor
                       </button>
                     </div>
                   </td>
@@ -307,6 +318,16 @@ export const Contractors = () => {
                       <div className="flex items-center justify-end gap-2 pr-2">
                         <button
                           onClick={() =>
+                            setSelectedConstructorForProjects({ id: c.id, name: c.name })
+                          }
+                          className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors flex items-center gap-1 border border-purple-100 bg-purple-50/50 hover:border-purple-200"
+                          title="Gestionar Proyectos"
+                        >
+                          <FolderKanban size={16} />
+                          <span className="text-xs font-medium px-1">Proyectos</span>
+                        </button>
+                        <button
+                          onClick={() =>
                             setSelectedContractorForResources({ id: c.id, name: c.name })
                           }
                           className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1 border border-blue-100 bg-blue-50/50 hover:border-blue-200"
@@ -318,7 +339,7 @@ export const Contractors = () => {
                         <button
                           onClick={() => handleEdit(c)}
                           className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
-                          title="Editar Contratista"
+                          title="Editar Constructor"
                         >
                           <Edit size={16} />
                         </button>
@@ -337,7 +358,7 @@ export const Contractors = () => {
           <div className="bg-white p-6 rounded-2xl w-full max-w-2xl shadow-2xl border border-gray-100 my-auto">
             <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
               <Briefcase className="text-blue-600" size={24} />
-              {editingId ? 'Editar Contratista' : 'Nuevo Contratista'}
+              {editingId ? 'Editar Constructor' : 'Nuevo Constructor'}
             </h3>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -477,6 +498,14 @@ export const Contractors = () => {
           contractorId={selectedContractorForResources.id}
           contractorName={selectedContractorForResources.name}
           onClose={() => setSelectedContractorForResources(null)}
+        />
+      )}
+
+      {selectedConstructorForProjects && (
+        <ConstructorProjectsModal
+          constructorId={selectedConstructorForProjects.id}
+          constructorName={selectedConstructorForProjects.name}
+          onClose={() => setSelectedConstructorForProjects(null)}
         />
       )}
     </div>

@@ -45,6 +45,20 @@ async function main() {
   });
   console.log('✅ User ready: admin@demo.com');
 
+  // 2.2 Create Heisel PM User
+  await prisma.user.upsert({
+    where: { email: 'heisel@smartbusiness.com' },
+    update: { password, name: 'Heisel', role: 'PROJECT_MANAGER' }, // Enforce role and password
+    create: {
+      email: 'heisel@smartbusiness.com',
+      password,
+      name: 'Heisel',
+      role: 'PROJECT_MANAGER',
+      tenantId: tenant.id,
+    },
+  });
+  console.log('✅ User ready: heisel@smartbusiness.com');
+
   // 2.5. Create Fluxori Admin User
   const fluxoriAdminPassword = await bcrypt.hash('Vg45&5L-F.xE5M$', 10);
   await prisma.user.upsert({
@@ -61,7 +75,7 @@ async function main() {
   console.log('✅ User ready: administrator@fluxori.io');
 
   // 3. Create Contractors (COMMENTED OUT FOR CLEAN SLATE)
-  /*
+  // 3. Create Contractors
   const contractorsData = [
     { name: 'CONSTRUCTORA ALFA', type: 'CONTRACTOR' },
     { name: 'ELECTROMECÁNICA BETA', type: 'CONTRACTOR' },
@@ -107,13 +121,27 @@ async function main() {
     });
   }
   console.log('🏗️ Upserted Project: TORRE MAWI DEMO');
-  */
 
-  /*
+  // 4.5 Assign Heisel to Project
+  const heisel = await prisma.user.findUnique({ where: { email: 'heisel@smartbusiness.com' } });
+  if (heisel) {
+    await prisma.projectMember.upsert({
+      where: {
+        projectId_userId: { projectId: project.id, userId: heisel.id }
+      },
+      update: { role: 'PROJECT_MANAGER' },
+      create: {
+        projectId: project.id,
+        userId: heisel.id,
+        role: 'PROJECT_MANAGER'
+      }
+    });
+    console.log('✅ Assign heisel@smartbusiness.com to TORRE MAWI DEMO');
+  }
+
   // Create additional projects
   // ... [Skipping rest of the demo data creation] ...
   console.log('✅ MATERIALS Seeded');
-  */
   console.log('✅ Seed complete!');
 }
 

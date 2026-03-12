@@ -5,38 +5,48 @@ import { useAuth } from '../context/AuthContext';
 export interface ProjectDashboardOverview {
   health: {
     timeElapsedPercent: number;
-    tasksCompletionPercent: number;
-    workloadOverdueTasks: number;
     progressPercent: number;
     costBudgetPercent: number;
   };
-  tasks: {
-    name: string;
-    value: number;
-    color: string;
-  }[];
   progress: {
     name: string;
     percentage: number;
     color: string;
   }[];
-  time: {
+  activeSprint: {
+    id: string;
     name: string;
-    planned: number;
-    actual: number;
-  }[];
+    startDate: string;
+    endDate: string;
+    goal: string;
+    completedTasks: number;
+    totalTasks: number;
+    blockedTasks: number;
+  } | null;
   costs: {
     name: string;
     planned: number;
-    actual: number;
+    actual: number | null;
     budget: number;
   }[];
-  workload: {
+  milestones: {
     name: string;
-    completed: number;
-    remaining: number;
-    overdue: number;
+    date: string;
+    status: string;
   }[];
+  constructorProgress: {
+    name: string;
+    progress: number;
+    color: string;
+  }[];
+  blockers: {
+    totalBlocked: number;
+    categories: {
+      reason: string;
+      count: number;
+      color: string;
+    }[];
+  };
 }
 
 export const useProjectDashboard = (projectId: string | undefined) => {

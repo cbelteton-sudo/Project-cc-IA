@@ -26,6 +26,7 @@ export const ProjectSettings = () => {
         enableScrum: project.enableScrum || false,
         enableBudget: project.enableBudget || false,
         enableFieldManagement: project.enableFieldManagement || false,
+        enableMaterials: project.enableMaterials || false,
       });
     }
   }, [project, reset]);
@@ -113,6 +114,18 @@ export const ProjectSettings = () => {
             />
             <label htmlFor="enableBudget" className="text-sm font-medium text-gray-700">
               Presupuestos & Costos
+            </label>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <input
+              type="checkbox"
+              id="enableMaterials"
+              {...register('enableMaterials')}
+              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="enableMaterials" className="text-sm font-medium text-gray-700">
+              Gestión de Materiales
             </label>
           </div>
 

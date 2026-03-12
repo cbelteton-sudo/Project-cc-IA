@@ -151,9 +151,14 @@ export const ContractorResourcesModal: React.FC<ResourceModalProps> = ({
         <div className="flex-1 overflow-auto p-6 bg-gray-50/30">
           {isFormOpen ? (
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm mb-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-3 border-b border-gray-100">
-                {editingId ? 'Editar Recurso' : 'Nuevo Recurso'}
-              </h3>
+              <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {editingId ? 'Editar Recurso' : 'Nuevo Recurso'}
+                </h3>
+                <div className="text-sm text-gray-600 bg-gray-100/80 px-3 py-1.5 rounded-md border border-gray-200 shadow-sm flex items-center gap-2">
+                  Asignando a: <span className="font-bold text-gray-900">{contractorName}</span>
+                </div>
+              </div>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
@@ -242,13 +247,15 @@ export const ContractorResourcesModal: React.FC<ResourceModalProps> = ({
               </form>
             </div>
           ) : (
-            <div className="flex justify-end mb-4">
+            <div className="flex justify-between items-center mb-4">
+              <div className="text-sm text-gray-600 bg-gray-100/80 px-3 py-1.5 rounded-md border border-gray-200 shadow-sm flex items-center gap-2">
+                Asignando a: <span className="font-bold text-gray-900">{contractorName}</span>
+              </div>
               <button
                 onClick={() => setIsFormOpen(true)}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-700 transition shadow-sm"
               >
-                <Plus size={16} />
-                Agregar Recurso / Personal
+                <Plus size={16} /> Agregar
               </button>
             </div>
           )}

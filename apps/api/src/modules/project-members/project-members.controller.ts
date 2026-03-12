@@ -11,18 +11,20 @@ import {
 } from '@nestjs/common';
 import { ProjectMembersService } from './project-members.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
 import { AddMemberDto } from './dto/add-member.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
+import { ProjectAuthGuard } from '../../common/guards/project-auth.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import { Permission } from '../../common/constants/permissions';
 
-@Controller('admin/projects/:projectId/members') // Adjusted route to match requirement
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN') // Only Admins can manage members via this endpoint
+@Controller('admin/projects/:projectId/members') // Note: historically 'admin', but accessible to PMs
+@UseGuards(JwtAuthGuard, ProjectAuthGuard, PermissionsGuard)
 export class ProjectMembersController {
   constructor(private readonly membersService: ProjectMembersService) {}
 
   @Post()
+  @RequirePermissions(Permission.MEMBER_INVITE)
   async addMember(
     @Param('projectId') projectId: string,
     @Body() dto: AddMemberDto,
@@ -41,11 +43,13 @@ export class ProjectMembersController {
   }
 
   @Get()
+  @RequirePermissions(Permission.MEMBER_VIEW)
   async getMembers(@Param('projectId') projectId: string) {
     return this.membersService.getMembers(projectId);
   }
 
   @Delete(':userId')
+  @RequirePermissions(Permission.MEMBER_UPDATE)
   async removeMember(
     @Param('projectId') projectId: string,
     @Param('userId') userId: string,
@@ -60,6 +64,7 @@ export class ProjectMembersController {
   }
 
   @Patch(':userId')
+  @RequirePermissions(Permission.MEMBER_UPDATE)
   async updateMemberRole(
     @Param('projectId') projectId: string,
     @Param('userId') userId: string,

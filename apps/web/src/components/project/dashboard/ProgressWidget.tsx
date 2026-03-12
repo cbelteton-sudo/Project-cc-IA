@@ -31,11 +31,11 @@ export const ProgressWidget: React.FC<ProgressWidgetProps> = ({ data }) => {
                 / 100%
               </span>
             </div>
-            <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden flex">
+            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden flex">
               {item.percentage > 0 && (
                 <div
-                  className={`h-full ${item.color}`}
-                  style={{ width: `${item.percentage}%` }}
+                  className="h-full rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${item.percentage}%`, backgroundColor: item.color }}
                 ></div>
               )}
             </div>

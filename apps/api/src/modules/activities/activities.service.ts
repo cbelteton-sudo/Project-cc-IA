@@ -12,6 +12,7 @@ import {
   CloseActivityDto,
 } from './dto/create-activity.dto';
 import { ReorderActivitiesDto } from './dto/reorder-activities.dto';
+import { AddActivityMaterialDto } from './dto/add-activity-material.dto';
 // Trigger rebuild after prisma generate
 
 @Injectable()
@@ -38,6 +39,70 @@ export class ActivitiesService {
 
       if (start > end)
         throw new BadRequestException('Start date must be before end date');
+
+      // Date Boundary Validation
+      if (!dto.parentId && project.startDate && project.endDate) {
+        // We set times to midnight for fair comparison of days
+        const pStart = new Date(project.startDate);
+        pStart.setHours(0, 0, 0, 0);
+        const pEnd = new Date(project.endDate);
+        pEnd.setHours(23, 59, 59, 999); // End of the day
+
+        const aStart = new Date(start);
+        aStart.setHours(0, 0, 0, 0);
+        const aEnd = new Date(end);
+        aEnd.setHours(0, 0, 0, 0);
+
+        if (aStart < pStart || aEnd > pEnd) {
+          const strStart = pStart.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          });
+          const strEnd = pEnd.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          });
+          throw new BadRequestException(
+            `Las fechas de la actividad deben estar dentro del rango general del proyecto: ${strStart} al ${strEnd}`,
+          );
+        }
+      }
+
+      // Sub-Activity Date Validation (against Parent)
+      if (dto.parentId) {
+        const parent = await this.prisma.projectActivity.findUnique({
+          where: { id: dto.parentId },
+        });
+        if (parent) {
+          const pStart = new Date(parent.startDate);
+          pStart.setHours(0, 0, 0, 0);
+          const pEnd = new Date(parent.endDate);
+          pEnd.setHours(23, 59, 59, 999);
+
+          const aStart = new Date(start);
+          aStart.setHours(0, 0, 0, 0);
+          const aEnd = new Date(end);
+          aEnd.setHours(0, 0, 0, 0);
+
+          if (aStart < pStart || aEnd > pEnd) {
+            const strStart = pStart.toLocaleDateString('es-ES', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            });
+            const strEnd = pEnd.toLocaleDateString('es-ES', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            });
+            throw new BadRequestException(
+              `Las fechas de la sub-actividad deben estar dentro del rango de su actividad principal: ${strStart} al ${strEnd}`,
+            );
+          }
+        }
+      }
 
       // 2. Auto-generate code if missing (Simple Random for MVP)
       let code = dto.code;
@@ -82,6 +147,36 @@ export class ActivitiesService {
         } as any,
       });
 
+      // 4. Auto-create corresponding BacklogItem for integration
+      try {
+        let parentBacklogItemId: string | null = null;
+        if (safeParentId) {
+          const parentItem = await this.prisma.backlogItem.findFirst({
+            where: { linkedWbsActivityId: safeParentId },
+          });
+          if (parentItem) {
+            parentBacklogItemId = parentItem.id;
+          }
+        }
+
+        await this.prisma.backlogItem.create({
+          data: {
+            projectId: dto.projectId,
+            title: dto.name,
+            description: `Actividad creada desde el cronograma. Fecha: ${start.toLocaleDateString()} - ${end.toLocaleDateString()}`,
+            type: safeParentId ? 'TASK' : 'EPIC', // Root items are Epics, sub-items are Tasks
+            priority: 3,
+            status: 'PENDING',
+            dueDate: end,
+            linkedWbsActivityId: result.id,
+            parentId: parentBacklogItemId,
+            contractorId: safeContractorId,
+          },
+        });
+      } catch (e) {
+        console.error('Failed to auto-create backlog item for activity:', e);
+      }
+
       // 4. Trigger Rollup if this activity has a parent
       if (result.parentId) {
         await this.updateParentChain(tenantId, result.parentId);
@@ -114,7 +209,7 @@ export class ActivitiesService {
         progressRecords: { orderBy: { weekStartDate: 'desc' }, take: 1 },
         milestones: true, // Include milestones for tree visualization
       },
-      orderBy: { orderIndex: 'asc' } as any, // Changed from startDate to orderIndex for stability
+      orderBy: { createdAt: 'asc' },
     });
 
     // Calculate CPM
@@ -294,6 +389,86 @@ export class ActivitiesService {
     userId: string,
   ) {
     const activity = await this.findOne(tenantId, id);
+
+    // Date Boundary Validation on Update
+    if (dto.startDate || dto.endDate) {
+      const project = await this.prisma.project.findUnique({
+        where: { id: activity.projectId },
+      });
+
+      if (!activity.parentId && project?.startDate && project?.endDate) {
+        const pStart = new Date(project.startDate);
+        pStart.setHours(0, 0, 0, 0);
+        const pEnd = new Date(project.endDate);
+        pEnd.setHours(23, 59, 59, 999);
+
+        const aStart = dto.startDate
+          ? new Date(dto.startDate)
+          : new Date(activity.startDate);
+        aStart.setHours(0, 0, 0, 0);
+
+        const aEnd = dto.endDate
+          ? new Date(dto.endDate)
+          : new Date(activity.endDate);
+        aEnd.setHours(0, 0, 0, 0);
+
+        if (aStart < pStart || aEnd > pEnd) {
+          const strStart = pStart.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          });
+          const strEnd = pEnd.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          });
+          throw new BadRequestException(
+            `Las fechas de la actividad deben estar dentro del rango general del proyecto: ${strStart} al ${strEnd}`,
+          );
+        }
+      }
+
+      // Sub-Activity Date Validation (against Parent) if updating dates
+      if (activity.parentId) {
+        const parent = await this.prisma.projectActivity.findUnique({
+          where: { id: activity.parentId },
+        });
+
+        if (parent) {
+          const pStart = new Date(parent.startDate);
+          pStart.setHours(0, 0, 0, 0);
+          const pEnd = new Date(parent.endDate);
+          pEnd.setHours(23, 59, 59, 999);
+
+          const aStart = dto.startDate
+            ? new Date(dto.startDate)
+            : new Date(activity.startDate);
+          aStart.setHours(0, 0, 0, 0);
+
+          const aEnd = dto.endDate
+            ? new Date(dto.endDate)
+            : new Date(activity.endDate);
+          aEnd.setHours(0, 0, 0, 0);
+
+          if (aStart < pStart || aEnd > pEnd) {
+            const strStart = pStart.toLocaleDateString('es-ES', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            });
+            const strEnd = pEnd.toLocaleDateString('es-ES', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            });
+            throw new BadRequestException(
+              `Las fechas de la sub-actividad deben estar dentro del rango de su actividad principal: ${strStart} al ${strEnd}`,
+            );
+          }
+        }
+      }
+    }
 
     // Validation: Dependency Rule (Must be > 85% to start)
     // Check if we are starting the activity (either by setting status or adding progress)
@@ -633,5 +808,136 @@ export class ActivitiesService {
         }),
       ),
     );
+  }
+  async remove(tenantId: string, id: string) {
+    const activity = await this.prisma.projectActivity.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!activity) {
+      throw new NotFoundException('Actividad no encontrada');
+    }
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // Delete any dependency links where this activity is the predecessor or the successor
+        await tx.activityDependency.deleteMany({
+          where: {
+            tenantId,
+            OR: [{ activityId: id }, { dependsOnId: id }],
+          },
+        });
+
+        // Finally delete the activity
+        await tx.projectActivity.delete({
+          where: { id },
+        });
+      });
+
+      return { success: true, message: 'Actividad eliminada correctamente' };
+    } catch (error) {
+      // If it fails (e.g. Foreign Key constraint because of progress reports)
+      throw new BadRequestException(
+        'No se puede eliminar la actividad porque ya tiene registros o historial asociado.',
+      );
+    }
+  }
+
+  async addMaterialConsumption(
+    tenantId: string,
+    activityId: string,
+    userId: string,
+    dto: AddActivityMaterialDto,
+  ) {
+    const activity = await this.prisma.projectActivity.findFirst({
+      where: { id: activityId, tenantId },
+    });
+    if (!activity) throw new NotFoundException('Activity not found');
+
+    const projectMaterial = await this.prisma.projectMaterial.findFirst({
+      where: { id: dto.projectMaterialId, projectId: activity.projectId },
+    });
+    if (!projectMaterial)
+      throw new NotFoundException('Project Material not found');
+
+    return this.prisma.$transaction(async (tx) => {
+      const consumption = await tx.activityMaterial.create({
+        data: {
+          activityId,
+          projectMaterialId: dto.projectMaterialId,
+          quantityConsumed: dto.quantityConsumed,
+          dateConsumed: dto.dateConsumed
+            ? new Date(dto.dateConsumed)
+            : new Date(),
+          notes: dto.notes,
+          reportedBy: userId,
+        },
+        include: {
+          projectMaterial: {
+            include: { material: true },
+          },
+        },
+      });
+
+      await tx.projectMaterial.update({
+        where: { id: dto.projectMaterialId },
+        data: {
+          stockConsumed: { increment: dto.quantityConsumed },
+          stockAvailable: { decrement: dto.quantityConsumed },
+        },
+      });
+
+      // ADD TO COST LEDGER
+      const consumedPrice = projectMaterial.plannedPrice || 0;
+      await tx.costLedger.create({
+        data: {
+          projectId: activity.projectId,
+          date: dto.dateConsumed ? new Date(dto.dateConsumed) : new Date(),
+          wbsActivityId: activity.id,
+          costType: 'MATERIAL',
+          entryType: 'INVENTORY_CONSUMPTION',
+          amount: dto.quantityConsumed * consumedPrice,
+          referenceId: consumption.id, // reference to the ActivityMaterial record
+          userId: userId,
+          description:
+            dto.notes || `Consumo de material en actividad: ${activity.name}`,
+        },
+      });
+
+      return consumption;
+    });
+  }
+
+  async removeMaterialConsumption(
+    tenantId: string,
+    activityId: string,
+    consumptionId: string,
+  ) {
+    const activity = await this.prisma.projectActivity.findFirst({
+      where: { id: activityId, tenantId },
+    });
+    if (!activity) throw new NotFoundException('Activity not found');
+
+    const consumption = await this.prisma.activityMaterial.findFirst({
+      where: { id: consumptionId, activityId },
+    });
+    if (!consumption)
+      throw new NotFoundException('Consumption record not found');
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.projectMaterial.update({
+        where: { id: consumption.projectMaterialId },
+        data: {
+          stockConsumed: { decrement: consumption.quantityConsumed },
+          stockAvailable: { increment: consumption.quantityConsumed },
+        },
+      });
+
+      await tx.activityMaterial.delete({
+        where: { id: consumptionId },
+      });
+
+      return { success: true };
+    });
   }
 }
