@@ -42,12 +42,10 @@ export class UsersService {
   // Admin: Find all users for a tenant (filtered)
   async findAll(tenantId?: string) {
     if (!tenantId) {
-      return this.prisma.user.findMany({
-        where: { projectId: null },
-      }); // Superadmin?
+      return this.prisma.user.findMany(); // Superadmin?
     }
     return this.prisma.user.findMany({
-      where: { tenantId, projectId: null },
+      where: { tenantId },
       include: { contractor: true },
     });
   }
