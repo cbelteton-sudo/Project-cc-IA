@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Edit, Shield, Briefcase } from 'lucide-react';
+import { Plus, Edit, Shield, Briefcase, Key } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -41,6 +41,8 @@ export const AdminUsers = () => {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState('');
 
   // Form
   const {
@@ -114,6 +116,22 @@ export const AdminUsers = () => {
     onError: (err: unknown) => {
       const error = err as { response?: { data?: { message?: string } } };
       toast.error(error.response?.data?.message || 'Error saving user');
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (data: { id: string; password: string }) => {
+      return api.patch(`/admin/users/${data.id}`, { password: data.password, status: 'ACTIVE' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      setResetPasswordUser(null);
+      setNewPassword('');
+      toast.success('Contraseña actualizada y usuario activado');
+    },
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || 'Error al actualizar contraseña');
     },
   });
 
@@ -219,6 +237,14 @@ export const AdminUsers = () => {
                 </td>
                 <td className="px-6 py-3 text-right">
                   <button
+                    title="Cambiar Contraseña"
+                    onClick={() => setResetPasswordUser(user)}
+                    className="text-gray-400 hover:text-green-600 p-1 mr-2"
+                  >
+                    <Key size={16} />
+                  </button>
+                  <button
+                    title="Editar Usuario"
                     onClick={() => handleEdit(user)}
                     className="text-gray-400 hover:text-blue-600 p-1"
                   >
@@ -312,6 +338,52 @@ export const AdminUsers = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {resetPasswordUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-sm">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <Key size={20} className="text-blue-600" />
+              Cambiar Contraseña
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Establece una nueva contraseña para <strong>{resetPasswordUser.email}</strong>. 
+              Esto también activará su cuenta si estaba pendiente.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nueva Contraseña</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full border rounded px-3 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                placeholder="Ingresa la contraseña..."
+              />
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setResetPasswordUser(null);
+                  setNewPassword('');
+                }}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={!newPassword || resetPasswordMutation.isPending}
+                onClick={() => resetPasswordMutation.mutate({ id: resetPasswordUser.id, password: newPassword })}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                {resetPasswordMutation.isPending ? 'Guardando...' : 'Actualizar'}
+              </button>
+            </div>
           </div>
         </div>
       )}
