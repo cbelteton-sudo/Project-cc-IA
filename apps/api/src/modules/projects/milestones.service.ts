@@ -64,7 +64,7 @@ export class MilestonesService {
 
   async findAll(tenantId: string, projectId: string) {
     return this.prisma.projectMilestone.findMany({
-      where: { tenantId, projectId },
+      where: { projectId },
       include: { activity: { select: { id: true, name: true } } },
       orderBy: { date: 'asc' },
     });

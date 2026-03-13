@@ -12,6 +12,7 @@ import { CommentReferenceType } from '../../services/comments';
 
 const schema = z.object({
   materialId: z.string().min(1, 'Debe seleccionar un material base'),
+  costCenter: z.string().min(1, 'Debe seleccionar un Centro de Costo (CECO)'),
   projectSKU: z.string().optional(),
   plannedQty: z.coerce.number().min(0, 'La cantidad debe ser mayor o igual a 0'),
   plannedPrice: z.coerce.number().min(0, 'El precio debe ser mayor o igual a 0'),
@@ -88,6 +89,7 @@ export const ProjectMaterialDrawer = ({ isOpen, onClose, projectId, materialId }
     resolver: zodResolver(schema),
     defaultValues: {
       materialId: '',
+      costCenter: '',
       plannedQty: 0,
       plannedPrice: 0,
     },
@@ -110,6 +112,7 @@ export const ProjectMaterialDrawer = ({ isOpen, onClose, projectId, materialId }
     if (existingMaterial) {
       reset({
         materialId: existingMaterial.materialId,
+        costCenter: existingMaterial.costCenter || '',
         projectSKU: existingMaterial.projectSKU || '',
         plannedQty: existingMaterial.plannedQty || 0,
         plannedPrice: existingMaterial.plannedPrice || 0,
@@ -117,6 +120,7 @@ export const ProjectMaterialDrawer = ({ isOpen, onClose, projectId, materialId }
     } else {
       reset({
         materialId: '',
+        costCenter: '',
         projectSKU: '',
         plannedQty: 0,
         plannedPrice: 0,
@@ -300,6 +304,28 @@ export const ProjectMaterialDrawer = ({ isOpen, onClose, projectId, materialId }
                   )}
                   {errors.materialId && (
                     <p className="text-xs text-red-500 mt-1">{errors.materialId.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Centro de Costo (CECO) *
+                  </label>
+                  <select
+                    {...register('costCenter')}
+                    className={`w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-ambar/50 outline-none ${
+                      errors.costCenter ? 'border-red-500' : 'border-slate-200'
+                    } bg-white`}
+                  >
+                    <option value="">-- Seleccione CECO --</option>
+                    {project?.costCenters?.map((ceco: { code: string; name: string }) => (
+                      <option key={ceco.code} value={ceco.code}>
+                        {ceco.code} - {ceco.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.costCenter && (
+                    <p className="text-xs text-red-500 mt-1">{errors.costCenter.message}</p>
                   )}
                 </div>
 

@@ -301,4 +301,44 @@ export class ProjectMaterialsService {
 
     return varianceReports.sort((a, b) => a.totalVariance - b.totalVariance);
   }
+
+  async getStartupChecklist(projectId: string) {
+    const projectMaterials = await this.prisma.projectMaterial.findMany({
+      where: { projectId },
+      include: {
+        material: true,
+      },
+      orderBy: {
+        material: {
+          name: 'asc',
+        },
+      },
+    });
+
+    let completeCount = 0;
+
+    const items = projectMaterials.map((pm) => {
+      const isComplete = pm.stockAvailable >= pm.plannedQty;
+      if (isComplete) completeCount++;
+      return {
+        id: pm.id,
+        materialName: pm.material.name,
+        unit: pm.material.unit,
+        plannedQty: pm.plannedQty,
+        stockAvailable: pm.stockAvailable,
+        isComplete,
+        progressPercentage:
+          pm.plannedQty > 0
+            ? Math.min(100, Math.round((pm.stockAvailable / pm.plannedQty) * 100))
+            : (pm.stockAvailable >= 0 ? 100 : 0),
+      };
+    });
+
+    return {
+      totalItems: items.length,
+      completeItems: completeCount,
+      overallProgress: items.length > 0 ? Math.round((completeCount / items.length) * 100) : 100,
+      items,
+    };
+  }
 }

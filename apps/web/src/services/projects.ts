@@ -21,6 +21,7 @@ export interface Project {
   enableBudget?: boolean;
   enableFieldManagement?: boolean;
   enableMaterials?: boolean;
+  costCenters?: { code: string; name: string }[];
 }
 
 export interface CreateProjectDTO {
@@ -37,6 +38,7 @@ export interface CreateProjectDTO {
   enableFieldManagement?: boolean;
   enableMaterials?: boolean;
   currency?: string;
+  costCenters?: { code: string; name: string }[];
 }
 
 export const projectsService = {

@@ -65,6 +65,11 @@ const ProjectMaterialsCatalog = React.lazy(() =>
     default: m.ProjectMaterialsCatalog,
   })),
 );
+const ProjectStartupChecklist = React.lazy(() =>
+  import('./pages/project/ProjectStartupChecklist').then((m) => ({
+    default: m.ProjectStartupChecklist,
+  })),
+);
 const FinancialVarianceReport = React.lazy(() =>
   import('./pages/project/FinancialVarianceReport').then((m) => ({
     default: m.FinancialVarianceReport,
@@ -228,6 +233,7 @@ function App() {
             {/* PROJECT CONTEXT */}
             <Route path="/projects/:id" element={<Navigate to="overview" replace />} />
             <Route path="/projects/:id/overview" element={<ProjectOverview />} />
+            <Route path="/projects/:id/startup-checklist" element={<ProjectStartupChecklist />} />
             <Route path="/projects/:id/budget" element={<ProjectBudget />} />
             <Route path="/projects/:id/plan" element={<ProjectPlan />} />
             <Route path="/projects/:id/team" element={<ProjectTeam />} />

@@ -14,6 +14,7 @@ import {
   FileText,
   Boxes,
   TrendingUp,
+  ClipboardCheck,
   type LucideIcon,
 } from 'lucide-react';
 import type { User } from '../context/AuthContext';
@@ -116,6 +117,11 @@ export const getNavItems = (
       label: 'Plan de Trabajo',
       to: `/projects/${projectId}/plan`,
       icon: Calendar,
+    });
+    commonItems.push({
+      label: 'Checklist de Arranque',
+      to: `/projects/${projectId}/startup-checklist`,
+      icon: ClipboardCheck,
     });
 
     if (currentProject?.enableScrum === true) {

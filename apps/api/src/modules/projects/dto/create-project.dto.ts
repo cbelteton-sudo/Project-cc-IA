@@ -67,4 +67,7 @@ export class CreateProjectDto {
   @IsOptional()
   @IsBoolean()
   enableMaterials?: boolean;
+
+  @IsOptional()
+  costCenters?: any;
 }

@@ -28,4 +28,8 @@ export class CreateProjectMaterialDto {
   @IsNumber()
   @IsOptional()
   stockConsumed?: number;
+
+  @IsString()
+  @IsOptional()
+  costCenter?: string;
 }

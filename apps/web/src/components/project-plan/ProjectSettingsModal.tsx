@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { X, Calendar } from 'lucide-react';
+import { X, Calendar, Plus, Trash2 } from 'lucide-react';
 import type { Project } from '../../hooks/useProjects';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -26,6 +26,7 @@ interface SettingsForm {
   enableBudget?: boolean;
   enableFieldManagement?: boolean;
   enableMaterials?: boolean;
+  costCenters: { code: string; name: string }[];
 }
 
 export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettingsModalProps) => {
@@ -34,13 +35,19 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = ['ADMIN', 'PLATFORM_ADMIN', 'DIRECTOR_PMO'].includes(user?.role || '');
-  const { register, handleSubmit, reset, watch } = useForm<SettingsForm>({
+  const { register, control, handleSubmit, reset, watch } = useForm<SettingsForm>({
     defaultValues: {
       currency: 'GTQ',
       enableBudget: false,
       enableFieldManagement: false,
       enableMaterials: false,
+      costCenters: [],
     },
+  });
+
+  const { fields: costCenterFields, append: appendCostCenter, remove: removeCostCenter } = useFieldArray({
+    control,
+    name: 'costCenters',
   });
 
   const isBudgetEnabled = watch('enableBudget');
@@ -94,6 +101,7 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
         enableBudget: project.enableBudget || false,
         enableFieldManagement: project.enableFieldManagement || false,
         enableMaterials: project.enableMaterials || false,
+        costCenters: project.costCenters ? (project.costCenters as any) : [],
       });
     }
   }, [project, reset, isOpen, projectMembers, contractors]);
@@ -114,6 +122,7 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
         enableBudget: data.enableBudget,
         enableFieldManagement: data.enableFieldManagement,
         enableMaterials: data.enableMaterials,
+        costCenters: data.costCenters,
       };
 
       return api.patch(`/projects/${project.id}`, payload);
@@ -144,15 +153,15 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md animate-fade-in relative overflow-hidden">
-        <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-gray-50">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl animate-fade-in relative flex flex-col max-h-[90vh]">
+        <div className="flex justify-between items-center p-4 border-b border-gray-100 bg-gray-50 shrink-0">
           <h3 className="font-bold text-gray-800">Configuración del Proyecto</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
           {/* Dates Section */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
@@ -288,6 +297,55 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
             </div>
           </div>
 
+          {/* Cost Centers Section */}
+          <div className="space-y-3 pt-2 border-t border-gray-100">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                Centros de Costo (CECOs)
+              </h4>
+              <button
+                type="button"
+                onClick={() => appendCostCenter({ code: '', name: '' })}
+                className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium bg-blue-50 px-2 py-1 rounded transition"
+              >
+                <Plus size={12} /> Agregar CECO
+              </button>
+            </div>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+              {costCenterFields.length === 0 && (
+                <p className="text-xs text-gray-500 text-center py-2">
+                  No hay centros de costo configurados.
+                </p>
+              )}
+              {costCenterFields.map((field, index) => (
+                <div key={field.id} className="flex gap-2 items-start">
+                  <div className="w-1/3">
+                    <input
+                      {...register(`costCenters.${index}.code`, { required: true })}
+                      placeholder="Código (Ej. MAT)"
+                      className="w-full border border-gray-300 rounded md px-2 py-1.5 text-xs focus:ring-1 focus:ring-blue-500 outline-none uppercase"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      {...register(`costCenters.${index}.name`, { required: true })}
+                      placeholder="Nombre (Ej. Materia Prima)"
+                      className="w-full border border-gray-300 rounded md px-2 py-1.5 text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeCostCenter(index)}
+                    className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition mt-0.5"
+                    title="Eliminar CECO"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Responsables Section */}
           <div className="space-y-3 pt-2 border-t border-gray-100">
             <div className="grid grid-cols-2 gap-4">
@@ -330,7 +388,7 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
             </div>
           </div>
 
-          <div className="pt-4 flex justify-between gap-3 border-t border-gray-100 mt-2">
+          <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-between gap-3 shrink-0">
             <button
               type="button"
               onClick={() => {
@@ -351,14 +409,14 @@ export const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettin
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg"
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={mutation.isPending}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm"
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm transition"
               >
                 {mutation.isPending ? 'Guardando...' : 'Guardar Cambios'}
               </button>

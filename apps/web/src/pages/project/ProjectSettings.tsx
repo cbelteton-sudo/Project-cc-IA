@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { projectsService } from '@/services/projects';
 import type { Project } from '@/services/projects';
@@ -16,7 +17,16 @@ export const ProjectSettings = () => {
     enabled: !!id,
   });
 
-  const { register, handleSubmit, reset } = useForm<Partial<Project>>();
+  const { register, control, handleSubmit, reset } = useForm<Partial<Project>>({
+    defaultValues: {
+      costCenters: [],
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'costCenters',
+  });
 
   useEffect(() => {
     if (project) {
@@ -27,6 +37,7 @@ export const ProjectSettings = () => {
         enableBudget: project.enableBudget || false,
         enableFieldManagement: project.enableFieldManagement || false,
         enableMaterials: project.enableMaterials || false,
+        costCenters: project.costCenters || [],
       });
     }
   }, [project, reset]);
@@ -129,13 +140,60 @@ export const ProjectSettings = () => {
             </label>
           </div>
 
-          <div className="pt-4">
+          <div className="pt-4 border-t border-gray-200 mt-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">Centros de Costo (CECOs)</h2>
+            <div className="flex justify-end mb-2">
+              <button
+                type="button"
+                onClick={() => append({ code: '', name: '' })}
+                className="text-sm flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium bg-blue-50 px-3 py-1.5 rounded-md transition"
+              >
+                <Plus size={16} /> Agregar CECO
+              </button>
+            </div>
+            
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+              {fields.length === 0 && (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  No hay centros de costo configurados para este proyecto.
+                </p>
+              )}
+              {fields.map((field, index) => (
+                <div key={field.id} className="flex gap-3 items-start bg-white p-3 rounded-md shadow-sm border border-gray-100">
+                  <div className="w-1/3">
+                    <input
+                      {...register(`costCenters.${index}.code`, { required: true })}
+                      placeholder="Código (Ej. MAT)"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none uppercase"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      {...register(`costCenters.${index}.name`, { required: true })}
+                      placeholder="Nombre (Ej. Materia Prima)"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => remove(index)}
+                    className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition"
+                    title="Eliminar CECO"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-6 flex justify-end">
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition shadow-sm"
             >
-              {mutation.isPending ? 'Guardando...' : 'Guardar Cambios'}
+              {mutation.isPending ? 'Guardando...' : 'Guardar Configuración'}
             </button>
           </div>
         </form>

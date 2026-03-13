@@ -22,6 +22,7 @@ export interface Project {
   enablePMDashboard?: boolean;
   enablePunchListPro?: boolean;
   enableMaterials?: boolean;
+  costCenters?: { code: string; name: string }[];
 }
 
 export const useProjects = () => {

@@ -106,6 +106,7 @@ model Project {
   enableFieldManagement Boolean                       @default(false)
   enableMaterials       Boolean                       @default(false)
   managerName           String?
+  costCenters           Json?
   auditLogs             AuditLog[]
   backlogItems          BacklogItem[]
   budgets               Budget[]
@@ -976,6 +977,7 @@ model ProjectMaterial {
   plannedPrice   Float    @default(0) // Precio unitario presupuestado
   stockAvailable Float    @default(0) // Cantidad en bodega de la obra
   stockConsumed  Float    @default(0) // Cantidad ya utilizada/instalada
+  costCenter     String?  // Centro de costo asignado
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

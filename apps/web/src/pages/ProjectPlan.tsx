@@ -445,6 +445,7 @@ export const ProjectPlan = () => {
                 {activeTab === 'schedule' ? (
                   <ActivitiesTree
                     activities={activities || []}
+                    milestones={milestones || []}
                     selectedId={selectedActivityId}
                     onSelect={setSelectedActivityId}
                     onAssignContractor={(id) => {

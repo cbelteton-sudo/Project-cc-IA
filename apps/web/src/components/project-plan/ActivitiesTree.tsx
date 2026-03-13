@@ -38,6 +38,7 @@ export interface Activity {
 
 interface ActivitiesTreeProps {
   activities: Activity[];
+  milestones?: any[]; // Added milestones prop
   selectedId: string | null;
   onSelect: (id: string) => void;
   onAssignContractor: (activityId: string) => void;
@@ -145,6 +146,7 @@ const SortableMilestoneRow = ({ milestone, level, columnWidth }: MilestoneRowPro
 
 export const ActivitiesTree = ({
   activities,
+  milestones = [], // Extracted milestones
   selectedId,
   onSelect,
   onAssignContractor,
@@ -317,7 +319,7 @@ export const ActivitiesTree = ({
 
           {/* Table Body */}
           <div className="flex-1 overflow-y-auto">
-            {activities.length === 0 ? (
+            {activities.length === 0 && milestones.filter(m => !m.activityId).length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-10 text-gray-400">
                 <p className="text-sm mb-4">No hay actividades registradas.</p>
                 {onCreate && (
@@ -332,21 +334,49 @@ export const ActivitiesTree = ({
               </div>
             ) : (
               <SortableContext
-                items={activities.map((a) => a.id)}
+                items={(() => {
+                  const rootCombined = [
+                    ...milestones.filter(m => !m.activityId).map(m => ({ ...m, type: 'MILESTONE' })),
+                    ...activities.map(a => ({ ...a, type: 'ACTIVITY' }))
+                  ].map(item => ({ ...item, orderIndex: (item as any).orderIndex ?? 0 }));
+                  rootCombined.sort((a, b) => a.orderIndex - b.orderIndex);
+                  return rootCombined.map(i => i.id);
+                })()}
                 strategy={verticalListSortingStrategy}
               >
-                {activities.map((root) => (
-                  <ActivityRow
-                    key={root.id}
-                    node={root}
-                    selectedId={selectedId}
-                    onSelect={onSelect}
-                    onAssignContractor={onAssignContractor}
-                    onCreate={onCreate}
-                    onReorderItems={onReorderItems}
-                    columnWidth={columnWidth}
-                  />
-                ))}
+                {(() => {
+                  const rootCombined = [
+                    ...milestones.filter(m => !m.activityId).map(m => ({ ...m, type: 'MILESTONE' })),
+                    ...activities.map(a => ({ ...a, type: 'ACTIVITY' }))
+                  ].map(item => ({ ...item, orderIndex: (item as any).orderIndex ?? 0 }));
+                  rootCombined.sort((a, b) => a.orderIndex - b.orderIndex);
+                  
+                  return rootCombined.map((item) => {
+                    if (item.type === 'MILESTONE') {
+                      return (
+                        <SortableMilestoneRow
+                          key={item.id}
+                          milestone={item as any}
+                          level={0}
+                          columnWidth={columnWidth}
+                        />
+                      );
+                    } else {
+                      return (
+                        <ActivityRow
+                          key={item.id}
+                          node={item as any}
+                          selectedId={selectedId}
+                          onSelect={onSelect}
+                          onAssignContractor={onAssignContractor}
+                          onCreate={onCreate}
+                          onReorderItems={onReorderItems}
+                          columnWidth={columnWidth}
+                        />
+                      );
+                    }
+                  });
+                })()}
               </SortableContext>
             )}
 

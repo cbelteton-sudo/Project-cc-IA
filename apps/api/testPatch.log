@@ -238,3 +238,98 @@ UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b
     at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
     at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
 
+[REFRESH 500 ERROR] - 2026-03-13T15:01:37.939Z
+UnauthorizedException: DEBUG: 
+Invalid `this.prisma.user.findFirst()` invocation in
+/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/users/users.service.ts:59:29
+
+  56 const whereClause: any = { id };
+  57 if (tenantId) whereClause.tenantId = tenantId;
+  58 
+→ 59 return this.prisma.user.findFirst(
+Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`.
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+
+[REFRESH 500 ERROR] - 2026-03-13T15:28:11.417Z
+UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b0 was revoked at Wed Mar 11 2026 17:58:22 GMT-0600 (Central Standard Time)
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+
+[REFRESH 500 ERROR] - 2026-03-13T15:54:28.178Z
+UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b0 was revoked at Wed Mar 11 2026 17:58:22 GMT-0600 (Central Standard Time)
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+
+[REFRESH 500 ERROR] - 2026-03-13T16:09:54.613Z
+UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b0 was revoked at Wed Mar 11 2026 17:58:22 GMT-0600 (Central Standard Time)
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+
+[REFRESH 500 ERROR] - 2026-03-13T16:25:03.365Z
+UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b0 was revoked at Wed Mar 11 2026 17:58:22 GMT-0600 (Central Standard Time)
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+
+[REFRESH 500 ERROR] - 2026-03-13T16:40:34.290Z
+UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b0 was revoked at Wed Mar 11 2026 17:58:22 GMT-0600 (Central Standard Time)
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+
+[REFRESH 500 ERROR] - 2026-03-13T17:02:18.157Z
+UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b0 was revoked at Wed Mar 11 2026 17:58:22 GMT-0600 (Central Standard Time)
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+
+[REFRESH 500 ERROR] - 2026-03-13T17:44:56.264Z
+UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b0 was revoked at Wed Mar 11 2026 17:58:22 GMT-0600 (Central Standard Time)
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+
+[REFRESH 500 ERROR] - 2026-03-13T17:49:18.327Z
+UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b0 was revoked at Wed Mar 11 2026 17:58:22 GMT-0600 (Central Standard Time)
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+
+[REFRESH 500 ERROR] - 2026-03-13T18:04:23.322Z
+UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b0 was revoked at Wed Mar 11 2026 17:58:22 GMT-0600 (Central Standard Time)
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+
+[REFRESH 500 ERROR] - 2026-03-13T18:19:27.002Z
+UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b0 was revoked at Wed Mar 11 2026 17:58:22 GMT-0600 (Central Standard Time)
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+
+[REFRESH 500 ERROR] - 2026-03-13T18:19:33.410Z
+UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b0 was revoked at Wed Mar 11 2026 17:58:22 GMT-0600 (Central Standard Time)
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+
+[REFRESH 500 ERROR] - 2026-03-13T18:34:37.759Z
+UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b0 was revoked at Wed Mar 11 2026 17:58:22 GMT-0600 (Central Standard Time)
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+
+[REFRESH 500 ERROR] - 2026-03-13T18:41:29.616Z
+UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b0 was revoked at Wed Mar 11 2026 17:58:22 GMT-0600 (Central Standard Time)
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+
+[REFRESH 500 ERROR] - 2026-03-13T18:56:41.721Z
+UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b0 was revoked at Wed Mar 11 2026 17:58:22 GMT-0600 (Central Standard Time)
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+
+[REFRESH 500 ERROR] - 2026-03-13T19:00:25.873Z
+UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b0 was revoked at Wed Mar 11 2026 17:58:22 GMT-0600 (Central Standard Time)
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+
+[REFRESH 500 ERROR] - 2026-03-13T19:15:50.748Z
+UnauthorizedException: DEBUG: DEBUG: Session cd75d5f0-4a2f-4748-a338-ca1f36bd75b0 was revoked at Wed Mar 11 2026 17:58:22 GMT-0600 (Central Standard Time)
+    at AuthService.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.service.ts:124:13)
+    at async AuthController.refresh (/Users/carlosbelteton/Project-CConstructions/apps/api/src/modules/auth/auth.controller.ts:171:9)
+

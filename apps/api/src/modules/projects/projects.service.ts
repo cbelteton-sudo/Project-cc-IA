@@ -26,10 +26,23 @@ export class ProjectsService {
         projectManager: { select: { name: true } },
       },
     });
-    return {
+    return this.injectDefaultCostCenters({
       ...project,
       managerName: (project as any).projectManager?.name,
-    };
+    });
+  }
+
+  private injectDefaultCostCenters(project: any) {
+    if (!project.costCenters || (Array.isArray(project.costCenters) && project.costCenters.length === 0)) {
+      project.costCenters = [
+        { code: 'MAT', name: 'Materia Prima' },
+        { code: 'MO', name: 'Mano de Obra' },
+        { code: 'VIA', name: 'Viáticos' },
+        { code: 'OG', name: 'Otros Gastos' },
+        { code: 'SER', name: 'Servicios Tercerizados' },
+      ];
+    }
+    return project;
   }
 
   async findAll(tenantId: string, user: ActiveUserData) {
@@ -140,11 +153,11 @@ export class ProjectsService {
       throw new NotFoundException('Project not found');
     }
 
-    const result = {
+    const result = this.injectDefaultCostCenters({
       ...project,
       managerName: (project as any).projectManager?.name,
       constructorName: (project as any).mainContractor?.name,
-    };
+    });
 
     console.log(
       'ProjectsService.findOne returns:',
@@ -396,10 +409,10 @@ export class ProjectsService {
       },
     });
 
-    return {
+    return this.injectDefaultCostCenters({
       ...project,
       managerName: project.projectManager?.name,
-    };
+    });
   }
 
   async remove(id: string, tenantId: string) {

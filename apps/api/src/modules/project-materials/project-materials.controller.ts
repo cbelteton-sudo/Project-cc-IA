@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Query,
+  BadRequestException,
 } from '@nestjs/common';
 import { ProjectMaterialsService } from './project-materials.service';
 import { CreateProjectMaterialDto } from './dto/create-project-material.dto';
@@ -39,6 +40,14 @@ export class ProjectMaterialsController {
   @Roles('ADMIN', 'ADMINISTRADOR', 'DIRECTOR', 'PM', 'PROJECT_MANAGER')
   getFinancialVariance(@Query('projectId') projectId: string) {
     return this.projectMaterialsService.getFinancialVarianceReport(projectId);
+  }
+
+  @Get('startup-checklist')
+  getStartupChecklist(@Query('projectId') projectId: string) {
+    if (!projectId) {
+      throw new BadRequestException('projectId is required');
+    }
+    return this.projectMaterialsService.getStartupChecklist(projectId);
   }
 
   @Get(':id')

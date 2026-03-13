@@ -5,6 +5,7 @@ export interface ProjectMaterial {
   projectId: string;
   materialId: string;
   projectSKU?: string;
+  costCenter?: string;
   plannedQty: number;
   plannedPrice: number;
   stockAvailable: number;
@@ -39,6 +40,7 @@ export interface CreateProjectMaterialDTO {
   projectId: string;
   materialId: string;
   projectSKU?: string;
+  costCenter?: string;
   plannedQty?: number;
   plannedPrice?: number;
 }
